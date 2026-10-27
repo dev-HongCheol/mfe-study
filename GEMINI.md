@@ -76,12 +76,13 @@
    - [2단계] TDD 명세서 작성 시: [`./docs/templates/02-tdd-spec.template.md`](./docs/templates/02-tdd-spec.template.md)
    - [5단계-A] PR 전 심층 코드 리뷰 시: [`./docs/templates/03-code-review.template.md`](./docs/templates/03-code-review.template.md)
    - [5단계-B] PR 초안 및 커밋 메시지 보고 시: [`./docs/templates/pull-request.template.md`](./docs/templates/pull-request.template.md)
-2. **영구 아키텍처·실전 이슈 정본 5종 (`./docs/study/`)**:
+2. **영구 아키텍처·실전 이슈·세팅 가이드 정본 6종 (`./docs/study/`)**:
    - MFE 핵심 원리 및 `Mode A vs Mode B` 비교 학습: [`./docs/study/01-mfe-concepts-and-guide.md`](./docs/study/01-mfe-concepts-and-guide.md)
    - 경량 FSD 폴더 아키텍처(`exposed/`, `features/{ui,api,model}`, `testing/`), 선정 라이브러리, SSOT 참조 원칙: [`./docs/study/02-polyrepo-and-architecture-decisions.md`](./docs/study/02-polyrepo-and-architecture-decisions.md)
    - 5단계 TDD 워크플로우 및 하네스 5대 훅 동작 원리: [`./docs/study/03-ai-harness-and-tdd-workflow-guide.md`](./docs/study/03-ai-harness-and-tdd-workflow-guide.md)
    - **[구현·리뷰 필독] MFE 14대 실전 고유 이슈와 해결 아키텍처**: [`./docs/study/04-mfe-real-world-pitfalls-and-solutions.md`](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md)
    - **[구현·리뷰 필독] 풀스택 서비스 16대 실전 이슈(FE·BE/DB·공통모듈·디자인)**: [`./docs/study/05-fullstack-service-real-world-issues.md`](./docs/study/05-fullstack-service-real-world-issues.md)
+   - **[세팅·명령어 기록] 워크스페이스·하네스 및 각 서비스 세팅 A-to-Z 가이드**: [`./docs/study/06-workspace-and-harness-setup-guide.md`](./docs/study/06-workspace-and-harness-setup-guide.md)
 3. **초기 프로젝트 구축 참조용 마스터 설계서 (`./temp/` — Git 미추적 로컬 참조용)**:
    - 전체 초기 구축이 완료되어 삭제되기 전까지 포트, DB 테이블, API 엔드포인트, 세부 컨벤션 확인 시 참조:
      - `./temp/02-infra-and-architecture.md`

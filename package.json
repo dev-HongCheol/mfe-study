@@ -1,0 +1,34 @@
+{
+  "name": "mfe-study-root",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Polyrepo-compatible Micro Frontend (MFE) study workspace with Vite, Rspack, Ark UI, TanStack Query, and built-in SQLite",
+  "packageManager": "pnpm@9.15.5",
+  "engines": {
+    "node": ">=22.5.0",
+    "pnpm": ">=9.15.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "vitest run",
+    "test:apps": "turbo run test",
+    "typecheck": "tsc --noEmit -p tsconfig.base.json",
+    "typecheck:apps": "turbo run typecheck",
+    "check": "biome check .",
+    "check:write": "biome check --write .",
+    "sql:verify": "node scripts/verify-sql-sync.mjs",
+    "sql:update": "node scripts/verify-sql-sync.mjs --update",
+    "smoke:phase1": "node scripts/verify-mfe-smoke.mjs",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "^22.10.0",
+    "lefthook": "^1.10.10",
+    "turbo": "^2.4.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

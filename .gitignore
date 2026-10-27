@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build & Federation Outputs
+dist/
+build/
+.turbo/
+.mf-types/
+*.tsbuildinfo
+
+# SQLite Database Files
+*.db
+*.db-shm
+*.db-wal
+
+# Logs & Coverage
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage/
+
+# Environment & OS
+.env
+.env.local
+.env.*.local
+.DS_Store
+Thumbs.db
+
+# Local Temporary Master Design Docs (Not tracked by Git)
+temp/
