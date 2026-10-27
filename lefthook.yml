@@ -1,0 +1,20 @@
+pre-commit:
+  parallel: false
+  commands:
+    biome-format:
+      glob: "*.{js,mjs,cjs,ts,tsx,json,css}"
+      run: pnpm biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    sql-sync:
+      glob: "apps/api-server/sql/*"
+      run: node scripts/verify-sql-sync.mjs
+
+pre-push:
+  parallel: false
+  commands:
+    biome-check:
+      run: pnpm biome check .
+    sql-sync-check:
+      run: node scripts/verify-sql-sync.mjs
+    unit-test:
+      run: pnpm test
