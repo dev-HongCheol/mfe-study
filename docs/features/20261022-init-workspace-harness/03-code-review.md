@@ -57,7 +57,7 @@
 
 - **적용 여부**: `적용 (루트 워크스페이스 및 Phase 1 스모크 검증기 범위)`
 - [x] **다중 포트 CORS 및 런타임 연결 검증 (#03, #11)**: `Vitest` 로컬 스텁 모킹의 맹점을 보완하기 위해 실제 6개 서버의 매니페스트(`mf-manifest.json`)와 `CORS` 헤더를 검증하는 `scripts/verify-mfe-smoke.mjs`(`pnpm smoke:phase1`)를 구축함.
-- [x] **싱글톤 버전 드리프트 방지 (#01, #07)**: `pnpm-workspace.yaml`의 `catalog:`에 `react`, `react-dom`, `@tanstack/react-query`, `@ark-ui/react`, `zod` 버전을 중앙 고정하여 멀티레포 간 버전 불일치를 예방함.
+- [x] **싱글톤 버전 드리프트 방지 및 캡슐화 패키지 분리 (#01, #07)**: `pnpm-workspace.yaml`의 `catalog:`에는 2개 이상의 앱이 공유하는 패키지(`react`, `react-dom`, `@tanstack/react-query`, `zod`, `ky`, `vitest`, `typescript` 등)만 중앙 고정하고, 단일 앱 전용 패키지(`api-server` 전용 `express`/`cors`/`supertest`, `remote-shared` 전용 캡슐화 패키지 `@ark-ui/react`/`clsx`)는 공용 카탈로그에서 분리함.
 
 ---
 

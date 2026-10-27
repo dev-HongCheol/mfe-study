@@ -10,11 +10,11 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
-  - 영구 학습 문서 폴더 `docs/study/` 신설 및 5종 학습 가이드(`01-mfe-concepts-and-guide.md`, `02-polyrepo-and-architecture-decisions.md`, `03-ai-harness-and-tdd-workflow-guide.md`, `04-mfe-real-world-pitfalls-and-solutions.md`, `05-fullstack-service-real-world-issues.md`) 구축
+  - 영구 학습 문서 폴더 `docs/study/` 신설 및 6종 학습 가이드(`01-mfe-concepts-and-guide.md` ~ `06-workspace-and-harness-setup-guide.md`) 구축 및 세팅 Q&A 보강
   - 초기 마스터 설계 문서 3종(`02-infra-and-architecture.md`, `03-setup-and-convention.md`, `04-workflow-and-harness.md`)을 Git 미추적 `temp/` 폴더로 격리 보관
   - `docs/templates/` 표준 문서·코드 리뷰·PR 템플릿 5종(`todo`, `01-plan-and-design`, `02-tdd-spec`, `03-code-review`, `pull-request`) 생성 및 한국어 가독성 원칙 반영
-  - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:`) 확정 완료
-  - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 통과 완료
+  - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료
+  - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 승인 완료
 - **다음 진행 예정 작업 (Next Up)**:
   - **[Phase 1 - Step 1.0] Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지** (`Scope: root` | `Branch: root/docs/phase1-service-contracts`)
 

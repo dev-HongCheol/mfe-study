@@ -94,8 +94,23 @@ export function evaluateTodoBeforeMerge(params) {
   return { decision: 'allow' };
 }
 
-// CLI 직접 실행 시 표준 입출력 처리
+// CLI 직접 실행 시 표준 입출력 또는 --check-branch 플래그 처리
 if (isDirectExecution(import.meta.url)) {
+  if (process.argv.includes('--check-branch')) {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: WORKSPACE_ROOT,
+      encoding: 'utf-8',
+    }).trim();
+    // [분기 설명] main/master 브랜치에서 직접 git push를 시도할 경우 Lefthook pre-push 단계에서 즉시 차단합니다.
+    if (branch === 'main' || branch === 'master') {
+      console.error(
+        '[Lefthook Blocked] main 브랜치에 직접 push할 수 없습니다. 작업 브랜치에서 PR을 통해 진행하세요.',
+      );
+      process.exit(1);
+    }
+    process.exit(0);
+  }
+
   const stdinData = await readHookStdin();
   const commandLine =
     stdinData.toolCall?.args?.CommandLine || stdinData.toolCall?.args?.commandLine || '';

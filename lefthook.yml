@@ -12,6 +12,8 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
+    prevent-main-push:
+      run: node scripts/verify-todo-before-merge.mjs --check-branch
     biome-check:
       run: pnpm biome check .
     sql-sync-check:

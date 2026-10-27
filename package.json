@@ -13,9 +13,11 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "vitest run",
-    "test:all": "vitest run && turbo run test",
+    "test:apps": "turbo run test",
+    "typecheck": "tsc --noEmit -p tsconfig.base.json",
+    "typecheck:apps": "turbo run typecheck",
     "check": "biome check .",
-    "format": "biome check --write .",
+    "check:write": "biome check --write .",
     "sql:verify": "node scripts/verify-sql-sync.mjs",
     "sql:update": "node scripts/verify-sql-sync.mjs --update",
     "smoke:phase1": "node scripts/verify-mfe-smoke.mjs",
@@ -26,7 +28,7 @@
     "@types/node": "^22.10.0",
     "lefthook": "^1.10.10",
     "turbo": "^2.4.0",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

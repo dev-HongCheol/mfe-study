@@ -68,43 +68,54 @@ git init -b main
 ## 3. 워크스페이스 및 `pnpm catalog:` 싱글톤 버전 중앙 통제 세팅
 
 ### 3.1 [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) 작성 (`catalog:` 기능 활용)
-MFE 환경에서 호스트와 리모트 앱의 `react`나 `@tanstack/react-query` 버전이 서로 다르면 런타임에 **싱글톤 협상 실패 또는 다중 인스턴스 로드(`Invalid Hook Call`)**가 발생합니다. 이를 방지하기 위해 루트 `pnpm-workspace.yaml`의 `catalog:`에 공통 버전을 정의합니다.
+MFE 환경에서 호스트와 리모트 앱의 `react`나 `@tanstack/react-query` 버전이 서로 다르면 런타임에 **싱글톤 협상 실패 또는 다중 인스턴스 로드(`Invalid Hook Call`)**가 발생합니다. 이를 방지하기 위해 루트 `pnpm-workspace.yaml`의 `catalog:`에는 **2개 이상의 앱이 실제로 공유하는 패키지**만 중앙 정의합니다.
+- **단일 앱 전용 패키지 제외 원칙**: 백엔드(`apps/api-server`) 전용인 `express`, `cors`, `supertest`와 원격 공통 UI(`apps/remote-shared`) 내부에만 캡슐화되어 타 앱이 직접 import하지 않는 `@ark-ui/react`, `clsx`는 루트 공용 카탈로그에 넣지 않고 해당 앱의 `package.json`에서 개별 관리합니다.
 
 ```yaml
 packages:
   - "apps/*"
 
 catalog:
-  # MFE 런타임 싱글톤 필수 고정 패키지
+  # 1. MFE 런타임 싱글톤 필수 고정 패키지 (Host & Remote 전체 공유)
   react: ^19.1.0
   react-dom: ^19.1.0
   "@types/react": ^19.1.2
   "@types/react-dom": ^19.1.2
   "@tanstack/react-query": ^5.74.4
 
-  # 공통 표준 라이브러리
-  "@ark-ui/react": ^5.10.0
-  clsx: ^2.1.1
-  ky: ^1.8.1
+  # 2. 다중 앱 공통 표준 라이브러리 (스키마 검증 · 폼 · HTTP · 날짜 · 범용 유틸리티)
+  zod: ^3.24.3
   react-hook-form: ^7.56.1
   "@hookform/resolvers": ^5.0.1
-  zod: ^3.24.3
+  ky: ^1.8.1
   date-fns: ^4.1.0
   es-toolkit: ^1.34.0
+
+  # 3. 워크스페이스 공통 테스트 및 타입스크립트 도구
+  vitest: ^3.0.5
+  typescript: ^5.7.3
+  msw: ^2.7.0
+  "@testing-library/react": ^16.2.0
+  "@testing-library/jest-dom": ^6.6.3
+  "@testing-library/user-event": ^14.6.1
+  jsdom: ^26.0.0
 ```
-- **하위 앱에서 사용하는 법**: 이후 각 앱(`apps/remote-shared/package.json` 등)에서는 버전 숫자 대신 `"react": "catalog:"`라고만 적으면 루트 카탈로그의 버전이 자동으로 주입됩니다.
+- **하위 앱 및 루트에서 사용하는 법**: 루트 `package.json` 및 각 앱(`apps/*/package.json`)에서는 버전 숫자 대신 `"typescript": "catalog:"`, `"react": "catalog:"`라고만 적으면 루트 카탈로그의 버전이 자동으로 주입됩니다.
 
 ### 3.2 루트 [`package.json`](../../package.json) 및 [`turbo.json`](../../turbo.json) 구성
-- **루트 `package.json` 주요 스크립트**:
-  - `pnpm dev`: `turbo run dev --parallel` (6개 마이크로 서비스 동시 기동)
+- **루트 `package.json` 주요 스크립트** (크로스 플랫폼 호환을 위해 `&&` 체이닝 미사용):
+  - `pnpm dev`: `turbo run dev` (6개 마이크로 서비스 동시 기동)
   - `pnpm build`: `turbo run build` (전체 앱 캐시 기반 병렬 빌드)
-  - `pnpm test`: `vitest run` (단위 및 통합 테스트 실행)
+  - `pnpm test`: `vitest run` (루트 하네스 단위 테스트 실행)
+  - `pnpm test:apps`: `turbo run test` (하위 마이크로 앱 전체 테스트 실행)
+  - `pnpm typecheck`: `tsc --noEmit -p tsconfig.base.json` (루트 타입 검사)
+  - `pnpm typecheck:apps`: `turbo run typecheck` (하위 마이크로 앱 전체 타입 검사)
   - `pnpm check`: `biome check .` (전체 코드 린트·포맷 검사)
   - `pnpm check:write`: `biome check --write .` (린트·포맷 자동 수정)
   - `pnpm sql:verify` / `pnpm sql:update`: `node scripts/verify-sql-sync.mjs` (백엔드 3종 SQL 해시 및 순차 실행 검증/갱신)
   - `pnpm smoke:phase1`: `node scripts/verify-mfe-smoke.mjs` (실제 6개 서버 기동 후 Module Federation 런타임 연결 검증)
 - **[`turbo.json`](../../turbo.json) 주의사항**:
-  - `Turborepo v2`부터는 구버전의 `"pipeline"` 키 대신 반드시 **`"tasks"`** 키를 사용해야 합니다.
+  - `Turborepo v2`부터는 구버전의 `"pipeline"` 키 대신 반드시 **`"tasks"`** 키(`build`, `dev`, `test`, `check`, `typecheck`)를 사용해야 합니다.
   - `dev` 태스크는 개발 서버가 종료되지 않고 계속 떠 있어야 하므로 `"cache": false, "persistent": true` 옵션을 필수로 줍니다.
 
 ### 3.3 패키지 설치 실행 명령어
@@ -117,14 +128,15 @@ pnpm install
 ## 4. TypeScript · Biome · Vitest 설정 및 실행 명령어
 
 ### 4.1 [`tsconfig.base.json`](../../tsconfig.base.json) (공통 TypeScript 설정)
-모든 마이크로 앱이 `extends: "../../tsconfig.base.json"`으로 상속받아 사용하는 루트 설정입니다.
+Node.js 백엔드(`apps/api-server`), 루트 스크립트, 프론트엔드 마이크로 앱이 모두 `extends`로 상속받는 순수 베이스 설정입니다.
+- **환경 중립성 유지 (`lib: ["ES2022"]`)**: 백엔드 서버 코드가 브라우저 전역 객체(`window`, `document`)나 React `JSX`에 오염되지 않도록 루트 베이스에서는 `"DOM"`과 `"jsx": "react-jsx"`를 제외하고, 프론트엔드 앱(`remote-*`, `host-*`)의 `tsconfig.json`에서만 이를 추가합니다.
 - **`"moduleResolution": "bundler"`**: Vite와 Rspack 같은 모던 번들러 환경에 최적화된 모듈 해석 방식을 사용합니다.
 - **`"noUncheckedIndexedAccess": true`**: 배열이나 객체를 인덱스로 접근할 때(`items[0]`) 무조건 `T | undefined`로 추론하게 만들어 런타임 `Cannot read properties of undefined` 에러를 컴파일 타임에 방어합니다.
 - **`"allowJs": true`**: 루트의 `.mjs` 하네스 스크립트를 `.ts` 테스트 코드에서 import할 때 JSDoc 타입을 인식할 수 있도록 허용합니다.
 
 ```powershell
 # 루트 TypeScript 타입 체크 실행 명령어 (파일 생성 없이 에러만 검사)
-pnpm exec tsc --noEmit -p tsconfig.base.json
+pnpm typecheck
 ```
 
 ### 4.2 [`biome.json`](../../biome.json) (초고속 통합 린터 & 포맷터)
@@ -153,11 +165,12 @@ pnpm test
 개발자나 AI 에이전트가 실수로 포맷팅이 깨진 코드나 다른 서비스 폴더를 건드린 코드를 커밋·푸시하지 못하도록 **Lefthook**으로 Git 훅을 자동화했습니다.
 
 ### 5.1 [`lefthook.yml`](../../lefthook.yml) 동작 구조
-1. **`pre-commit` (`git commit` 실행 직전 자동 작동)**:
-   - `biome-check`: 스테이징된 파일(`{staged_files}`)을 자동으로 포맷팅하고 다시 스테이징(`stage_fixed: true`)합니다.
-   - `scope-check`: `node scripts/verify-scope.mjs`를 실행하여 `.agents/active-scope.json`에 허용된 서비스 폴더 외의 파일이 수정되었으면 커밋을 차단합니다.
-2. **`pre-push` (`git push` 실행 직전 자동 작동)**:
-   - `biome-check` (전체 코드 검사) + `sql-sync-check` (3종 SQL 무결성 검증) + `unit-test` (`pnpm test`) 3가지를 병렬(`parallel: true`)로 실행하여 하나라도 실패하면 원격 푸시를 차단합니다.
+1. **`pre-commit` (`git commit` 실행 직전 순차 작동)**:
+   - `biome-format`: 스테이징된 파일(`{staged_files}`)을 자동으로 포맷팅하고 다시 스테이징(`stage_fixed: true`)합니다.
+   - `sql-sync`: `apps/api-server/sql/*` 변경 시 `node scripts/verify-sql-sync.mjs`를 실행하여 3종 SQL 해시 및 인메모리 실행 무결성을 검증합니다.
+2. **`pre-push` (`git push` 실행 직전 순차 작동)**:
+   - `prevent-main-push`: 현재 브랜치가 `main`(또는 `master`)이면 직접 푸시를 즉시 차단합니다.
+   - `biome-check` (전체 코드 검사) + `sql-sync-check` (3종 SQL 무결성 검증) + `unit-test` (`pnpm test`)를 순차 실행하여 하나라도 실패하면 원격 푸시를 차단합니다.
 
 ### 5.2 실행한 Lefthook 활성화 명령어 (중요!)
 `lefthook.yml` 파일만 만든다고 Git 훅이 바로 동작하지 않습니다. 반드시 아래 명령어로 `.git/hooks/` 내부에 훅 실행 파일을 설치해야 합니다.
@@ -174,7 +187,7 @@ AI 에이전트가 헌법([`GEMINI.md`](../../GEMINI.md))을 잊어버리지 않
 
 ### 6.1 구성 파일 요약
 1. **[`.agents/active-scope.json`](../../.agents/active-scope.json)**:
-   - 현재 작업 중인 스코프(`scope`), 허용된 폴더 경로(`allowedPaths`), 브랜치명(`branch`), 현재 TDD 단계(`currentStep: 1~5`)를 기록하는 상태 잠금 파일입니다.
+   - 현재 작업 중인 스코프(`scope`), 수정이 허용된 서비스 폴더 경로(`path`), 브랜치명(`branch`), 피처 문서 폴더(`featureDir`), 현재 TDD 단계(`currentStep: 1~5`)를 기록하는 상태 잠금 파일입니다.
 2. **[`.agents/hooks.json`](../../.agents/hooks.json)**:
    - Antigravity 에이전트의 5대 생명주기(`SessionStart`, `PreInvocation`, `PreToolUse`, `PostToolUse`, `Stop`)마다 실행할 Node.js 스크립트를 연결합니다.
    - **⚠️ 핵심 주의사항 (상대 경로)**: Antigravity가 `.agents/hooks.json`에 등록된 명령어를 실행할 때 **현재 작업 디렉토리(`CWD`)는 루트가 아니라 `.agents/` 폴더**입니다. 따라서 명령어는 반드시 `"node ../scripts/<스크립트명>.mjs"`처럼 상위 폴더(`../`)를 가리켜야 합니다.
@@ -234,7 +247,7 @@ pnpm exec lefthook install
 
 # Step 5. 코드 포맷·린트·타입·단위 테스트 전체 검증 실행
 pnpm check
-pnpm exec tsc --noEmit -p tsconfig.base.json
+pnpm typecheck
 pnpm test
 
 # Step 6. GitHub 원격 저장소 생성 및 푸시
@@ -242,6 +255,68 @@ gh repo create dev-HongCheol/mfe-study --public
 git remote add origin https://github.com/dev-HongCheol/mfe-study.git
 git push -u origin main
 ```
+
+---
+
+## 9. 루트 세팅 핵심 개념 및 설계 의도 Q&A
+
+### Q1. `pnpm-workspace.yaml`의 공용 `catalog:`와 "단일 앱 전용 패키지는 각 앱의 `package.json`에서 개별 관리"한다는 것이 무슨 뜻인가요?
+
+우리 워크스페이스에는 루트의 [`package.json`](../../package.json) 외에도 앞으로 생성할 6개의 하위 앱 폴더(`apps/*`)마다 **각자의 `package.json`**이 존재합니다. 이때 패키지의 버전을 선언하는 방식은 **다중 앱 공유 여부**에 따라 2가지로 엄격히 구분합니다.
+
+1. **여러 앱이 다 같이 쓰는 패키지 (`catalog:` 방식)**:
+   - `react`, `react-dom`, `@tanstack/react-query`처럼 여러 프론트엔드 앱(`shared`, `products`, `cart`, `host-*`)이 함께 쓰는 패키지는 앱마다 버전이 다르면 MFE 런타임에 충돌이 발생합니다.
+   - 따라서 루트 [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml)의 `catalog:`에 버전을 딱 한 번(`react: ^19.1.0`) 적어두고, 각 앱의 `package.json`에서는 버전 숫자 대신 `"catalog:"`라고 적습니다.
+   ```json
+   // apps/remote-products/package.json (다중 앱 공유 패키지 예시)
+   {
+     "dependencies": {
+       "react": "catalog:",
+       "react-dom": "catalog:",
+       "@tanstack/react-query": "catalog:"
+     }
+   }
+   ```
+2. **오직 한 앱에서만 쓰는 패키지 (개별 `package.json` 직접 관리 방식)**:
+   - 백엔드 서버 프레임워크인 `express`, `cors`, `supertest`는 오직 **`apps/api-server` 단 한 곳**에서만 쓰이며, 다른 프론트엔드 앱에서는 절대 쓰이지 않습니다.
+   - 마찬가지로 헤드리스 UI인 `@ark-ui/react`와 `clsx`도 아키텍처 원칙상 **`apps/remote-shared` 단 한 곳**에서만 설치해 공통 컴포넌트·레이아웃으로 감싼 뒤 `exposes`(`remote_shared/ui`)로 내보냅니다.
+   - 이처럼 특정 단일 앱에만 종속된 패키지는 루트 공용 `catalog:`에 올리지 않고, **그 패키지를 실제로 사용하는 앱의 `package.json` 안에만 직접 버전 숫자를 적어서 격리 관리**합니다.
+   ```json
+   // apps/api-server/package.json (단일 앱 전용 패키지 예시 — 여기에만 직접 버전을 적음)
+   {
+     "dependencies": {
+       "express": "^4.21.2",
+       "cors": "^2.8.5"
+     }
+   }
+   ```
+
+---
+
+### Q2. 왜 루트 `tsconfig.base.json`에서 브라우저용 `"DOM"`과 `"jsx": "react-jsx"`를 제외했나요?
+
+- 루트 [`tsconfig.base.json`](../../tsconfig.base.json)은 프론트엔드 앱(`remote-*`, `host-*`)뿐만 아니라 **Node.js 백엔드 서버(`apps/api-server`)와 루트 CLI 스크립트도 함께 상속(`extends`)받는 최상위 공통 설정**입니다.
+- 만약 루트 베이스 설정에 `"lib": ["ES2022", "DOM"]`과 `"jsx": "react-jsx"`를 넣어두면, Node.js 백엔드 서버 코드(`apps/api-server`)에서 실수로 브라우저 전역 객체(`window`, `document`, `localStorage`)를 호출해도 TypeScript 컴파일러가 에러를 잡지 못하는 **환경 오염**이 발생합니다.
+- 따라서 루트 `tsconfig.base.json`에는 순수 언어/모듈 엄격성 옵션(`"lib": ["ES2022"]`, `"strict": true`, `"noUncheckedIndexedAccess": true`)만 두고, 브라우저 `"DOM"`과 `"jsx": "react-jsx"`는 프론트엔드 앱들의 `tsconfig.json`에서만 추가합니다.
+
+---
+
+### Q3. `turbo.json`은 무슨 역할이며, `build`의 `"dependsOn": ["^build"]`는 어떤 의존성인가요?
+
+- **Turborepo([`turbo.json`](../../turbo.json))의 역할**: 여러 개의 앱(`apps/*`)이 들어있는 워크스페이스에서 `dev`, `build`, `test` 명령어를 한 번에 병렬로 실행해 주고, 파일 변경이 없으면 이전 빌드 결과를 캐시(기억)해서 즉시 통과시켜 주는 **워크스페이스 태스크 오케스트레이터(실행 관리 도구)**입니다.
+- **`"dependsOn": ["^build"]`의 의미**:
+  - 앞에 붙은 **`^`(캐럿 기호)**는 **"내 앱이 의존하고 있는 다른 내부 워크스페이스 패키지의 `build`를 먼저 끝낸 다음에 나를 `build`해라"**라는 위상 정렬(Topological Sort) 규칙입니다.
+  - 예를 들어 일반 모노레포에서 `A앱`의 `package.json`에 `"B패키지": "workspace:*"`가 선언되어 있다면, 무조건 `B패키지` 빌드가 끝난 뒤에 `A앱` 빌드가 시작됩니다.
+  - **우리 MFE 프로젝트에서의 동작 특징**: 우리 프로젝트는 물리적 멀티레포 격리 환경을 구현하기 위해 앱끼리 `package.json`에 로컬 `"workspace:*"` 의존성을 맺지 않고 **런타임(Module Federation)**에 연결합니다. 따라서 `pnpm build` 실행 시 서로 대기하는 앱 없이 **6개 마이크로 서비스가 동시에 병렬로 빌드**됩니다.
+
+---
+
+### Q4. `lefthook.yml`은 기존의 `husky`와 같은 역할의 다른 라이브러리인가요?
+
+- **네, 맞습니다!** 기존에 널리 쓰이던 **`husky` + `lint-staged` 조합을 설정 파일 하나로 대체하는 최신 Git 훅(Git Hook) 관리 도구**입니다.
+- **왜 `husky` 대신 `lefthook`을 사용하나요?**
+  1. **`lint-staged` 별도 설치 불필요**: 기존에는 Git 훅을 걸기 위해 `husky`를 설치하고, 커밋할 파일(`staged files`)만 추려내기 위해 `lint-staged`까지 따로 설치해 설정 파일을 2개씩 관리해야 했습니다.
+  2. **[`lefthook.yml`](../../lefthook.yml) 단일 파일로 통합**: `lefthook`은 자체적으로 `{staged_files}`(스테이징된 파일만 전달)와 `stage_fixed: true`(Biome 포맷팅 수정 후 자동으로 다시 `git add` 반영) 기능을 내장하고 있으며, `pre-push` 단계에서 `main` 브랜치 직접 푸시 차단(`prevent-main-push`), SQL 해시 검증, 단위 테스트 실행까지 파일 하나로 빠르고 깔끔하게 제어합니다.
 
 ---
 
