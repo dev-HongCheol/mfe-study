@@ -12,7 +12,7 @@
 | **1. 프론트엔드**<br>(React / Query) | **#02.** `Suspense` 사용 시 병렬 API가 직렬 폭포수(`Waterfall`)로 느려지는 현상 | 초기 데이터 다중 조회 | `useSuspenseQueries` 병렬 호출 또는 `Suspense` 경계 분리 |
 | **1. 프론트엔드**<br>(React / Query) | **#03.** 잘못된 `key` 부여 및 불필요한 `useEffect` 파생 상태 동기화 버그 | 리스트 갱신 / 합계 계산 | DB 고유 ID `key` 고정 + 렌더링 중 파생 상태(`Derived State`) 계산 |
 | **1. 프론트엔드**<br>(React / Query) | **#04.** 시간대(`UTC` vs `KST`) 불일치 및 부동소수점 금액 계산 오차 | 주문 시간 / 할인 금액 표시 | 정수(원 단위) 연산 + `Intl.NumberFormat` (`formatCurrency`) |
-| **2. 백엔드·DB**<br>(Express / SQLite) | **#05.** SQLite 외래키(`FOREIGN KEY`) 기본 비활성화로 인한 유령 데이터 누적 | 잘못된 유저/상품 ID 저장 | DB 연결 시 `PRAGMA foreign_keys = ON` + `journal_mode = WAL` |
+| **2. 백엔드·DB**<br>(Express / SQLite) | **#05.** SQLite 외래키 기본 비활성화와 주석(`COMMENT`) 부재 이슈 | 유령 데이터 누적 / 스키마 의도 유실 | `PRAGMA foreign_keys = ON`, `WAL` 자가 점검 + `_schema_comments` 사전 테이블 |
 | **2. 백엔드·DB**<br>(Express / SQLite) | **#06.** 수량 증가·재고 차감 시 동시성 경합(`TOCTOU`)과 트랜잭션 누락 | 동시 장바구니 추가 요청 | 원자적 `UPSERT`(`ON CONFLICT DO UPDATE`) + `db.transaction()` |
 | **2. 백엔드·DB**<br>(Express / SQLite) | **#07.** API마다 제각각인 에러 응답과 미처리 비동기 예외로 인한 서버 다운 | 예외 발생 / 잘못된 요청 | 표준 응답 엔벨로프(`{ success, data, error }`) + 전역 에러 미들웨어 |
 | **2. 백엔드·DB**<br>(Express / SQLite) | **#08.** 장바구니 조회 시 루프를 돌며 상품을 조회하는 `N+1 쿼리`와 인덱스 누락 | 목록 조회 성능 저하 | `JOIN` 단일 쿼리 조회 + 외래키 복합 인덱스(`CREATE INDEX`) |
@@ -63,19 +63,41 @@
 
 ## 2. 백엔드 API & SQLite 데이터베이스 (`api-server`) 실전 이슈
 
-### #05. SQLite의 치명적 기본값: 외래키(`FOREIGN KEY`) 제약이 꺼져(`OFF`) 있어 유령 데이터가 쌓이는 현상
+### #05. SQLite의 치명적 기본값: 외래키(`FOREIGN KEY`) 기본 OFF, 락 충돌 및 주석(`COMMENT`) 부재 이슈
 * **왜 안 해본 사람은 모르나요?**
-  - `01-schema.sql`에 아무리 `FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE`를 완벽하게 적어놔도, **SQLite는 하위 호환성 때문에 DB 커넥션을 열 때마다 외래키 기능이 기본적으로 꺼져(`OFF`) 있습니다!**
+  1. `01-schema.sql`에 아무리 `FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE`를 완벽하게 적어놔도, **SQLite는 30년 전 하위 호환성(2009년 이전 레거시 앱 방어) 때문에 DB 커넥션을 열 때마다 외래키 검사 기능이 기본적으로 꺼져(`OFF`, 0) 있습니다!**
+  2. SQLite의 기본 저널 모드(Rollback Journal)는 쓰기(`INSERT/UPDATE/DELETE`) 시 DB 파일 전체를 잠그기 때문에, 다중 마이크로 앱(`products`, `cart`, `host-*`)이 동시에 요청을 쏟아부으면 즉시 `database is locked` 에러가 터집니다.
+  3. MySQL이나 PostgreSQL과 달리 **SQLite에는 테이블·컬럼 주석 전용 `COMMENT` 문법이 아예 없습니다.**
 * **어떤 증상이 나타나나요?**
-  - 존재하지 않는 유저(`user-999`)나 이미 삭제된 상품(`product-999`)을 장바구니에 넣어도 DB가 아무런 에러 없이 그대로 저장해 버려 유령 데이터(Orphan Record)가 쌓입니다.
-* **실무 해결 아키텍처 (`src/db/client.ts` 초기화 필수 프라그마 — Node.js 22 내장 `node:sqlite`)**:
-  - `apps/api-server/src/db/client.ts`에서 Node.js 22 공식 내장 모듈 `node:sqlite` (`DatabaseSync`)로 DB 파일을 열자마자 아래 2줄을 무조건 실행합니다:
-  ```ts
-  import { DatabaseSync } from 'node:sqlite';
-  const db = new DatabaseSync(dbPath);
-  db.exec('PRAGMA foreign_keys = ON;'); // ★ 외래키 제약 조건 및 CASCADE 강제 활성화!
-  db.exec('PRAGMA journal_mode = WAL;'); // ★ 다중 마이크로 앱 동시 읽기·쓰기 성능 및 락 방지!
-  ```
+  - 존재하지 않는 유저(`user-999`)나 이미 삭제된 상품(`product-999`)을 장바구니에 넣어도 DB가 아무런 에러 없이 그대로 저장해 버려 쓰레기 유령 데이터(Orphan Record)가 쌓입니다.
+  - 리모트 앱들이 비동기 API를 호출할 때 락 충돌이 발생해 화면 로딩이 멈추거나 타임아웃이 발생합니다.
+  - DB 스키마 의도를 파악하려면 SQL 원문 파일을 직접 열어봐야만 해서, API나 프론트엔드 모니터링 툴에서 스키마 설명을 확인할 수 없습니다.
+* **무결성을 위해 무조건 켜야 하는데, 실무에서 '일부러 끄는' 특수 상황이 있나요?**
+  - 일반적인 비즈니스 웹 서비스에서는 데이터 무결성을 위해 **무조건 `ON`으로 켜두는 것이 절대적인 정석**입니다.
+  - 다만 실무에서 일시적으로 끄는 예외적 상황 3가지가 있습니다:
+    1. **대량 데이터 복원/마이그레이션 (`Bulk Insert`)**: 수백만 건의 데이터를 덤프 파일에서 밀어 넣을 때 행마다 부모 키를 검사하면 속도가 수십 배 느려지며, 부모 테이블보다 자식 테이블이 먼저 삽입될 때 에러가 나므로 일시적으로 끄고 복원 후 일괄 검사(`PRAGMA foreign_key_check;`)합니다.
+    2. **테이블 스키마 마이그레이션 (`ALTER TABLE` 제약 우회)**: SQLite는 복잡한 컬럼 변경 시 `새 테이블 생성 -> 데이터 복사 -> 기존 테이블 삭제(DROP) -> 이름 변경` 방식을 쓰는데, 이때 외래키가 켜져 있으면 다른 테이블이 참조 중이라 기존 테이블 `DROP`이 차단되므로 마이그레이션 동안 잠시 끕니다.
+    3. **초고속 단순 로그/IoT 장비**: 무결성 검사 비용(CPU 오버헤드)조차 아까운 극단적 쓰기 환경.
+* **실무 해결 아키텍처 (2대 필수 엔진 프라그마 + 헬스체크 자가 점검 + `_schema_comments` 메타 테이블)**:
+  1. **초기화 프라그마 2종 강제 (`src/db/client.ts` — Node.js 22 내장 `node:sqlite`)**:
+     ```ts
+     import { DatabaseSync } from 'node:sqlite';
+     const db = new DatabaseSync(dbPath);
+
+     // ★ 1. 외래키 마스터 스위치 강제 활성화! (스프링클러 노즐과 메인 수도 밸브 비유)
+     // 테이블에 적어둔 개별 외래키들이 실제로 동작하도록 엔진 전원 스위치를 켭니다.
+     db.exec('PRAGMA foreign_keys = ON;');
+
+     // ★ 2. WAL(Write-Ahead Logging) 모드 활성화!
+     // 읽기(Reader)와 쓰기(Writer)가 서로를 블로킹하지 않고 동시 실행되도록 전환합니다.
+     db.exec('PRAGMA journal_mode = WAL;');
+     ```
+  2. **`GET /api/health` 런타임 자가 점검 보증 (`{ status: 'ok', dbMode: 'wal', foreignKeys: true }`)**:
+     - `db.prepare('PRAGMA foreign_keys;').get()`과 `db.prepare('PRAGMA journal_mode;').get()`을 실행하여, 현재 DB 커넥션에서 외래키 보호와 동시성 WAL 모드가 확실히 활성화되어 있는지 스스로 점검하고 프론트엔드 모니터(`MfeInspector`)에 보증합니다.
+     - `foreignKeys: true`는 "외래키가 하나라도 설정되었는가"가 아니라 **"개별 테이블에 걸어둔 모든 외래키가 실제로 작동하도록 엔진 마스터 스위치가 켜져 있는가"**를 뜻합니다.
+  3. **`_schema_comments` 사전 메타 테이블 및 `SchemaCommentRecord` 구축**:
+     - SQLite의 `COMMENT` 부재를 극복하기 위해 `01-schema.sql`에 코멘트 전용 사전 테이블(`_schema_comments`)을 두고 테이블 및 컬럼 설명을 정형 데이터로 영구 보관합니다.
+     - 백엔드에 `GET /api/schema-comments` (`SchemaCommentRecord[]`) 엔드포인트를 열어 호스트의 `MfeInspector` 모니터나 개발자가 DB 스키마 사전을 JSON으로 즉시 확인할 수 있게 합니다.
 
 ### #06. 수량 증가·재고 확인 시 발생하는 동시성 경합(`TOCTOU`)과 트랜잭션 누락
 * **왜 문제가 되나요?**
