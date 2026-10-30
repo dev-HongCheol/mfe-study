@@ -10,13 +10,14 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
-  - 영구 학습 문서 폴더 `docs/study/` 신설 및 6종 학습 가이드(`01-mfe-concepts-and-guide.md` ~ `06-workspace-and-harness-setup-guide.md`) 구축 및 세팅 Q&A 보강
+  - **[Phase 1 - Step 1.0] Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지 완료** (`docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`)
+  - 영구 학습 문서 폴더 `docs/study/` 6종 학습 가이드 Q&A 대폭 보강 (Study 01 Q9·Q10, Study 02 Q6, Study 04 #01, Study 05 #05 등)
   - 초기 마스터 설계 문서 3종(`02-infra-and-architecture.md`, `03-setup-and-convention.md`, `04-workflow-and-harness.md`)을 Git 미추적 `temp/` 폴더로 격리 보관
   - `docs/templates/` 표준 문서·코드 리뷰·PR 템플릿 5종(`todo`, `01-plan-and-design`, `02-tdd-spec`, `03-code-review`, `pull-request`) 생성 및 한국어 가독성 원칙 반영
   - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료
   - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 승인 완료
 - **다음 진행 예정 작업 (Next Up)**:
-  - **[Phase 1 - Step 1.0] Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지** (`Scope: root` | `Branch: root/docs/phase1-service-contracts`)
+  - **[Phase 1 - Step 1.1] 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축** (`Scope: api` | `Branch: api/feat/sqlite-and-rest-api`)
 
 ---
 
@@ -27,7 +28,7 @@
 ### Phase 0. 사전 아키텍처 설계·라이브러리 선정·하네스 구축 및 최종 문서 리뷰 (`Scope: root`)
 > 본격적인 서비스 구현(`Phase 1`)에 들어가기 전에 폴더 아키텍처, 공통 유틸리티 라이브러리, 그리고 기본 AI 워크플로우 하네스(`GEMINI.md`, `hooks.json`)까지 모두 반영한 뒤 **승인자(사용자)의 최종 문서·하네스 전체 리뷰**를 거칩니다.
 
-- [x] `docs/study/01-mfe-concepts-and-guide.md` 작성 및 이동 (MFE 개념, Q1~Q8, 6대 프로세스, 3대 디버깅 툴)
+- [x] `docs/study/01-mfe-concepts-and-guide.md` 작성 및 보강 (MFE 개념, Q1~Q10, 6대 프로세스, 3대 디버깅 툴)
 - [x] `docs/study/02-polyrepo-and-architecture-decisions.md` 작성 (물리적 멀티레포 5대 학습 요소, 앱별 `docs/` 응집도, 공통 템플릿 설계 Q&A)
 - [x] `docs/study/03-ai-harness-and-tdd-workflow-guide.md` 작성 (전체 5단계 TDD 워크플로우, **단계별 모델(`High`↔`Medium`) 전환 알림**, 하네스 3계층 및 5대 훅 동작 원리, 멀티레포 자동 동기화)
 - [x] `docs/study/04-mfe-real-world-pitfalls-and-solutions.md` 작성 (MFE 미경험자는 미리 알 수 없는 **14대 실전 고유 이슈와 해결 아키텍처** 총정리)
@@ -54,8 +55,8 @@
 > **Step 0.4 최종 리뷰 승인 이후** 순차 진행합니다.
 > - **다중 앱 연계 설계 원칙(SSOT)**: 여러 서비스가 연계되는 기능은 **Step 1.0(`Scope: root`)**에서 공통 인터페이스·이벤트·API 계약 설계 문서를 먼저 작성·머지합니다. 이후 각 앱(`Step 1.1 ~ 1.5`)에서는 내용을 중복 작성하지 않고 루트 정본 문서의 **항목(섹션 제목)**만 참조하여 각 앱의 설계 문서를 작성합니다. (앱 작업 중 계약 변경이 필요하면 앱 브랜치를 홀드하고 `root` 브랜치에서 정본을 먼저 업데이트·머지한 뒤 이어서 진행합니다.)
 
-- [ ] **Step 1.0: Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지** (`Scope: root` | `Branch: root/docs/phase1-service-contracts`)
-  - 문서 경로: `docs/features/YYYYMMDD-phase1-service-contracts/01-plan-and-design.md` (본 코드 구현 없이 설계 문서만 작성 및 머지)
+- [x] **Step 1.0: Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지** (`Scope: root` | `Branch: root/docs/phase1-service-contracts`)
+  - 문서 경로: `docs/features/20261027-phase1-service-contracts/01-plan-and-design.md` (본 코드 구현 없이 설계 문서만 작성 및 머지 완료)
 - [ ] **Step 1.1: 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축** (`Scope: api` | `Branch: api/feat/sqlite-and-rest-api`)
   - 문서 경로: `apps/api-server/docs/todo.md` 및 `apps/api-server/docs/features/YYYYMMDD-sqlite-and-rest-api/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - DB 3종 SQL (`01-schema.sql`, `02-reset-seed.sql`, `03-drop-all.sql` + `_schema_comments` + `.sql-hashes.json`) 및 REST API TDD 구현 (`Port 4000`)

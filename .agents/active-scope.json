@@ -1,8 +1,8 @@
 {
   "scope": "root",
   "path": ".",
-  "branch": "root/chore/init-workspace-harness",
-  "featureDir": "docs/features/20261022-init-workspace-harness",
-  "currentStep": 5,
-  "isDocsOnly": false
+  "branch": "root/docs/phase1-service-contracts",
+  "featureDir": "docs/features/20261027-phase1-service-contracts",
+  "currentStep": 1,
+  "isDocsOnly": true
 }
