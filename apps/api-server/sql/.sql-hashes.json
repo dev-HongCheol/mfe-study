@@ -1,0 +1,5 @@
+{
+  "01-schema.sql": "2b49d9729fe9d9c573fb28e0b348bd6983544e646d3e1d353520897b901273e7",
+  "02-reset-seed.sql": "7801b6029bdff7f61eb023e1650ad6cd616f410ada63c8ba051d2aac7be109c4",
+  "03-drop-all.sql": "6ba3f80f56cf1025227c6dd151cf483fecc45c42faf8bce7d63bcba70da57249"
+}
