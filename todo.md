@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[Phase 1 - Step 1.1] 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축 완료** (`apps/api-server`, `docs/service-registry.md`)
   - **[Phase 1 - Step 1.0] Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지 완료** (`docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`)
   - 영구 학습 문서 폴더 `docs/study/` 6종 학습 가이드 Q&A 대폭 보강 (Study 01 Q9·Q10, Study 02 Q6, Study 04 #01, Study 05 #05 등)
   - 초기 마스터 설계 문서 3종(`02-infra-and-architecture.md`, `03-setup-and-convention.md`, `04-workflow-and-harness.md`)을 Git 미추적 `temp/` 폴더로 격리 보관
@@ -17,7 +18,7 @@
   - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료
   - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 승인 완료
 - **다음 진행 예정 작업 (Next Up)**:
-  - **[Phase 1 - Step 1.1] 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축** (`Scope: api` | `Branch: api/feat/sqlite-and-rest-api`)
+  - **[Phase 1 - Step 1.2] 원격 공통 디자인 시스템 & 유틸리티 구축** (`Scope: shared` | `Branch: shared/feat/ark-ui-and-utils`)
 
 ---
 
@@ -57,9 +58,9 @@
 
 - [x] **Step 1.0: Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지** (`Scope: root` | `Branch: root/docs/phase1-service-contracts`)
   - 문서 경로: `docs/features/20261027-phase1-service-contracts/01-plan-and-design.md` (본 코드 구현 없이 설계 문서만 작성 및 머지 완료)
-- [ ] **Step 1.1: 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축** (`Scope: api` | `Branch: api/feat/sqlite-and-rest-api`)
-  - 문서 경로: `apps/api-server/docs/todo.md` 및 `apps/api-server/docs/features/YYYYMMDD-sqlite-and-rest-api/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
-  - DB 3종 SQL (`01-schema.sql`, `02-reset-seed.sql`, `03-drop-all.sql` + `_schema_comments` + `.sql-hashes.json`) 및 REST API TDD 구현 (`Port 4000`)
+- [x] **Step 1.1: 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축** (`Scope: api` | `Branch: api/feat/sqlite-and-rest-api`)
+  - 문서 경로: `apps/api-server/docs/todo.md` 및 `apps/api-server/docs/features/20261031-sqlite-and-rest-api/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
+  - DB 3종 SQL (`01-schema.sql`, `02-reset-seed.sql`, `03-drop-all.sql` + `_schema_comments` + `.sql-hashes.json`) 및 REST API TDD 구현 완료 (`Port 4000`, `docs/service-registry.md` 신설)
 - [ ] **Step 1.2: 원격 공통 디자인 시스템 & 유틸리티 구축** (`Scope: shared` | `Branch: shared/feat/ark-ui-and-utils`)
   - 문서 경로: `apps/remote-shared/docs/todo.md` 및 `apps/remote-shared/docs/features/YYYYMMDD-ark-ui-and-utils/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - `Ark UI (@ark-ui/react)` 캡슐화 컴포넌트(`Button`, `Heading(H1~H5)`, `Select`, `Skeleton`, `Badge`), 공통 레이아웃(`Container`, `Grid`, `Flex`, `Stack`, `Card`, `Splitter`, `Tabs`, `Collapsible`), 실시간 테마(`Indigo`/`Emerald`/`Rose`/`Dark`), 공통 유틸리티(`mfeEventBus`, `formatCurrency`, `formatDate`, `httpClient`, `sharedQueryClient`) TDD 구현 및 노출 (`Port 3004` / Vite)

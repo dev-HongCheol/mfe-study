@@ -1,0 +1,33 @@
+{
+  "name": "@mfe-study/api-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MFE Study Backend REST API Server with Node.js 22 built-in SQLite (Port 4000)",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node --import tsx src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "db:schema": "tsx src/db/cli.ts schema",
+    "db:reset": "tsx src/db/cli.ts reset",
+    "db:drop": "tsx src/db/cli.ts drop",
+    "db:setup": "tsx src/db/cli.ts setup"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

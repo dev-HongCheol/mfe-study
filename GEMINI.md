@@ -22,12 +22,12 @@
 
 | 단계 | 핵심 작업 내용 | 권장 모델 | 필수 산출물 및 참조 템플릿/문서 |
 | :---: | :--- | :---: | :--- |
-| **1단계** | 루트 [`todo.md`](./todo.md) 및 대상 앱 `docs/todo.md` 확인 · `Context7` 스펙 선조회 · 기획/설계서 작성 | 🔴 **`Argon High`** | [`01-plan-and-design.template.md`](./docs/templates/01-plan-and-design.template.md) 참조 → `01-plan-and-design.md` 작성 후 **🟡 `Argon Medium` 전환 알림** |
+| **1단계** | 루트 [`todo.md`](./todo.md) · [`service-registry.md`](./docs/service-registry.md) 및 대상 앱 `docs/todo.md` 확인 · `Context7` 스펙 선조회 · 기획/설계서 작성 | 🔴 **`Argon High`** | [`01-plan-and-design.template.md`](./docs/templates/01-plan-and-design.template.md) 참조 → `01-plan-and-design.md` 작성 후 **🟡 `Argon Medium` 전환 알림** |
 | **2단계** | TDD 명세서 작성 · 스코프 선정 및 **사용자 구현 승인 요청** | 🟡 **`Argon Medium`** | [`02-tdd-spec.template.md`](./docs/templates/02-tdd-spec.template.md) 참조 → `02-tdd-spec.md` 작성 → **승인 시 브랜치 생성 및 `.agents/active-scope.json` 잠금** |
 | **3단계** | 실패하는 테스트 코드(`Red`) 먼저 작성 (`Vitest`) | 🟡 **`Argon Medium`** | 단위 테스트(`Co-location`) 및 통합 테스트(`__tests__/`) 작성 후 의도된 실패(`Red`) 확인 |
 | **4단계** | 본 코드 · 6대 주석 · 3종 SQL 구현 (`Green & Refactor`) | 🟡 **`Argon Medium`** | [`Study 04`](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md) · [`Study 05`](./docs/study/05-fullstack-service-real-world-issues.md) 방어 설계 적용 → 테스트 통과(`Green`) 후 **🔴 `Argon High` 전환 알림** |
 | **5단계-A** | PR 생성 전 심층 코드 리뷰 문서 작성 및 자체 감사 | 🔴 **`Argon High`** | [`03-code-review.template.md`](./docs/templates/03-code-review.template.md) 참조 → `03-code-review.md` 작성 (보안 4대 + MFE 14대 + 서비스 16대 전수 점검) |
-| **5단계-B** | PR 초안 및 커밋 메시지 보고 → **머지 승인 시 TODO 업데이트 후 머지** | 🟡 **`Argon Medium`** | [`pull-request.template.md`](./docs/templates/pull-request.template.md) 참조 보고 → 승인 직후·실제 머지 직전에 `todo.md` 업데이트 후 머지 |
+| **5단계-B** | PR 초안 및 커밋 메시지 보고 → **머지 승인 시 TODO · 레지스트리 업데이트 후 머지** | 🟡 **`Argon Medium`** | [`pull-request.template.md`](./docs/templates/pull-request.template.md) 참조 보고 → 승인 직후·실제 머지 직전에 `todo.md` 및 [`docs/service-registry.md`](./docs/service-registry.md) 업데이트 후 머지 |
 
 ---
 
@@ -67,9 +67,12 @@
 
 ---
 
-## 6. 필수 참조 문서 지도 (`docs/templates/`, `docs/study/`, `temp/`)
+## 6. 필수 참조 문서 지도 (`docs/service-registry.md`, `docs/templates/`, `docs/study/`, `temp/`)
 작업 단계마다 아래 문서를 반드시 `read_file`로 직접 읽어 양식과 방어 아키텍처를 준수합니다.
 
+0. **구현 완료된 서비스별 명령어 · REST API · 노출 모듈(`exposes`) 통합 정본 (새 세션 최우선 참조)**:
+   - 서비스 레지스트리 및 명령어·API 요약 정본: [`./docs/service-registry.md`](./docs/service-registry.md)
+   - Phase 1 서비스 간 상세 연동 계약 정본(SSOT): [`./docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`](./docs/features/20261027-phase1-service-contracts/01-plan-and-design.md)
 1. **표준 문서·리뷰·PR 템플릿 5종 (`./docs/templates/`)**:
    - 서비스별 TODO 초기화 시: [`./docs/templates/todo.template.md`](./docs/templates/todo.template.md)
    - [1단계] 기획 및 설계서 작성 시: [`./docs/templates/01-plan-and-design.template.md`](./docs/templates/01-plan-and-design.template.md)

@@ -322,3 +322,42 @@ git push -u origin main
 
 > **📌 향후 서비스별 세팅 명령어 누적 안내**:  
 > `Phase 1`부터 진행되는 각 마이크로 서비스(`apps/api-server`, `apps/remote-shared`, `apps/remote-products`, `apps/remote-cart`, `apps/host-vite`, `apps/host-rspack`) 구축 시에도, 각 브랜치에서 사용한 패키지 설치·번들러(Vite / Rspack) 세팅·실행 명령어를 스터디 문서에 동일하게 기록하여 언제든 혼자서도 재현할 수 있도록 관리합니다.
+
+---
+
+## 6. [Step 1.1] 백엔드 API 서버(`apps/api-server`) 및 내장 SQLite 3종 SQL 세팅 가이드
+
+### 6.1 폴더 생성 및 패키지 설치 명령어 (Windows PowerShell & macOS 공통)
+```powershell
+# 1. api-server 폴더 구조 생성 (PowerShell)
+New-Item -ItemType Directory -Force -Path apps/api-server/sql, apps/api-server/src/db, apps/api-server/src/middlewares, apps/api-server/src/modules, apps/api-server/src/__tests__, apps/api-server/docs/features
+
+# 2. apps/api-server/package.json 작성 후 루트에서 의존성 일괄 설치
+# (express, cors, supertest, tsx 및 catalog: 연동 zod, vitest, typescript 설치)
+pnpm install
+```
+
+### 6.2 3종 SQL 해시 동기화 및 DB 관리 명령어
+```powershell
+# 1. 3종 SQL(01-schema.sql, 02-reset-seed.sql, 03-drop-all.sql) 작성/수정 후 SHA-256 해시(.sql-hashes.json) 갱신
+pnpm sql:update
+
+# 2. 3종 SQL 해시 일치 여부 및 node:sqlite(:memory:) 순차 실행(01->02->03->01->02) 무결성 검증
+pnpm sql:verify
+
+# 3. 로컬 파일 DB(apps/api-server/mfe_study.db) 수동 제어 명령어
+pnpm --filter @mfe-study/api-server db:setup   # 전체 삭제 후 스키마 + 시드 클린 재설치 (03 -> 01 -> 02)
+pnpm --filter @mfe-study/api-server db:reset   # 초기 시드 데이터로 리셋 (01 -> 02)
+pnpm --filter @mfe-study/api-server db:schema  # 스키마 및 _schema_comments 한글 코멘트 적용 (01)
+pnpm --filter @mfe-study/api-server db:drop    # 모든 테이블 및 인덱스 삭제 (03)
+```
+
+### 6.3 백엔드 서버 실행 및 TDD 테스트 명령어
+```powershell
+# 1. 개발 서버 실행 (http://localhost:4000, 파일 변경 감시 모드)
+pnpm --filter @mfe-study/api-server dev
+
+# 2. 무서버 메모리 TDD 테스트 (Vitest + Supertest) 및 타입 검사
+pnpm --filter @mfe-study/api-server test
+pnpm --filter @mfe-study/api-server typecheck
+```

@@ -103,7 +103,8 @@ export function buildContextInjection(options = {}) {
     modelBanner,
     `📌 루트 TODO 요약: ${rootTodoSummary}`,
     activeScope.scope !== 'root' ? `📌 앱(${activeScope.scope}) TODO 요약: ${appTodoSummary}` : '',
-    '⚠️ 필수 준수: (1) 계획 설명 및 사용자 승인 전 코드 수정 금지 (2) 연계 작업은 루트 정본(SSOT)의 항목(제목)만 참조(복붙 금지) (3) 6대 주석 원칙(인터페이스 내부 속성 /** */ 주석 필수) (4) 머지 직전 todo.md 갱신 필수',
+    '📚 구현된 서비스 명령어·API·노출모듈 정본: docs/service-registry.md (상세 계약 SSOT: docs/features/20261027-phase1-service-contracts/01-plan-and-design.md)',
+    '⚠️ 필수 준수: (1) 계획 설명 및 사용자 승인 전 코드 수정 금지 (2) 연계 작업은 루트 정본(SSOT)의 항목(제목)만 참조(복붙 금지) (3) 6대 주석 원칙(인터페이스 내부 속성 /** */ 주석 필수) (4) 머지 직전 todo.md 및 docs/service-registry.md 갱신 필수',
   ]
     .filter(Boolean)
     .join('\n');
