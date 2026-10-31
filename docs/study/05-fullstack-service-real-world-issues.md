@@ -100,22 +100,104 @@
      - 백엔드에 `GET /api/schema-comments` (`SchemaCommentRecord[]`) 엔드포인트를 열어 호스트의 `MfeInspector` 모니터나 개발자가 DB 스키마 사전을 JSON으로 즉시 확인할 수 있게 합니다.
 
 ### #06. 수량 증가·재고 확인 시 발생하는 동시성 경합(`TOCTOU`)과 트랜잭션 누락
-* **왜 문제가 되나요?**
-  - 백엔드 API에서 ① 먼저 `SELECT quantity FROM cart_items`로 현재 수량(`1`)을 읽고, ② JS 코드에서 `1 + 1 = 2`를 계산한 뒤, ③ `UPDATE cart_items SET quantity = 2`를 실행하는 방식(Time-Of-Check to Time-Of-Use)을 쓰면, 동시에 요청이 들어왔을 때 수량이 누락됩니다.
-* **실무 해결 아키텍처 (원자적 `UPSERT` 및 `db.transaction`)**:
-  - `user_id`와 `product_id`에 `UNIQUE` 인덱스를 걸고, 단일 원자적 쿼리(`INSERT ... ON CONFLICT(user_id, product_id) DO UPDATE SET quantity = cart_items.quantity + excluded.quantity`)와 `db.transaction()`을 사용하여 동시 요청에도 100% 정확한 수량과 재고를 보장합니다.
+* **왜 문제가 되나요? (`TOCTOU`: 확인 시점과 수정 시점 사이의 틈)**
+  - 백엔드 API에서 ① 먼저 `SELECT quantity FROM cart_items`로 현재 수량(`1개`)을 읽고, ② JS 코드에서 `1 + 1 = 2`를 계산한 뒤, ③ `UPDATE cart_items SET quantity = 2`를 실행하는 2단계 분리 방식을 쓰면 동시성 버그가 터집니다.
+  - 만약 두 요청이 동시에 들어오면 두 요청 모두 `1개`를 읽은 뒤 각각 `2개`로 덮어써 버려서, 실제로는 2번 추가했는데 수량이 `3개`가 아니라 `2개`가 되는 **수량 증발(Lost Update)** 현상이 발생합니다.
+* **실무 해결 아키텍처 (복합 `UNIQUE` 고유키 + 원자적 `UPSERT` + 트랜잭션 래퍼)**:
+  1. **복합 고유키 `UNIQUE(user_id, product_id)` 설정**:
+     - 이름은 동명이인이 있거나 변경될 수 있으므로 **유저 고유 ID(`user_id`) + 상품 고유 ID(`product_id`)** 두 컬럼을 묶어 고유키(`UNIQUE`)로 지정합니다.
+     - 이를 통해 *"같은 유저가 같은 상품을 장바구니에 여러 번 담아도 행(Row)이 여러 줄로 중복 생성되지 않고 무조건 딱 1줄만 유지"*하도록 DB 엔진이 강제합니다.
+  2. **원자적 `UPSERT` (`INSERT` + `UPDATE`) 쿼리 및 `ON CONFLICT ~ DO UPDATE` 문법 해부**:
+     - 조회(`SELECT`)와 수정(`UPDATE`)을 쪼개지 않고 아래 **단 1개의 쿼리**로 처리하여 다른 요청이 중간에 끼어들 틈을 원천 차단합니다.
+       ```sql
+       INSERT INTO cart_items (user_id, product_id, quantity, added_from_host)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, product_id)
+       DO UPDATE SET
+         quantity = cart_items.quantity + excluded.quantity,
+         added_from_host = excluded.added_from_host;
+       ```
+     - **SQL 구문별 1:1 의미 해부 (`CONFLICT`, `DO`, `excluded`는 함수가 아니라 SQL 표준 조건/명령 키워드)**:
+
+       | 쿼리 구문 조각 | 쉬운 한국어 해석 (`if ~ then` 비유) | 상세 동작 원리 |
+       | :--- | :--- | :--- |
+       | **`INSERT INTO ... VALUES (...)`** | *"일단 새 줄로 넣어봐!"* | 장바구니에 `(user_id, product_id)` 쌍이 **처음 들어오는 경우**라면 그대로 새 행(Row)이 추가되고 끝납니다. |
+       | **`ON CONFLICT(user_id, product_id)`** | **`if (이미_그_쌍이_존재해서_충돌나면)`** | 테이블에 걸어둔 `UNIQUE(user_id, product_id)` 제약 때문에 이미 같은 쌍이 존재하면 원래는 중복 에러가 발생합니다. 이 절은 *"두 컬럼 쌍이 겹쳐 충돌(`CONFLICT`)이 나면 에러를 내지 말고 잡아라"*라는 조건절입니다. |
+       | **`DO UPDATE SET ...`** | **`then { 대신 수정(UPDATE)을 실행해라! }`** | 앞의 충돌 조건이 성립했을 때(= **이미 쌍으로 존재할 때**) 수행할 동작(`DO`)을 지정합니다 (`DO NOTHING`은 무시, `DO UPDATE SET`은 기존 행 수정). |
+       | **`cart_items.quantity + excluded.quantity`** | **`기존_수량 + 방금_넣으려던_새_수량`** | SQLite의 특수 예약어인 **`excluded`**는 *"방금 `INSERT` 하려다가 중복 충돌로 튕겨 나온(Excluded) 새 요청 데이터"*를 가리킵니다. 즉 원래 DB 수량(`cart_items.quantity`)에 새 요청 수량(`excluded.quantity`)을 DB 내부에서 즉시 더합니다. |
+
+  3. **트랜잭션 래퍼 (`runInTransaction`: `BEGIN IMMEDIATE ~ COMMIT / ROLLBACK`)와 `DatabaseSync` 라이프사이클**:
+     - `원자적 UPSERT`가 한 쿼리 안에서의 수량 누적을 보장한다면, **트랜잭션 래퍼**는 **"① `products` 테이블의 남은 재고(`stock`) 확인 → ② `cart_items`에 `UPSERT` 실행 → ③ 갱신 결과 조회"**처럼 여러 쿼리와 다른 수정·삭제(`DELETE`) 요청이 동시에 일어날 때 작업 순서를 직렬화(잠금 보장)해 줍니다.
+     - **Q. `DatabaseSync` 객체 하나로 커넥션 관리와 쿼리 실행을 모두 하나요?**
+       - 네! Node.js 22 내장 `node:sqlite`의 `DatabaseSync` 인스턴스(`db`) 하나가 **연결 열기 → 쿼리 실행 → 연결 닫기** 전체 생명주기를 담당합니다.
+
+       | 라이프사이클 단계 | 사용 메서드 | 언제 사용하나요? |
+       | :--- | :--- | :--- |
+       | **1. 커넥션 열기 및 초기 설정** | `new DatabaseSync(경로)`<br>`db.exec('PRAGMA ...')` | DB 파일(또는 `:memory:`)을 열고 외래키(`foreign_keys = ON`)와 `WAL` 모드를 켤 때 |
+       | **2. 단순/제어 SQL 일괄 실행** | `db.exec(sql)` | 파라미터(`?`)나 반환값이 없는 SQL 파일(`01-schema.sql`) 또는 트랜잭션 제어어(`BEGIN IMMEDIATE`, `COMMIT`, `ROLLBACK`)를 실행할 때 |
+       | **3. 파라미터 바인딩 쿼리 실행** | `db.prepare(sql)` 후<br>- `.get(...)`<br>- `.all(...)`<br>- `.run(...)` | `?` 자리에 값을 안전하게 넣어 실행할 때:<br>- `.get()`: **단 1줄(객체)** 조회 (예: 로그인 유저 조회)<br>- `.all()`: **여러 줄(배열)** 조회 (예: 상품·장바구니 목록)<br>- `.run()`: **쓰기(`INSERT`/`UPDATE`/`DELETE`)** 실행 후 `{ changes, lastInsertRowid }` 반환 |
+       | **4. 커넥션 닫기** | `db.close()` | 서버 종료 또는 테스트 종료 시 DB 파일 잠금을 해제할 때 |
+
+     - **Q. `BEGIN IMMEDIATE`는 무엇인가요? 쿼리 실행 전 라이프사이클인가요?**
+       - 네! 여러 쿼리를 한 묶음(트랜잭션)으로 실행하기 직전에 DB 엔진에 보내는 **'트랜잭션 시작 + 즉시 쓰기 자물쇠(Lock) 선점' 라이프사이클 명령어**입니다.
+       - **트랜잭션 3단계 라이프사이클 흐름**:
+         ```mermaid
+         flowchart LR
+             S1["1. 시작 (Pre-Query)<br/>db.exec('BEGIN IMMEDIATE')<br/>🔒 즉시 쓰기 잠금 선점"]
+             S2["2. 본 쿼리 실행<br/>① 재고 조회 (SELECT)<br/>② 장바구니 UPSERT"]
+             S3_OK["3-A. 성공 시 확정 (Post-Query)<br/>db.exec('COMMIT')<br/>✅ DB 반영 및 잠금 해제"]
+             S3_ERR["3-B. 에러 시 취소 (On-Error)<br/>db.exec('ROLLBACK')<br/>↩️ 변경사항 원상복구 및 잠금 해제"]
+
+             S1 --> S2
+             S2 -->|정상 완료| S3_OK
+             S2 -->|재고 부족 등 예외 throw| S3_ERR
+         ```
+       - **왜 일반 `BEGIN` 대신 `BEGIN IMMEDIATE`를 쓰나요?**:
+         - 일반 `BEGIN`(`DEFERRED`)은 첫 쿼리가 조회(`SELECT`)일 때 잠금을 걸지 않고 있다가, 나중에 `INSERT/UPDATE`를 할 때서야 잠금을 걸려고 시도합니다. 그러면 동시에 들어온 두 요청이 모두 재고 조회를 통과해 버린 뒤 나중에 충돌(`SQLITE_BUSY`)이 납니다.
+         - 반면 **`BEGIN IMMEDIATE`는 트랜잭션을 시작하는 그 즉시(재고 조회를 하기도 전에!) 쓰기 자물쇠를 선점**하므로, 다른 수정·삭제 요청이 아예 처음부터 대기하게 되어 동시성 순서가 100% 보장됩니다.
 
 ### #07. API마다 제각각인 에러 응답 규격과 미처리 예외로 인한 서버 프로세스 다운
 * **왜 문제가 되나요?**
-  - 어떤 API는 `{ message: '에러' }`를 주고 어떤 API는 문자열을 주면 프론트엔드 에러 처리 코드가 지저분해집니다. 또한 라우트 내부에서 발생한 예외가 전역 미들웨어로 잡히지 않으면 `api-server(Port 4000)` 프로세스 자체가 종료되어 전체 테스트베드가 멈춥니다.
-* **실무 해결 아키텍처 (표준 응답 엔벨로프 & 전역 에러 미들웨어)**:
-  - 모든 API 응답을 `{ success: boolean, data?: T, error?: { code: string, message: string, details?: unknown } }` 규격으로 통일하고, 최하단에 전역 에러 핸들러 미들웨어를 두어 어떤 예외가 발생해도 서버가 절대 죽지 않고 규격화된 JSON과 HTTP 상태 코드(`400`, `404`, `500`)를 반환하게 합니다.
+  - 어떤 API는 배열(`[{ id: 1 }]`)을 바로 주고, 어떤 API는 `{ message: '에러' }`나 문자열(`"Internal Server Error"`)을 주면 프론트엔드(`host-*`, `remote-*`)마다 응답 파싱과 에러 분기 코드를 제각각 작성해야 합니다.
+  - 또한 라우트 내부에서 발생한 예외가 전역 미들웨어로 잡히지 않으면 `api-server(Port 4000)` 프로세스 자체가 종료되어 전체 테스트베드가 멈춥니다.
+* **실무 해결 아키텍처 (표준 API 응답 엔벨로프 & 전역 에러 미들웨어)**:
+  1. **표준 API 응답 엔벨로프 (`Envelope` = '편지 봉투' 공통 래퍼 구조)**:
+     - 실제 알맹이 데이터(`data`)나 에러 정보(`error`)를 날것 그대로 보내지 않고, 성공이든 실패든 **항상 `{ success, data, error }`라는 동일한 바깥 껍데기(편지 봉투) 객체로 한 번 감싸서 응답**합니다.
+     - **성공 시 (`success: true` + 알맹이는 `data` 안에)**:
+       ```json
+       {
+         "success": true,
+         "data": [{ "id": 1, "name": "기계식 무선 키보드 Pro", "price": 129000 }]
+       }
+       ```
+     - **실패 시 (`success: false` + 원인은 `error` 안에)**:
+       ```json
+       {
+         "success": false,
+         "error": { "code": "OUT_OF_STOCK", "message": "재고가 부족합니다." }
+       }
+       ```
+     - 이렇게 봉투 규격을 통일하면 모든 마이크로 앱이 `remote-shared/utils`의 공통 `httpClient`에서 `if (!res.success) throw res.error` 한 줄로 모든 API 응답과 에러를 일관되게 처리할 수 있습니다.
+  2. **최하단 전역 에러 핸들러 미들웨어**:
+     - Express 앱 최하단에 전역 에러 핸들러 미들웨어(`error-handler.ts`)를 두어, 어떤 예외가 발생해도 서버 프로세스가 죽지 않고 표준 에러 봉투(`{ success: false, error: { code, message } }`)와 HTTP 상태 코드(`400`, `404`, `500`)를 안전하게 반환하게 합니다.
 
 ### #08. 장바구니 목록 조회 시 발생하는 `N+1 쿼리` 문제와 인덱스 누락
 * **왜 문제가 되나요?**
   - `SELECT * FROM cart_items WHERE user_id = ?`로 10건을 가져온 뒤, `for` 루프를 돌며 각 상품의 이름과 가격을 알기 위해 `SELECT * FROM products WHERE id = ?`를 10번 더 실행하면 총 11번(`1 + N`)의 쿼리가 발생합니다.
-* **실무 해결 아키텍처**:
-  - `cart_items`와 `products`를 `INNER JOIN`한 단일 쿼리로 한 번에 조회하며, `01-schema.sql`에 조회 조건 컬럼(`idx_cart_items_user_id`) 인덱스를 명시적으로 생성합니다.
+* **실무 해결 아키텍처 (`INNER JOIN` 단일 쿼리 + `Omit`/`Pick` 인터페이스 합성)**:
+  1. **단일 `INNER JOIN` 쿼리 및 외래키 인덱스(`idx_cart_items_user_id`) 생성**:
+     - `cart_items`와 `products`를 `INNER JOIN`한 단일 쿼리로 한 번에 조회하며, `01-schema.sql`에 조회 조건 컬럼(`idx_cart_items_user_id`) 인덱스를 명시적으로 생성합니다.
+  2. **조인 결과 TypeScript 타입 정의 시 중복 작성 대신 `Omit` / `Pick` 합성 사용**:
+     - 조인 결과 인터페이스(`CartItemJoinedRow`)에 두 테이블의 컬럼을 처음부터 다시 복붙해서 적으면, 나중에 `products` 테이블의 컬럼 타입이 바뀔 때 두 곳을 모두 수정해야 합니다.
+     - 대신 각 테이블의 1:1 원본 인터페이스(`CartItemRow`, `ProductRow`)를 먼저 정의한 뒤, 이름이 겹치는 `id`와 미사용 컬럼을 `Omit`으로 제외하고 별칭(`AS product_name`) 컬럼만 연결하여 **타입과 `/** */` 인텔리센스 한글 주석을 100% 그대로 물려받아 재사용**합니다:
+       ```ts
+       export interface CartItemJoinedRow
+         extends CartItemRow,
+           Omit<ProductRow, 'id' | 'name' | 'stock' | 'description'> {
+         /** JOIN 조회 시 p.name AS product_name 별칭으로 매핑된 상품명 */
+         product_name: ProductRow['name'];
+       }
+       ```
 
 ---
 
