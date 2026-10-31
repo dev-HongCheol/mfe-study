@@ -34,10 +34,15 @@
   - 하지만 MFE에서 `react`, `react-dom`, `@tanstack/react-query`를 **`singleton: true`(브라우저 전체에 단 1개만 로드)**로 설정하면, 브라우저가 켜질 때 호스트와 리모트들이 *"누가 가진 React를 대표로 쓸지"* 결정하는 **비동기 협상(Async Negotiation) 시간**이 필요합니다.
 * **어떤 증상이 나타나나요?**
   - 앱을 켜자마자 화면이 하얗게 죽고 콘솔에 `Uncaught Error: Shared module is not available for eager consumption` 에러가 찍힙니다.
-* **실무 해결책 (`main.tsx` + `bootstrap.tsx` 2단 비동기 엔트리 분리)**:
-  - 모든 프론트엔드 앱의 시작점을 2단으로 분리하여 비동기 협상 시간을 벌어줍니다.
+* **`eager consumption`(성급한 소비)의 정확한 정의와 콜스택(Call Stack) 충돌 메커니즘**:
+  - **정적 import (`import React from 'react'`)의 동작**: 번들러가 모든 코드를 단 하나의 `main.js` 파일로 합쳐서 번들링합니다.
+  - **동기 콜스택의 폭주**: 브라우저 JS 엔진이 `<script src="main.js">`를 실행할 때 위에서부터 아래로 동기식(Call Stack)으로 한 번에 끝까지 실행합니다.
+  - **충돌 원인**: 모듈 페더레이션 런타임이 백그라운드에서 싱글톤 React 협상 Promise(`initSharing`)를 시작했으나, 브라우저는 이 Promise가 완료되기를 기다리지(await) 않고 즉시 다음 줄의 `createRoot` 및 React 코드를 실행합니다. 이때 내부 상태 검사(`if (!sharedModule.isReady) throw Error(...)`)에 걸려 **"비동기 협상도 안 끝났는데 성급하게(eager) 모듈을 소비하려 했다"**면서 런타임 크래시가 발생합니다.
+* **실무 해결책: `main.tsx` + `bootstrap.tsx` 2단 비동기 엔트리 분리**:
+  - `bootstrap`은 별도의 복잡한 컴포넌트가 아니라, 원래 `main.tsx`에 있던 평범한 DOM 마운트 코드를 파일 이름만 옮겨 담은 것입니다.
+  - 진입점(`main.tsx`)에서는 오직 `import('./bootstrap')` 동적 임포트 한 줄만 호출합니다.
   ```ts
-  // [1] src/main.tsx — 오직 동적 import() 한 줄만 실행 (비동기 경계 생성)
+  // [1] src/main.tsx — 진입점 (단 한 줄의 비동기 동적 임포트)
   import('./bootstrap');
   ```
   ```tsx
@@ -47,6 +52,21 @@
 
   createRoot(document.getElementById('root')!).render(<App />);
   ```
+* **'비동기 틈새(Async Boundary)'와 `Promise.all` 체이닝의 기계적 원리**:
+  1. **물리적 파일 쪼개기 (Code Splitting)**: 번들러는 AST에서 `import('./bootstrap')` 함수를 만나는 순간 무조건 파일을 2개(`main.js` 엔트리 청크 + `bootstrap_chunk.js` 렌더링 청크)로 물리적 분리합니다.
+  2. **콜스택의 비워짐 (비동기 틈새 형성)**: 브라우저가 `main.js`를 실행하고 `import()`를 만나는 순간 네트워크에 다운로드를 위임하며 `main.js`의 동기 실행(Call Stack)이 완전히 종료됩니다. 이로써 이벤트 루프가 돌아갈 수 있는 여유 시간(비동기 틈새)이 확보됩니다.
+  3. **`Promise.all` 체이닝 보장**: 번들러는 `bootstrap_chunk.js`를 실행하기 전에 아래와 같은 의존성 체인을 컴파일합니다:
+     ```js
+     // 번들러가 생성하는 내부 코드 개념도
+     Promise.all([
+       initSingletonModules(),      // 1. 싱글톤 React 협상 및 메모리 로드 완료 대기
+       loadChunkFile('./bootstrap') // 2. bootstrap_chunk.js 파일 다운로드 대기
+     ]).then(() => {
+       // ★ 두 가지 비동기 작업이 100% 완료된 후에만 실제 React 렌더링 호출!
+       runActualReactApp();         // createRoot(...).render(<App />)
+     });
+     ```
+  - 결론적으로 메인은 시작점으로서 싱글톤 준비를 발동시키고, 실제 화면 렌더링 코드는 비동기로 분리해 둠으로써 **이벤트 루프를 통해 싱글톤 React 적재가 100% 완료된 직후에만 화면이 그려지도록 완벽히 보장**됩니다.
 
 ---
 
