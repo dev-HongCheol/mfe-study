@@ -42,6 +42,8 @@
 3. **MFE 아키텍처 핵심 준수 사항**:
    - 앱 간 로컬 파일 참조(`workspace:*` 또는 상대 경로 코드 import) 금지 — 오직 Module Federation 런타임 로딩으로만 공유합니다.
    - `@ark-ui/react` 및 `clsx`는 `remote-shared/ui`에서 단일 창구로 캡슐화하여 노출(`exposes`)하고, 다른 서비스 앱들은 `remote_shared/ui`의 컴포넌트와 레이아웃(`Splitter`, `Tabs`, `Collapsible`, `Container`, `Grid`, `Flex`, `Stack`, `Card`)을 가져다 씁니다.
+   - **컴포넌트 파일 분리·네이밍 및 `Ark UI` 래핑 규칙**: 모든 React 컴포넌트는 **`1 컴포넌트 = 1 파일`로 분리하고 `.tsx` 파일명은 반드시 대문자(`PascalCase`, 예: `Button.tsx`)로 시작**합니다(비컴포넌트 진입점·훅은 `.ts`). `Ark UI`를 사용하는 모든 컴포넌트는 해당 `Ark UI` 원본 Props(`Ark*.RootProps` 또는 `HTMLArkProps<*>`)를 `Omit`/`Pick`으로 기본 상속하고 개발자 편의를 위한 재정의(`onChange` 단순화 등)만 별도 선언합니다.
+   - **타 서비스 노출·소비 규칙의 레지스트리 정본화**: 타 서비스(호스트·리모트)가 알아야 할 노출(`exposes`) 시그니처와 필수 소비 규칙은 머지 시 [`./docs/service-registry.md`](./docs/service-registry.md)에 반드시 명세하여 다른 앱 구현 시 즉시 확인 가능하게 유지합니다.
    - 상태 동기화는 **`Mode A` (`리모트별 독립 QueryClient + CustomEvent`)**와 **`Mode B` (`싱글톤 sharedQueryClient + invalidateQueries`)**를 비교 학습할 수 있도록 구현하며, Phase 1 끝에 실제 6개 서버를 기동하는 **런타임 MF 스모크 테스트(`verify-mfe-smoke.mjs`)**를 필수로 통과해야 합니다.
 
 ---
