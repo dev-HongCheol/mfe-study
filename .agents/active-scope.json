@@ -1,8 +1,8 @@
 {
-  "scope": "api",
-  "path": "apps/api-server",
-  "branch": "api/feat/sqlite-and-rest-api",
-  "featureDir": "apps/api-server/docs/features/20261031-sqlite-and-rest-api",
+  "scope": "shared",
+  "path": "apps/remote-shared",
+  "branch": "shared/feat/ark-ui-and-utils",
+  "featureDir": "apps/remote-shared/docs/features/20261102-ark-ui-and-utils",
   "currentStep": 5,
   "isDocsOnly": false
 }
