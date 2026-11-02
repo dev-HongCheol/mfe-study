@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS cart_items (
   user_id TEXT NOT NULL,                                                             -- 장바구니 소유 사용자 ID (users.id 외래키)
   product_id INTEGER NOT NULL,                                                       -- 담긴 상품 고유 번호 (products.id 외래키)
   quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity >= 1),                         -- 담긴 상품 수량 (1 이상 정수)
-  added_from_host TEXT NOT NULL CHECK (added_from_host IN ('vite', 'rspack', 'standalone')), -- 상품을 담은 호스트 출처 구분
+  added_from_host TEXT NOT NULL CHECK (added_from_host IN ('vite', 'rspack', 'standalone')), -- 상품을 담은 호스트 출처 구분 (MFE 스터디 시각화 전용 컬럼이며, 실무에서는 도메인 DB 대신 로그/비즈니스 채널로 분리함 — Study 05 #06 참조)
   created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),                   -- 최초 등록 또는 수량 갱신 일시 (KST 기준)
   UNIQUE (user_id, product_id),                                                      -- 동일 유저+상품 중복 행 방지 및 원자적 UPSERT용 복합 고유키
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,                     -- 유저 삭제 시 장바구니 항목 연쇄 삭제

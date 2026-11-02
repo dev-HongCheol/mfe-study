@@ -11,7 +11,7 @@
 - **스코프 ID (`Scope ID`)**: `api`
 - **대상 경로**: `apps/api-server` (루트 작업은 루트 [`todo.md`](../../../todo.md)에서 통합 관리)
 - **기술 스택**: `Node.js 22 (node:sqlite) + Express 5 + TypeScript + Zod + Vitest + Supertest`
-- **최종 업데이트**: `2026-11-01`
+- **최종 업데이트**: `2026-11-02`
 - **핵심 역할**: 다중 호스트(`host-vite:3000`, `host-rspack:3001`)와 도메인 리모트(`remote-products:3002`, `remote-cart:3003`)가 공통으로 바라보는 단일 영속성 계층(`mfe_study.db`)과 표준 엔벨로프 기반 REST API(`Port 4000`) 및 상시 동기화되는 3종 SQL 세트를 제공합니다.
 - **노출 모듈 (`exposes`) / API 엔드포인트**:
   - `GET /api/health`
@@ -49,6 +49,6 @@
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
 
-- [x] **[`20261031-sqlite-and-rest-api`](./features/20261031-sqlite-and-rest-api/01-plan-and-design.md)**: [Phase 1 - Step 1.1] 백엔드 API 서버 & 내장 SQLite 3종 SQL TDD 구축 (`Port 4000`, `2026-11-01` 완료)
+- [x] **[`20261031-sqlite-and-rest-api`](./features/20261031-sqlite-and-rest-api/01-plan-and-design.md)**: [Phase 1 - Step 1.1] 백엔드 API 서버 & 내장 SQLite 3종 SQL TDD 구축 (`Port 4000`, `2026-11-02` 완료)
   - **작업 브랜치**: `api/feat/sqlite-and-rest-api`
   - **산출물**: [01-plan-and-design.md](./features/20261031-sqlite-and-rest-api/01-plan-and-design.md), [02-tdd-spec.md](./features/20261031-sqlite-and-rest-api/02-tdd-spec.md), [03-code-review.md](./features/20261031-sqlite-and-rest-api/03-code-review.md)
