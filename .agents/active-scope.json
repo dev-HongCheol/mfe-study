@@ -1,8 +1,8 @@
 {
-  "scope": "root",
-  "path": ".",
-  "branch": "root/docs/phase1-service-contracts",
-  "featureDir": "docs/features/20261027-phase1-service-contracts",
-  "currentStep": 1,
-  "isDocsOnly": true
+  "scope": "api",
+  "path": "apps/api-server",
+  "branch": "api/feat/sqlite-and-rest-api",
+  "featureDir": "apps/api-server/docs/features/20261031-sqlite-and-rest-api",
+  "currentStep": 5,
+  "isDocsOnly": false
 }
