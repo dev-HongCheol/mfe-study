@@ -1,0 +1,67 @@
+/**
+ * @file theme.css
+ * @app remote-shared (Scope: shared | Port: 3004)
+ * @description 4종 테마(indigo, emerald, rose, dark)에 대응하는 시맨틱 CSS 변수 토큰 및 전사 z-index 토큰 정본 스타일시트입니다.
+ */
+:root,
+:root[data-mfe-theme="indigo"] {
+  --mfe-bg-app: #f8fafc;
+  --mfe-bg-surface: #ffffff;
+  --mfe-bg-elevated: #f1f5f9;
+  --mfe-text-primary: #0f172a;
+  --mfe-text-secondary: #334155;
+  --mfe-text-muted: #64748b;
+  --mfe-brand-primary: #4f46e5;
+  --mfe-brand-hover: #4338ca;
+  --mfe-danger: #dc2626;
+  --mfe-border-subtle: #e2e8f0;
+  --mfe-radius-md: 0.5rem;
+  --mfe-space-sm: 0.5rem;
+  --mfe-space-md: 1rem;
+  --mfe-space-lg: 1.5rem;
+  --mfe-z-header: 100;
+  --mfe-z-dropdown: 200;
+  --mfe-z-drawer: 300;
+  --mfe-z-modal: 400;
+  --mfe-z-toast: 500;
+  --z-dropdown: 200;
+}
+
+:root[data-mfe-theme="emerald"] {
+  --mfe-bg-app: #f0fdf4;
+  --mfe-bg-surface: #ffffff;
+  --mfe-bg-elevated: #dcfce7;
+  --mfe-text-primary: #064e3b;
+  --mfe-text-secondary: #065f46;
+  --mfe-text-muted: #047857;
+  --mfe-brand-primary: #059669;
+  --mfe-brand-hover: #047857;
+  --mfe-danger: #dc2626;
+  --mfe-border-subtle: #bbf7d0;
+}
+
+:root[data-mfe-theme="rose"] {
+  --mfe-bg-app: #fff1f2;
+  --mfe-bg-surface: #ffffff;
+  --mfe-bg-elevated: #ffe4e6;
+  --mfe-text-primary: #4c0519;
+  --mfe-text-secondary: #881337;
+  --mfe-text-muted: #9f1239;
+  --mfe-brand-primary: #e11d48;
+  --mfe-brand-hover: #be123c;
+  --mfe-danger: #b91c1c;
+  --mfe-border-subtle: #fecdd3;
+}
+
+:root[data-mfe-theme="dark"] {
+  --mfe-bg-app: #0f172a;
+  --mfe-bg-surface: #1e293b;
+  --mfe-bg-elevated: #334155;
+  --mfe-text-primary: #f8fafc;
+  --mfe-text-secondary: #cbd5e1;
+  --mfe-text-muted: #94a3b8;
+  --mfe-brand-primary: #6366f1;
+  --mfe-brand-hover: #818cf8;
+  --mfe-danger: #ef4444;
+  --mfe-border-subtle: #334155;
+}
