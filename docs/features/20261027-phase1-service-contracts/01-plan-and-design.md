@@ -25,7 +25,7 @@
 - 모든 외부 경계(REST API 응답, `CustomEvent` 페이로드, `localStorage` 데이터)에 적용할 `TypeScript` 인터페이스(6대 주석 원칙 적용)와 `Zod` 스키마 규격을 확정합니다.
 
 ### 2.2 MFE / 아키텍처 핵심 학습 포인트
-- **계약 주도 개발(`Contract-First Development`)**: 코드가 물리적으로 격리된 멀티레포 MFE 환경에서 `remotes.d.ts` 및 API/이벤트 스키마 계약을 먼저 고정하여 각 팀(또는 각 단계)이 독립적으로 병렬/순차 개발을 수행하는 실무 프로세스를 체득합니다.
+- **계약 주도 개발(`Contract-First Development`) 및 `@mf-types` 정식 원격 타입 동기화**: 코드가 물리적으로 격리된 멀티레포 MFE 환경에서 Module Federation 2.0의 공식 `dts` 플러그인(`generateTypes` → `@mf-types.zip` 서빙 / `consumeTypes` → `./@mf-types/` 자동 다운로드 및 압축 해제)과 API/이벤트 스키마 계약을 결합하여, 로컬 상대 경로 참조 없이도 각 서비스가 독립적으로 타입 안전성을 확보하는 실무 프로세스를 체득합니다.
 - **상태 동기화 `Mode A (CustomEvent)` vs `Mode B (sharedQueryClient)` 비교 설계**: 어느 한 방식에 종속되지 않고 호스트의 `MfeInspector`에서 실시간으로 동기화 모드를 전환하며 두 아키텍처의 장단점을 관찰할 수 있는 인터페이스 계약을 수립합니다.
 
 ### 2.3 루트 공통 설계 정본(SSOT) 참조 — `[타 서비스 연계 작업 시 필수]`
@@ -423,6 +423,11 @@ export interface CartWidgetProps {
    - `@tanstack/react-query`: `{ singleton: true, requiredVersion: '^5.74.4' }`
 3. **2단 비동기 부트스트랩 분리**:
    - 모든 프론트엔드 앱은 `main.tsx`(또는 `index.tsx`)에서 `import('./bootstrap')`만 호출하고 실제 마운트는 `bootstrap.tsx`에서 수행하여 `eager consumption` 에러를 방지합니다.
+4. **Module Federation 2.0 정식 원격 타입 동기화 (`@mf-types` — 수동 `remotes.d.ts` 작성 금지)**:
+   - **공급자(`remote-shared`, `remote-products`, `remote-cart`)**: 번들러 `federation` 설정에 `dts: { generateTypes: true, tsConfigPath: './tsconfig.json' }`을 활성화하여 빌드 및 개발 서버 기동 시 노출 모듈(`exposes`)의 `.d.ts` 타입들을 추출한 `@mf-types.zip` 및 `@mf-types.d.ts`를 원격 URL로 서빙하고 `mf-manifest.json`의 `metaData.types`에 기록합니다.
+   - **소비자(`remote-products`, `remote-cart`, `host-vite`, `host-rspack`)**:
+     1. 번들러 `federation` 설정의 `remotes`에는 실제 원격 매니페스트 URL(`http://localhost:3004/mf-manifest.json` 등)을 지정하고 `dts: { consumeTypes: true }`를 활성화하여, 원격 URL에서 `@mf-types.zip`을 다운로드해 자신의 프로젝트 폴더 내 `./@mf-types/` 디렉터리에 자동 압축 해제합니다.
+     2. `tsconfig.json`에는 `"baseUrl": "."`, `"paths": { "*": ["./@mf-types/*"] }`, `"include": ["src", "@mf-types"]`를 설정하여, 외부 URL에서 내려받아 `./@mf-types/`에 풀린 원격 타입 정의를 TypeScript 컴파일러(`tsc`)와 에디터 인텔리센스가 정식으로 인식하도록 연결합니다.
 
 ---
 

@@ -12,8 +12,8 @@
 - **최근 완료 작업**:
   - **[Phase 1 - Step 1.2] 원격 공통 디자인 시스템(`Ark UI`), 실시간 4종 테마 & MFE 공통 유틸리티 구축 완료** (`apps/remote-shared`, `docs/service-registry.md`)
   - **[Phase 1 - Step 1.1] 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축 완료** (`apps/api-server`, `docs/service-registry.md`)
-  - **[Phase 1 - Step 1.0] Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지 완료** (`docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`)
-  - 영구 학습 문서 폴더 `docs/study/` 6종 학습 가이드 Q&A 대폭 보강 (Study 01 Q9·Q10, Study 02 Q6·Q6-1 `exposed/` 아키텍처, Study 04 #01, Study 05 #05·#06, Study 06 `pnpm`·`Turborepo`·`Vite` 3계층 관계도 및 `catalog:` 원리 등)
+  - **[Phase 1 - Step 1.0] Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props · `@mf-types` 원격 타입 동기화) 정본 설계 및 머지 완료** (`docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`)
+  - 영구 학습 문서 폴더 `docs/study/` 6종 학습 가이드 Q&A 대폭 보강 (Study 01 Q9·Q10, Study 02 Q1.1·Q6·Q6-1·Q10 `@mf-types` 및 CSR vs SSR/Next.js MFE 비교, Study 04 #01·#04 `@mf-types.zip` 원격 타입 자동 동기화, Study 05 #05·#06, Study 06 `pnpm`·`Turborepo`·`Vite` 3계층 관계도 및 `catalog:` 원리 등)
   - 초기 마스터 설계 문서 3종(`02-infra-and-architecture.md`, `03-setup-and-convention.md`, `04-workflow-and-harness.md`)을 Git 미추적 `temp/` 폴더로 격리 보관
   - `docs/templates/` 표준 문서·코드 리뷰·PR 템플릿 5종(`todo`, `01-plan-and-design`, `02-tdd-spec`, `03-code-review`, `pull-request`) 생성 및 한국어 가독성 원칙 반영
   - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료

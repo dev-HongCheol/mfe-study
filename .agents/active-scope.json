@@ -1,8 +1,8 @@
 {
-  "scope": "shared",
-  "path": "apps/remote-shared",
-  "branch": "shared/feat/ark-ui-and-utils",
-  "featureDir": "apps/remote-shared/docs/features/20261102-ark-ui-and-utils",
+  "scope": "root",
+  "path": ".",
+  "branch": "root/docs/mf-types-contract",
+  "featureDir": "docs/features/20261027-phase1-service-contracts",
   "currentStep": 5,
-  "isDocsOnly": false
+  "isDocsOnly": true
 }
