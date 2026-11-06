@@ -10,9 +10,9 @@
 
 단순히 Git 저장소를 여러 개로 쪼개는 것 자체보다, **저장소와 폴더가 물리적으로 격리되었을 때 발생하는 아래 5가지 엔지니어링 과제**가 실제 MFE 실무의 핵심입니다.
 
-1. **로컬 파일 참조(`import '../../shared'`) 불가능에 따른 '원격 타입 계약(Type Contract)' 동기화**:
-   - 모노레포에서는 옆 폴더의 타입 파일을 그냥 `import`하면 끝이지만, 멀티레포에서는 다른 앱의 소스 파일이 내 폴더에 존재하지 않습니다.
-   - 따라서 Module Federation 2.0의 **`dts` 플러그인(`@mf-types` 원격 타입 자동 다운로드)**이나 API 스키마를 통해 **"코드는 떨어져 있어도 TypeScript 자동완성과 타입 검사는 완벽히 동작하게 만드는 원격 계약"**을 직접 구성해 볼 수 있습니다.
+1. **로컬 파일 참조(`import '../../shared'`) 불가능에 따른 '원격 타입 계약(`@mf-types`)' 자동 동기화**:
+   - 모노레포에서는 옆 폴더의 타입 파일을 그냥 상대 경로로 `import`하면 끝이지만, 물리적 멀티레포에서는 다른 앱의 소스 파일이 내 레포지토리에 존재하지 않으며 수동으로 `d.ts`를 복붙하면 싱크(동기화)가 깨집니다.
+   - 따라서 Module Federation 2.0의 공식 **`dts` 플러그인**을 통해 ① 공급자(`remote-shared:3004`)가 `dts: { generateTypes: true }`로 노출 모듈의 타입을 묶어 **`http://localhost:3004/@mf-types.zip` URL로 서빙**하고, ② 소비자(`remote-products:3002` 등)가 `dts: { consumeTypes: true }`로 해당 **외부 URL에서 압축 파일을 내려받아 자신의 `./@mf-types/` 폴더에 자동 압축 해제**한 뒤, ③ `tsconfig.json`의 `"paths": { "*": ["./@mf-types/*"] }`로 이를 읽어들여 **"코드는 물리적으로 떨어져 있어도 TypeScript 자동완성과 타입 검사는 100% 자동으로 동기화되는 원격 계약"**을 직접 구성해 볼 수 있습니다.
 2. **하위 호환성(Backward Compatibility)과 계약 파기(Breaking Change) 방어**:
    - 모노레포에서는 리모트 컴포넌트의 `Props` 이름을 바꾸면 호스트 코드도 한 커밋에 같이 고칠 수 있습니다.
    - 하지만 멀티레포에서는 각 서비스가 따로 배포되므로, 리모트가 함부로 필수 `Props`를 바꾸면 이미 배포된 호스트가 런타임에 깨집니다. 이를 통해 **옵셔널 파라미터 확장, 버전별 엔트리 분리 등 안전한 인터페이스 진화 방법**을 체득하게 됩니다.
@@ -202,6 +202,16 @@
 2. **외부 C++ 컴파일(`node-gyp`)이 전혀 필요 없는 Node.js 22 공식 내장 `node:sqlite` (`DatabaseSync`) 채택**:
    - `better-sqlite3` 같은 C++ 네이티브 애드온은 Windows PowerShell 환경에서 Visual Studio C++ Build Tools 유무에 따라 설치 에러가 자주 발생합니다.
    - 반면 **Node.js `v22.5.0+`(현재 환경 `v22.17.0`)에는 공식 내장 모듈인 `node:sqlite` (`DatabaseSync`)가 기본 탑재**되어 있어, 외부 프로그램이나 C++ 바이너리 컴파일이 단 1%도 필요 없이 `apps/api-server/mfe_study.db` 단일 파일과 인메모리(`:memory:`) TDD 테스트를 100% 순수 Node.js만으로 완벽하게 구동할 수 있습니다.
+
+### Q10. Vite/Rspack 기반 CSR MFE와 최신 Next.js(App Router / RSC) 기반 SSR MFE는 화면 결합 및 타입 동기화 방식이 어떻게 다른가요?
+
+프론트엔드 렌더링 아키텍처(`CSR` vs `SSR/RSC`)에 따라 실무에서 채택하는 MFE 결합 방식과 타입 동기화 전략은 아래와 같이 명확히 구분됩니다.
+
+| 비교 항목 | **Vite / Rspack (CSR 대시보드·어드민 MFE)**<br>*(본 프로젝트 실습 아키텍처)* | **Next.js App Router (SSR/RSC 커머스·포털 MFE)**<br>*(최신 Next.js 실무 표준)* |
+| :--- | :--- | :--- |
+| **핵심 결합 단위** | **컴포넌트 단위 런타임 조립 (`Module Federation 2.0`)**<br>한 화면 안에서 `ProductList`, `CartWidget` 등을 브라우저 런타임에 네트워크로 불러와 실시간 합성 | **URL 경로 단위 분리 (`Multi-Zones`)**<br>`next.config.ts`의 `rewrites`로 `/`는 메인 레포, `/products/*`는 상품 레포가 각각 독립 SSR/RSC 처리 *(과거 Pages Router용 `@module-federation/nextjs-mf`는 RSC 미지원으로 공식 종료)* |
+| **공통 디자인 시스템(`shared`) 공유** | 브라우저 런타임에 `remote-shared(3004)` 서버에서 네트워크로 로드 (`remote_shared/ui`) | 서버(Node.js)에서 먼저 HTML을 그려야 하므로, 사내 Private NPM(GitHub Packages, Verdaccio 등)에 `@company/ui` 패키지로 배포 후 각 레포에서 버전 지정 설치 |
+| **원격 타입(`.d.ts`) 동기화** | 공급자 서버(`3004`)가 서빙하는 **`@mf-types.zip`을 외부 URL에서 다운로드해 내 앱의 `./@mf-types/` 폴더에 자동 압축 해제** (`tsconfig.json` `paths` 연결) | 사내 NPM 패키지(`@company/ui`) 설치 시 `node_modules` 안에 JS 코드와 `.d.ts`가 세트로 들어오므로 **별도 원격 서버 기동 없이 즉시 해결** (API 타입은 `OpenAPI codegen` 활용) |
 
 ---
 

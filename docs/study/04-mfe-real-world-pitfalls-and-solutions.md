@@ -12,7 +12,7 @@
 | **영역 A**<br>초기화·번들·경로 | **#01.** 싱글톤 공유 시 `eager consumption` 초기화 에러 | 앱 최초 기동 | `main.tsx` + `bootstrap.tsx` 2단 분리 |
 | **영역 A**<br>초기화·번들·경로 | **#02.** 리모트 이미지·폰트·청크 404 깨짐 (`publicPath` 함정) | 리모트 마운트 | `publicPath: 'auto'` / `import.meta.url` |
 | **영역 A**<br>초기화·번들·경로 | **#03.** 다중 포트(`3000~3004`) 브라우저 `CORS` 차단 및 포트 밀림 | 네트워크 로드 | 리모트 개발 서버 `cors: true`, `strictPort` |
-| **영역 A**<br>초기화·번들·경로 | **#04.** 멀티 서버 동시 기동(`turbo dev`) 순서 경합 | 개발 서버 시작 | DB 자동 초기화 + `remotes.d.ts` 안전망 |
+| **영역 A**<br>초기화·번들·경로 | **#04.** 멀티 서버 동시 기동(`turbo dev`) 순서 경합 및 원격 타입(`@mf-types`) 수신 | 개발 서버 시작 | DB 자동 초기화 + `@mf-types.zip` 원격 서빙·폴더 압축 해제 |
 | **영역 B**<br>DOM·스타일·UI | **#05.** 리모트 지연 로드 시 전역 `CSS Reset` 덮어쓰기 참사 | 리모트 지연 로드 | 전역 Reset은 호스트/공통만, 리모트 태그 선택자 금지 |
 | **영역 B**<br>DOM·스타일·UI | **#06.** 모달(`Portal`)·드롭다운 `z-index` 전쟁 및 스크롤 잠금 먹통 | 모달/팝업 오픈 | `remote-shared` 표준 `z-index` 토큰 및 단일 포털 |
 | **영역 C**<br>상태·라우팅·메모리 | **#07.** 에러 없이 기본값만 나오는 '침묵의 `React Context` 단절' | 상태/테마 구독 | Context 객체 단일 원격 출처(`remote-shared`) 공유 |
@@ -93,14 +93,23 @@
 
 ---
 
-### #04. 멀티 서버 동시 기동(`turbo dev`) 시 발생하는 기동 순서 경합(Race Condition)
+### #04. 멀티 서버 동시 기동(`turbo dev`) 순서 경합 및 원격 타입(`@mf-types`) 자동 동기화 메커니즘
 * **왜 안 해본 사람은 모르나요?**
-  - 서버가 1개일 때는 순서 문제가 없지만, 6개 서버를 동시에 띄우면 어떤 서버가 0.5초 먼저 뜰지 매번 달라집니다.
-* **어떤 증상이 나타나나요?**
-  - `api-server(4000)`나 `remote-shared(3004)`보다 `host-vite(3000)`가 먼저 켜지면, 첫 화면 접속 시 DB 테이블이 아직 없거나 원격 타입 폴더(`@mf-types`)를 못 찾아 에러가 날 수 있습니다.
-* **실무 해결책**:
-  1. `api-server`는 기동 즉시 DB 파일(`mfe_study.db`) 유무를 검사해 테이블이 없으면 자동으로 `01-schema.sql` + `02-reset-seed.sql`을 실행(Auto-bootstrap)합니다.
-  2. 각 프론트엔드 앱에는 원격 서버가 꺼져 있어도 TypeScript 컴파일이 절대 깨지지 않도록 기본 타입 선언 파일(`src/remotes.d.ts`)을 안전망으로 함께 유지합니다.
+  - 물리적으로 분리된 멀티레포에서는 다른 앱의 폴더(`../../remote-shared`)를 상대 경로로 참조할 수 없으며, 수동으로 `remotes.d.ts` 타입 파일을 복붙해서 만들면 공급자 인터페이스가 바뀔 때마다 모든 소비자 앱의 타입 파일을 일일이 다시 고쳐야 하는 싱크(동기화) 지옥이 발생합니다.
+  - 또한 6개 서버를 동시에 띄울 때 `api-server(4000)`나 `remote-shared(3004)`보다 소비자 앱이 먼저 켜지면 초기 DB 테이블이나 원격 타입 압축 파일(`@mf-types.zip`)을 어떻게 받아오는지 혼동하기 쉽습니다.
+* **실무 해결책 (`DB Auto-bootstrap` + Module Federation 2.0 정식 `@mf-types` 2단계 동기화)**:
+  1. **백엔드 DB 자동 부트스트랩**: `api-server`는 기동 즉시 DB 파일(`mfe_study.db`) 유무를 검사해 테이블이 없으면 자동으로 `01-schema.sql` + `02-reset-seed.sql`을 실행(Auto-bootstrap)합니다.
+  2. **Module Federation 2.0 공식 `dts` 플러그인(`@mf-types.zip` 원격 서빙 & `./@mf-types/` 자동 압축 해제) 채택**:
+     - **① 공급자(`remote-shared:3004` 등)의 빌드·서빙 (`dts: { generateTypes: true }`)**:
+       - 공급자 앱이 빌드(`vite build`)되거나 개발 서버(`vite dev`)로 실행될 때, `tsconfig.json`을 기반으로 `exposes` 모듈들의 `.d.ts` 타입을 추출하여 **`@mf-types.zip`** 압축 파일로 생성합니다.
+       - 생성된 압축 파일을 `http://localhost:3004/@mf-types.zip` (실무에서는 사내 Staging/CDN URL)으로 HTTP 서빙하며, `mf-manifest.json`의 `metaData.types.zip`에 해당 주소를 기록합니다.
+     - **② 소비자(`remote-products:3002` 등)의 URL 다운로드 및 `tsconfig.json` 연결 (`dts: { consumeTypes: true }`)**:
+       - 소비자 앱의 `vite.config.ts`에는 로컬 파일 경로가 아닌 **실제 원격 URL(`http://localhost:3004/mf-manifest.json`)**을 지정합니다.
+       - 소비자 앱을 실행·빌드하면 번들러 플러그인이 해당 URL에서 `@mf-types.zip`을 네트워크로 다운로드하여 소비자 앱 내부의 **`./@mf-types/` 폴더에 자동으로 압축을 풀어놓습니다.**
+       - 소비자 앱의 `tsconfig.json`에는 `"paths": { "*": ["./@mf-types/*"] }` 및 `"include": ["src", "@mf-types"]`를 설정하여, 외부 URL에서 다운받아 내 폴더(`./@mf-types/`)에 풀린 타입 정의를 TypeScript 컴파일러(`tsc`)와 VS Code가 정식으로 읽도록 연결합니다.
+     - **③ 공급자 서버 실행 시점과 로컬 디스크 캐시 유지 원리**:
+       - 최초에 `@mf-types.zip`을 내려받거나 공급자의 타입이 변경되어 새로 갱신할 때는 공급자 서버(`remote-shared:3004`)가 떠 있어야(또는 빌드 산출물이 서빙 중이어야) 합니다.
+       - 하지만 **일단 한 번 다운로드되어 `./@mf-types/` 폴더에 `.d.ts` 파일들이 풀리고 나면 해당 파일들은 내 디스크에 그대로 남아있기 때문에**, 이후 공급자 서버(`3004`)를 꺼놓아도 소비자 앱 단독으로 `tsc --noEmit` 타입 검사와 에디터 자동 완성이 100% 정상 동작합니다.
 
 ---
 

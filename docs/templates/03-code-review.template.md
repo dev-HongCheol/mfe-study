@@ -48,7 +48,7 @@
 > 💡 백엔드(`api`) 또는 루트(`root`) 단독 작업인 경우 `N/A`로 표기합니다.
 
 - **적용 여부**: `적용` | `N/A (해당 없음)`
-- [ ] **초기화·경로 (#01~#04)**: `main.tsx` + `bootstrap.tsx` 2단 분리, 리모트 정적 에셋 안전 참조(`import.meta.url`), 개발 서버 `cors: true` & `strictPort: true`, `remotes.d.ts` 안전망이 유지되었는가?
+- [ ] **초기화·경로 (#01~#04)**: `main.tsx` + `bootstrap.tsx` 2단 분리, 리모트 정적 에셋 안전 참조(`import.meta.url`), 개발 서버 `cors: true` & `strictPort: true`, Module Federation `@mf-types` 원격 타입 동기화가 유지되었는가?
 - [ ] **DOM·스타일 격리 (#05~#06)**: 도메인 리모트에서 전역 `CSS Reset`이나 태그 선택자(`button`, `body`, `*`)를 쓰지 않았으며, 모달·드롭다운에 `remote-shared`의 표준 `--z-*` 토큰을 사용했는가?
 - [ ] **상태·라우팅·메모리·스토리지 (#07~#10)**: 공유 Context의 단일 원격 출처 참조, 단독/결합 라우터 진입점 분리, `useMfeEvent`를 통한 이벤트 리스너 자동 해제(좀비 리스너 방지), `localStorage` 스코프 프리픽스(`mfe:<scope>:*`)를 준수했는가?
 - [ ] **단독 테스트·장애 복구 (#11~#14)**: 타 서버 실행 없이 `Vitest` 로컬 스텁으로 단독 테스트가 통과하며, `RemoteErrorBoundary` 재시도 복구가 정상 동작하는가?

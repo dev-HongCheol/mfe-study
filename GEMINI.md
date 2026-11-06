@@ -69,7 +69,7 @@
 
 ---
 
-## 6. 필수 참조 문서 지도 (`docs/service-registry.md`, `docs/templates/`, `docs/study/`, `temp/`)
+## 6. 필수 참조 문서 지도 (`docs/service-registry.md`, `docs/templates/`, `docs/study/`)
 작업 단계마다 아래 문서를 반드시 `read_file`로 직접 읽어 양식과 방어 아키텍처를 준수합니다.
 
 0. **구현 완료된 서비스별 명령어 · REST API · 노출 모듈(`exposes`) 통합 정본 (새 세션 최우선 참조)**:
@@ -88,9 +88,4 @@
    - **[구현·리뷰 필독] MFE 14대 실전 고유 이슈와 해결 아키텍처**: [`./docs/study/04-mfe-real-world-pitfalls-and-solutions.md`](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md)
    - **[구현·리뷰 필독] 풀스택 서비스 16대 실전 이슈(FE·BE/DB·공통모듈·디자인)**: [`./docs/study/05-fullstack-service-real-world-issues.md`](./docs/study/05-fullstack-service-real-world-issues.md)
    - **[세팅·명령어 기록] 워크스페이스·하네스 및 각 서비스 세팅 A-to-Z 가이드**: [`./docs/study/06-workspace-and-harness-setup-guide.md`](./docs/study/06-workspace-and-harness-setup-guide.md)
-3. **초기 프로젝트 구축 참조용 마스터 설계서 (`./temp/` — Git 미추적 로컬 참조용)**:
-   - 전체 초기 구축이 완료되어 삭제되기 전까지 포트, DB 테이블, API 엔드포인트, 세부 컨벤션 확인 시 참조:
-     - `./temp/02-infra-and-architecture.md`
-     - `./temp/03-setup-and-convention.md`
-     - `./temp/04-workflow-and-harness.md`
 
