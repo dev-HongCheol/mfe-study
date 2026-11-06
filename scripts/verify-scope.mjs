@@ -58,16 +58,29 @@ export function evaluateScopeAccess(params) {
     return { decision: 'allow' };
   }
 
-  const absRoot = normalizeSlashes(resolve(workspaceRoot));
-  const absTarget = normalizeSlashes(resolve(workspaceRoot, rawTargetPath));
-
-  // 워크스페이스 외부 경로(예: Antigravity brain 아티팩트 폴더)는 스코프 잠금 대상이 아니므로 허용
-  if (!absTarget.startsWith(absRoot)) {
-    return { decision: 'allow' };
-  }
+  const normRoot = normalizeSlashes(workspaceRoot).replace(/\/$/, '');
+  const normTarget = normalizeSlashes(rawTargetPath);
 
   /** 워크스페이스 루트 기준 상대 경로 (예: 'apps/remote-products/src/App.tsx') */
-  const relPath = normalizeSlashes(relative(absRoot, absTarget));
+  let relPath = '';
+
+  // [분기 설명 1] 대상 경로가 이미 워크스페이스 루트 경로로 시작하는 절대 경로인 경우
+  // (Windows 드라이브 문자가 포함된 경로가 macOS/Linux POSIX 환경에서 테스트될 때의 크로스 플랫폼 호환성 보장)
+  if (normTarget.startsWith(`${normRoot}/`)) {
+    relPath = normTarget.slice(normRoot.length + 1);
+  } else if (normTarget === normRoot) {
+    relPath = '';
+  } else {
+    // [분기 설명 2] 상대 경로이거나 일반 절대 경로인 경우 path.resolve로 결합
+    const absRoot = normalizeSlashes(resolve(workspaceRoot));
+    const absTarget = normalizeSlashes(resolve(workspaceRoot, rawTargetPath));
+
+    // 워크스페이스 외부 경로(예: Antigravity brain 아티팩트 폴더)는 스코프 잠금 대상이 아니므로 허용
+    if (!absTarget.startsWith(absRoot)) {
+      return { decision: 'allow' };
+    }
+    relPath = normalizeSlashes(relative(absRoot, absTarget));
+  }
 
   // 1) 전역 허용 목록(Global Whitelist)에 해당하는 루트 문서·하네스·컨피그 파일은 항상 허용
   const isWhitelisted = GLOBAL_WHITELIST_PREFIXES.some(
