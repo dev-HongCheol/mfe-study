@@ -143,6 +143,35 @@
      - Express 앱 조립(`src/app.ts`)과 실제 포트 리스닝(`src/server.ts`)을 분리하여, `Vitest + Supertest` 실행 시 4000번 포트를 실제로 띄우지 않고도 메모리 상에서 즉시 REST API를 테스트할 수 있게 구성합니다.
      - 라우터·서비스·`Zod` 검증 스키마는 `src/modules/{products,cart,auth}/` 아래에 도메인별로 응집합니다.
 
+### Q6-1. 일반 모놀리식 웹 프로젝트에서는 안 쓰는 `exposed/` 폴더를 따로 분리하는 것이 범용적인 패턴인가요? (모놀리스 vs MFE/라이브러리 비교 및 실무 네이밍)
+
+1. **모놀리식 웹 애플리케이션 vs MFE / 원격 라이브러리의 관점 차이**:
+   - **일반 단일 프론트엔드(Next.js, 단일 SPA)**: 외부(다른 앱)로 코드를 제공할 일이 없으므로 `pages/`, `features/`, `components/` 등 내부 컴포넌트만 존재하며 `exposed/` 같은 레이어를 둘 이유가 없습니다.
+   - **MFE(리모트 앱) 및 라이브러리(패키지)**: `remote-shared`, `remote-products` 등은 독립된 웹 앱이면서 동시에 다른 호스트(`host-vite`, `host-rspack`)에게 런타임으로 UI와 유틸리티를 제공하는 **원격 라이브러리(공급자)** 역할을 겸합니다. 따라서 **"외부에 공개할 공개 계약(Public Contract)"**과 **"내부에서만 사용하는 구현체(Internal Implementation)"**를 물리적으로 엄격히 격리해야 합니다.
+
+2. **`src/exposed/` 폴더 격리의 3대 아키텍처적 이점**:
+   - **① 외부 계약과 내부 리팩터링의 완전한 디커플링 (정보 은닉)**:
+     - 만약 번들러 설정(`vite.config.ts`, `rsbuild.config.ts`)의 `exposes`에 내부 소스 경로(예: `./src/features/ui/components/Button.tsx`)를 직접 등록하면, 내부 폴더를 이동하거나 파일명을 바꾸는 사소한 리팩터링만으로도 호스트와의 런타임 연결이 깨집니다.
+     - `src/exposed/ui.ts`를 전용 배럴/엔트리 창구로 두고 내부 모듈들을 re-export하면, 내부 구조를 아무리 크게 갈아엎어도 외부 호스트와의 계약은 단 1줄도 깨지지 않습니다.
+   - **② 비공개 모듈 및 단독 실행 헬퍼의 누수 방지 (보안 및 감사 용이성)**:
+     - 리모트 앱 내부에는 독립 실행(`http://localhost:3004`) 쇼케이스용 코드, 내부 전용 헬퍼, 테스트 스텁 등이 함께 존재합니다.
+     - `src/exposed/` 폴더만 보면 "이 서비스가 외부에 공표한 스펙이 무엇인지" 누구나 한눈에 감사(Audit)할 수 있습니다.
+   - **③ Module Federation 2.0 원격 타입(`@mf-types` / DTS) 번들링 안정성**:
+     - 번들러 플러그인이 호스트에게 제공할 `.d.ts` 타입 번들을 생성할 때, `exposed/`의 파일들을 기점으로 트리 셰이킹 및 번들링하므로 순환 참조나 내부 전용 타입이 호스트로 오염되는 것을 차단합니다.
+
+3. **실무 및 타 프레임워크 생태계에서의 유사 패턴 비교**:
+
+| 네이밍 / 패턴 | 주로 쓰이는 영역 | 아키텍처적 역할 및 특징 |
+| :--- | :--- | :--- |
+| **`src/exposed/`**<br>(본 프로젝트 채택) | **Module Federation**<br>(Webpack, Vite, Rspack) | 번들러 설정의 `exposes: { './ui': './src/exposed/ui.ts' }` 키워드와 1:1로 매칭되어 **MFE 생태계에서 가장 직관적인 정본 진입점** 역할을 합니다. |
+| **`src/entries/`** | Rollup, Vite 다중 번들 라이브러리 | `package.json`의 `exports` 서브패스(예: `pkg/ui`, `pkg/utils`) 엔트리를 모아둘 때 널리 쓰입니다. |
+| **`public-api.ts`** | Angular 패키지 빌드 (`ng-packagr`) | Angular 라이브러리 생태계의 공식 퍼블릭 API 표준 파일명입니다. |
+| **`index.ts` (Public API)** | FSD (Feature-Sliced Design) | 슬라이스 최상단의 `index.ts`를 통해서만 외부 import를 허용하고 내부 `model/`, `ui/` 직접 참조를 차단하는 FSD 캡슐화 규칙입니다. |
+
+> **실무 네이밍 주의사항**: `src/public/`이라는 이름은 정적 에셋(이미지, 폰트, `favicon.ico`)을 담는 루트 `/public` 폴더와 이름이 겹쳐 혼동을 유발하므로, MFE 환경에서는 번들러 용어와 일치하는 **`src/exposed/`**를 사용하는 것이 업계의 보편적인 관례입니다.
+
+---
+
 ### Q7. 테스트 코드(`Vitest`)는 왜 `Co-location`(파일 옆 배치)과 `testing/` · `__tests__/` 분리 방식을 함께 쓰나요?
 
 | 구분 | 배치 위치 | 대상 파일 및 설계 의도 |

@@ -123,6 +123,57 @@ catalog:
 pnpm install
 ```
 
+### 3.4 `pnpm` ↔ `Turborepo` ↔ `Vite / Rspack (+ Module Federation)` 3계층 관계도 및 역할 분담
+
+세 도구는 서로 대체하는 관계가 아니라 **① 패키지 설치(`pnpm`) → ② 다중 서비스 명령 지휘·캐싱(`Turborepo`) → ③ 개별 앱 번들링·페더레이션(`Vite` / `Rspack`)**의 **수직적 3계층 파이프라인**으로 협력합니다.
+
+```mermaid
+flowchart TD
+  subgraph L1["1계층: 패키지 매니저 (pnpm + pnpm-workspace.yaml)"]
+    PNPM["📦 pnpm\n- catalog: 중앙 버전 해석 및 패키지 설치\n- node_modules 심볼릭 링크 구성"]
+  end
+
+  subgraph L2["2계층: 태스크 오케스트레이터 (Turborepo + turbo.json)"]
+    TURBO["⚡ Turborepo (turbo run dev / build / test)\n- 6개 마이크로 서비스 병렬 실행 지휘\n- 파일 해시 기반 빌드 및 테스트 결과 캐싱"]
+  end
+
+  subgraph L3["3계층: 개별 앱 번들러 & 런타임 (Vite / Rspack / Node)"]
+    VITE["⚡ Vite + @module-federation/vite\n(host-vite:3000, products:3002, shared:3004)\n- 코드 번들링 및 remoteEntry.js 생성"]
+    RSPACK["🦀 Rspack + @module-federation/rsbuild-plugin\n(host-rspack:3001, cart:3003)\n- Rust 고속 번들링 및 MF 컨테이너 생성"]
+    API["🗄️ Node.js + Express + node:sqlite\n(api-server:4000)"]
+  end
+
+  PNPM -->|"1. 의존성 설치 완료\n(node_modules 연결)"| TURBO
+  TURBO -->|"2. 각 앱의 package.json\nscripts 병렬 호출"| VITE
+  TURBO -->|"2. 각 앱의 package.json\nscripts 병렬 호출"| RSPACK
+  TURBO -->|"2. 각 앱의 package.json\nscripts 병렬 호출"| API
+```
+
+| 계층 | 도구 | 핵심 참조 파일 | 비유 및 아키텍처 역할 |
+| :---: | :--- | :--- | :--- |
+| **1계층**<br>(설치·버전 관리) | **`pnpm`** | `pnpm-workspace.yaml`<br>`apps/*/package.json` | **"자재 창고 관리자"** — `catalog:`에 정의된 버전을 해석해 각 앱의 `node_modules`에 패키지를 설치합니다. (코드 컴파일이나 번들링은 전혀 수행하지 않음) |
+| **2계층**<br>(다중 앱 지휘·캐싱) | **`Turborepo`** | `turbo.json` | **"오케스트라 지휘자"** — 루트에서 `pnpm build`나 `pnpm dev`를 실행하면 6개 앱의 `package.json` 스크립트를 병렬로 호출하고, 변경이 없는 앱은 캐시로 0.1초 만에 건너뜁니다. |
+| **3계층**<br>(번들링·페더레이션) | **`Vite` / `Rspack`** | `vite.config.ts`<br>`rsbuild.config.ts` | **"실제 연주자(컴파일러)"** — 각 앱 내부의 `.ts/.tsx` 코드를 브라우저가 실행할 수 있는 JS/CSS 청크와 Module Federation 컨테이너(`remoteEntry.js`, `mf-manifest.json`)로 변환합니다. |
+
+### 3.5 [핵심 Q&A] 왜 `package.json`에는 `"catalog:"`를 썼는데, `vite.config.ts`의 Module Federation 설정에는 `requiredVersion: '^19.1.0'`을 별도로 다시 적어주나요?
+
+[`apps/remote-shared/package.json`](../../apps/remote-shared/package.json)과 [`apps/remote-shared/vite.config.ts`](../../apps/remote-shared/vite.config.ts)를 비교해 보면 아래와 같이 버전 표기 방식이 다릅니다.
+
+* **`apps/remote-shared/package.json`**: `"react": "catalog:"`, `"@tanstack/react-query": "catalog:"`
+* **`apps/remote-shared/vite.config.ts` (`federation.shared`)**: `react: { singleton: true, requiredVersion: '^19.1.0' }`
+
+이렇게 두 곳에서 역할이 나뉘는 이유는 **패키지 매니저(`pnpm`)의 설치 시점**과 **번들러 플러그인(`@module-federation/vite`)의 빌드·런타임 시점**이 서로 다른 메커니즘으로 동작하기 때문입니다.
+
+1. **`"catalog:"`는 오직 `pnpm`만 이해하는 설치 전용 프로토콜입니다**:
+   - `pnpm install`을 실행할 때 `pnpm`은 `pnpm-workspace.yaml`의 `catalog:` 섹션을 조회해 실제 버전(`^19.1.0`)을 찾아 설치합니다.
+   - 하지만 디스크에 저장된 `apps/remote-shared/package.json` 텍스트 파일 자체에는 여전히 `"react": "catalog:"`라는 문자열이 그대로 남아 있습니다.
+2. **`@module-federation/vite` 플러그인은 `pnpm-workspace.yaml`의 `catalog:`를 알지 못합니다**:
+   - 번들러의 Module Federation 플러그인에서 `requiredVersion`을 생략하면, 플러그인은 단순히 해당 앱의 `package.json` 파일을 `JSON.parse`로 읽어서 `dependencies.react` 값을 그대로 가져오려 합니다.
+   - 이때 `package.json`에 적힌 `"catalog:"` 문자열이 그대로 추출되면, 최종 빌드 산출물(`remoteEntry.js`, `mf-manifest.json`)에 **`requiredVersion: "catalog:"`**라는 잘못된(유효하지 않은 SemVer) 값이 들어가 런타임 싱글톤 버전 협상(Version Negotiation) 시 파싱 에러나 경고가 발생합니다.
+3. **결론 (역할의 분리)**:
+   - **`package.json`의 `"catalog:"`**: **`pnpm`에게** "모든 마이크로 앱에 동일한 버전의 패키지를 설치하라"고 지시하는 **설치 시점(Install-time) 계약**입니다.
+   - **`vite.config.ts`의 `requiredVersion: '^19.1.0'`**: **Module Federation 런타임 컨테이너에게** "브라우저에서 호스트와 리모트가 만나 싱글톤을 공유할 때 이 SemVer 범위를 기준으로 호환성을 검증하라"고 알려주는 **런타임(Runtime) 계약**입니다.
+
 ---
 
 ## 4. TypeScript · Biome · Vitest 설정 및 실행 명령어

@@ -25,7 +25,7 @@
 | `apps/remote-shared/src/features/ui/ui-styles.css` | `.mfe-ui-*` 프리픽스 및 `var(--mfe-*)` 시맨틱 토큰 스타일시트 | `NEW` | `+387 / -0` | `일치` (전역 태그 선택자 0건, `:focus-visible`, `tabular-nums`, `min-width: 0` 적용) |
 | `apps/remote-shared/src/exposed/{utils,theme,ui}.ts` | Module Federation 3대 서브패스 공개 진입점 (`clsx` 재노출 포함) | `NEW` | `+103 / -0` | `일치` (`utils -> theme -> ui` 단방향 의존성 엄수) |
 | `apps/remote-shared/index.html`, `src/main.ts`, `src/bootstrap.tsx`, `src/App.tsx`, `src/__tests__/SharedShowcase.integration.test.tsx` | 비동기 부트스트랩 분리 및 `Port 3004` 단독 실행 쇼케이스 + 통합 테스트 | `NEW` | `+318 / -0` | `일치` (`TC-08` 아키텍처 정적 검증 및 쇼케이스 통합 검증 통과) |
-| `vitest.config.ts`, `GEMINI.md` | 루트 멀티 프로젝트 Vitest 연결 및 컴포넌트 분리·레지스트리 헌법 보강 | `MOD` | `+15 / -4` | `보완` (`node` + `jsdom` 멀티 프로젝트 통합 실행 및 프로젝트 헌법 명문화) |
+| `vitest.config.ts`, `scripts/verify-scope.mjs`, `GEMINI.md`, `docs/study/02-*.md` | 루트 멀티 프로젝트 Vitest, 크로스 플랫폼 스코프 검증 및 `exposed/` 아키텍처·헌법 보강 | `MOD` | `+66 / -11` | `보완` (`macOS` POSIX 경로 정규화, 멀티 프로젝트 통합 실행 및 학습 문서·헌법 명문화) |
 
 ### 1.2 핵심 데이터 흐름 및 입출력 요약 (`Data Flow & Contracts`)
 - **입력 데이터 (`Props` / `Event Payload` / `API Response`)**:
@@ -97,6 +97,8 @@
 2. **`jsdom` 환경에서 `Ark UI` `Splitter` 및 `Select` 포털 실행 시 브라우저 API(`ResizeObserver`, `Element.prototype.scrollTo`) 부재 이슈 발견** -> `src/testing/setup.ts`에 `MockResizeObserver`와 `Element.prototype.scrollTo` 폴리필 스텁 및 `afterEach(cleanup)` 포털 정리 훅을 등록하여 헤드리스 UI 상태 머신 테스트 안정성을 확보함 (해결 완료)
 3. **`Skeleton` 다건(`count > 1`) 렌더링 시 배열 인덱스 `key` 사용으로 인한 Biome `noArrayIndexKey` 린트 경고 발견** -> `skeleton-${variant}-slot-${slotNumber + 1}` 결정적 슬롯 키 배열을 생성하도록 개선하고, `count = 1`일 때는 불필요한 그룹 래퍼 `div` 없이 단일 엘리먼트를 반환하도록 최적화함 (해결 완료)
 4. **`formatCurrency`의 `-0` 입력 시 `"-0원"` 출력 가능성 및 SQLite 로컬 시간(`YYYY-MM-DD HH:mm:ss`) 파싱 호환성 보완** -> `Object.is(rounded, -0)` 정규화로 `"0원"` 반환을 보장하고, `parseSafeDate`에서 공백 구분 날짜 문자열을 ISO 형식(`T`)으로 자동 보정하여 백엔드 SQLite 타임스탬프와 완벽히 호환되도록 조치함 (해결 완료)
+5. **`macOS` (POSIX) 환경에서 Windows 드라이브 문자(`F:/...`) 경로 테스트 시 `path.resolve` 상대 경로 오인식 이슈 발견** -> `scripts/verify-scope.mjs`에서 대상 경로가 이미 워크스페이스 루트 프리픽스로 시작하는 경우 OS 플랫폼에 구애받지 않고 상대 경로를 정확히 도출하도록 크로스 플랫폼 정규화 로직을 보완함 (해결 완료)
+6. **Node.js `v24` + `jsdom` 환경에서 `AbortSignal` 프로토타입 불일치로 인한 `ky` + `MSW` 요청 에러 발견** -> DOM을 사용하지 않는 순수 네트워크 클라이언트 테스트인 `http-client.test.ts` 상단에 `@vitest-environment node` 지시어를 명시하여 Node 네이티브 `Request`/`AbortSignal` 환경에서 완벽히 동작하도록 조치함 (해결 완료)
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
 1. **`1 컴포넌트 = 1 파일` (`PascalCase.tsx`) 분리 및 `Ark UI` 원본 `Props` 기본 상속 구조**:

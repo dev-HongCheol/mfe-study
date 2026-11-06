@@ -2,6 +2,7 @@
  * @file http-client.test.ts
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed false
+ * @vitest-environment node
  * @description [TC-04 / EC-03] ky 기반 httpClient의 표준 응답 엔벨로프 언래핑, AbortSignal 취소 및 에러 정규화 테스트입니다.
  */
 import { http, HttpResponse } from 'msw';

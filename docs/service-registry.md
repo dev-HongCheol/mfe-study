@@ -13,7 +13,7 @@
 | :---: | :--- | :--- | :---: | :--- | :---: |
 | **`root`** | `mfe-study-root` | `.` | - | `Turborepo`, `Biome`, `Vitest`, `Node.js 22` | ✅ 완료 (`Phase 0`) |
 | **`api`** | `@mfe-study/api-server` | `apps/api-server` | `4000` | `Express 5`, `node:sqlite`, `Zod`, `Supertest` | ✅ 구현 완료 (`Step 1.1`) |
-| **`shared`** | `@mfe-study/remote-shared` | `apps/remote-shared` | `3004` | `Vite`, `React 19`, `@ark-ui/react`, `clsx` | ⏳ 대기 (`Step 1.2`) |
+| **`shared`** | `@mfe-study/remote-shared` | `apps/remote-shared` | `3004` | `Vite 7`, `React 19`, `@ark-ui/react v5`, `clsx` | ✅ 구현 완료 (`Step 1.2`) |
 | **`products`** | `@mfe-study/remote-products` | `apps/remote-products` | `3002` | `Vite`, `React 19`, `TanStack Query`, `ky` | ⏳ 대기 (`Step 1.3`) |
 | **`cart`** | `@mfe-study/remote-cart` | `apps/remote-cart` | `3003` | `Rspack (Rsbuild)`, `React 19`, `TanStack Query` | ⏳ 대기 (`Step 1.4`) |
 | **`host-vite`** | `@mfe-study/host-vite` | `apps/host-vite` | `3000` | `Vite`, `React 19`, `@module-federation/vite` | ⏳ 대기 (`Step 1.5`) |
@@ -75,9 +75,38 @@
 
 ---
 
-## 4. 프론트엔드 원격 모듈(`Remotes`) 및 호스트(`Hosts`) 현황 *(Step 1.2 ~ 1.5 진행 시 누적 기록)*
+## 4. 원격 공통 모듈 정본 (`Scope: shared` | `Port 3004` | `name: 'remote_shared'`)
 
-- **`remote-shared` (`Scope: shared` | `Port 3004`)**: *Step 1.2에서 `./ui`, `./theme`, `./utils` 노출 시그니처 및 명령어 등록 예정* ([계약 정본 `§ 5.3`](./features/20261027-phase1-service-contracts/01-plan-and-design.md))
+### 4.1 `remote-shared` 전용 실행·테스트·빌드 명령어
+| 목적 | 실행 명령어 (루트에서 실행 기준) | 동작 설명 |
+| :--- | :--- | :--- |
+| **개발 서버 기동** | `pnpm --filter @mfe-study/remote-shared dev` | `vite --port 3004 --strictPort`로 `http://localhost:3004` 단독 쇼케이스 및 MF 컨테이너 기동 |
+| **단독 TDD 테스트** | `pnpm --filter @mfe-study/remote-shared test` | `Vitest` (`jsdom` + `node`) 기반 단위·통합 테스트 18개 파일 / 25건 실행 |
+| **타입 검사 / 빌드** | `pnpm --filter @mfe-study/remote-shared typecheck`<br>`pnpm --filter @mfe-study/remote-shared build` | `tsc --noEmit` 검사 및 `dist/remoteEntry.js` · `dist/mf-manifest.json` 프로덕션 번들링 |
+| **프로덕션 프리뷰** | `pnpm --filter @mfe-study/remote-shared preview` | 빌드된 `dist/` 산출물을 `Port 3004`에서 서빙 |
+
+### 4.2 Module Federation 노출(`exposes`) 3대 서브패스 시그니처 요약
+> 내부 의존성은 무조건 **`./utils` (최하단) → `./theme` (중간) → `./ui` (최상단)** 단방향으로만 흐르며, 상세 타입은 [루트 계약 정본 `§ 5.3`](./features/20261027-phase1-service-contracts/01-plan-and-design.md) 및 [`apps/remote-shared` 설계서 `§ 5`](../apps/remote-shared/docs/features/20261102-ark-ui-and-utils/01-plan-and-design.md)를 참조합니다.
+
+| 노출 경로 (`import`) | 실제 진입 파일 | 노출 심볼 및 핵심 시그니처 요약 |
+| :--- | :--- | :--- |
+| **`remote_shared/ui`** | `src/exposed/ui.ts` | - **기본 컴포넌트 5종 (`HTMLArkProps` / `ArkSelect.RootProps` 기본 상속)**:<br>  - `Button` (`variant`, `size`, `isLoading`, `fullWidth`)<br>  - `Heading` (`level?: 1\|2\|3\|4\|5`)<br>  - `Select` (`options`, `value: string`, `onChange: (val: string) => void`, `ariaLabel`, `placeholder`, `label`)<br>  - `Skeleton` (`variant?: 'card'\|'text'\|'rect'`, `width`, `height`, `count`)<br>  - `Badge` (`tone?: 'brand'\|'success'\|'warning'\|'danger'\|'neutral'`)<br>- **인터랙티브 레이아웃 3종 (`Ark*.RootProps` 기본 상속)**:<br>  - `Splitter` (`panels: Array<{ id, content, minSize?, maxSize?, collapsible?, collapsedSize? }>`)<br>  - `Tabs` (`items: Array<{ value, label, content, disabled? }>`, `onChange?: (val: string) => void`)<br>  - `Collapsible` (`title`, `children`, `onOpenChange?: (open: boolean) => void`)<br>- **정적 레이아웃 5종 (`HTMLArkProps<'div'>` 기본 상속)**:<br>  - `Container` (`maxWidth`), `Grid` (`columns`, `gap`), `Flex` (`direction`, `align`, `justify`, `gap`, `wrap`), `Stack` (`gap`), `Card` (`padding`, `elevated`)<br>- **스타일 결합 유틸 재노출**: `clsx` |
+| **`remote_shared/theme`** | `src/exposed/theme.ts` | - `ThemeProvider` (`defaultTheme?: ThemeMode`, `children`), `useTheme()` (`{ theme, setTheme, availableThemes }`), `ThemeContext`<br>- `Z_INDEX_TOKENS` (`{ header: 100, dropdown: 200, drawer: 300, modal: 400, toast: 500 }`)<br>- `AVAILABLE_THEMES`, `applyThemeTokensToDocument(theme)`, `type ThemeMode` (`'indigo' \| 'emerald' \| 'rose' \| 'dark'`) |
+| **`remote_shared/utils`** | `src/exposed/utils.ts` | - **이벤트 버스**: `MFE_EVENTS`, `mfeEventBus` (`emit`, `subscribe`), `useMfeEvent(eventName, handler)`, `MFE_EVENT_SCHEMAS` 및 5대 이벤트 `Zod` 스키마·타입<br>- **스토리지**: `createScopedStorage(scopeId)` (`getItem`, `setItem`, `removeItem`, `clearScope`, `buildKey`)<br>- **통신 & 에러**: `httpClient`, `createApiClient(baseUrl)`, `unwrapApiResponse(promise, schema?)`, `DEFAULT_API_BASE_URL`, `normalizeError(err)`<br>- **쿼리 & 포맷터**: `sharedQueryClient`, `createMfeQueryClient()`, `CART_QUERY_KEY` (`['cart']`), `PRODUCTS_QUERY_KEY` (`['products']`), `formatCurrency(amount)`, `formatDate(dateStr, pattern?)`, `formatRelativeTime(dateStr, baseDate?)` |
+
+### 4.3 타 서비스(`products`, `cart`, `host-vite`, `host-rspack`) 필수 소비 규칙 5대 원칙
+1. **`@ark-ui/react` 및 `clsx` 직접 설치 금지**: 도메인 리모트와 호스트 앱의 `package.json`에는 `@ark-ui/react`나 `clsx`를 설치하지 않고, 반드시 `import { Button, Flex, clsx } from 'remote_shared/ui'`로 가져다 씁니다. *(단, 호스트의 `RemoteErrorBoundary` 폴백 UI만 `remote-shared` 서버 장애 시에도 동작하도록 순수 내장 스타일로 작성)*
+2. **수동 `window.addEventListener` 금지**: 마이크로 앱 간 커스텀 이벤트 수신 시 좀비 리스너 누수를 막기 위해 반드시 `remote_shared/utils`의 `useMfeEvent(MFE_EVENTS.*, handler)`를 사용합니다.
+3. **직접 `window.localStorage` 접근 금지**: 동일 Origin 내 키 충돌 및 JSON 오염을 방지하기 위해 반드시 `createScopedStorage('<scopeId>')`와 `Zod` 스키마를 사용합니다.
+4. **색상 `#hex` 및 임의 `z-index` 하드코딩 금지**: 모든 컴포넌트 스타일은 `var(--mfe-*)` 시맨틱 CSS 변수와 `Z_INDEX_TOKENS`(`var(--mfe-z-*)`) 계층만 사용합니다.
+5. **상태 동기화 비교 학습 모드(`Mode A` vs `Mode B`) 준수**:
+   - `Mode A ('mode-a-event')`: 각 앱이 `createMfeQueryClient()`로 생성한 독립 `QueryClient` 사용 + `mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, ...)` 신호로 재조회
+   - `Mode B ('mode-b-query')`: `remote_shared/utils`의 싱글톤 `sharedQueryClient` 공유 + `sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY })` 직접 무효화
+
+---
+
+## 5. 도메인 리모트(`products`, `cart`) 및 호스트(`host-*`) 현황 *(Step 1.3 ~ 1.5 진행 시 누적 기록)*
+
 - **`remote-products` (`Scope: products` | `Port 3002`)**: *Step 1.3에서 `./ProductList` 노출 시그니처 및 명령어 등록 예정* ([계약 정본 `§ 5.4.2`](./features/20261027-phase1-service-contracts/01-plan-and-design.md))
 - **`remote-cart` (`Scope: cart` | `Port 3003`)**: *Step 1.4에서 `./CartWidget` 노출 시그니처 및 명령어 등록 예정* ([계약 정본 `§ 5.4.3`](./features/20261027-phase1-service-contracts/01-plan-and-design.md))
 - **`host-vite` (`Port 3000`) & `host-rspack` (`Port 3001`)**: *Step 1.5에서 대시보드 및 `MfeInspector` 명령어 등록 예정*

@@ -137,10 +137,10 @@
 
 ## 5. [조건부 A] 프론트엔드 및 MFE 통합 검증 (`shared` 전용)
 - **적용 여부**: `적용`
-- [ ] **단독 실행(Standalone) 렌더링 검증**: `App.tsx` / `bootstrap.tsx` 마운트 시 쇼케이스와 실시간 테마 전환이 정상 동작하는가?
-- [ ] **3계층 단방향 의존성 및 `PascalCase.tsx` 분리 검증**: `./utils` → `./theme` → `./ui` 역참조가 0건이고 모든 컴포넌트가 개별 대문자 `.tsx` 파일로 분리되었는가?
-- [ ] **`Ark UI` 원본 `Props` 기본 상속 검증**: 13종 컴포넌트가 `Ark*.RootProps` 또는 `HTMLArkProps<*>`의 표준 속성을 투과 지원하는가?
-- [ ] **이벤트 버스·쿼리 캐시 및 접근성 검증**: `mfeEventBus`, `useMfeEvent`, `sharedQueryClient` 및 `aria-busy` / `role` 속성이 정상 동작하는가?
+- [x] **단독 실행(Standalone) 렌더링 검증**: `App.tsx` / `bootstrap.tsx` 마운트 시 쇼케이스와 실시간 테마 전환이 정상 동작하는가?
+- [x] **3계층 단방향 의존성 및 `PascalCase.tsx` 분리 검증**: `./utils` → `./theme` → `./ui` 역참조가 0건이고 모든 컴포넌트가 개별 대문자 `.tsx` 파일로 분리되었는가?
+- [x] **`Ark UI` 원본 `Props` 기본 상속 검증**: 13종 컴포넌트가 `Ark*.RootProps` 또는 `HTMLArkProps<*>`의 표준 속성을 투과 지원하는가?
+- [x] **이벤트 버스·쿼리 캐시 및 접근성 검증**: `mfeEventBus`, `useMfeEvent`, `sharedQueryClient` 및 `aria-busy` / `role` 속성이 정상 동작하는가?
 
 ---
 
@@ -150,7 +150,7 @@
 ---
 
 ## 7. 최종 완료 및 머지 전 체크리스트 — `[공통 필수]`
-- [ ] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가?
-- [ ] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
-- [ ] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
-- [ ] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-shared/docs/todo.md`, 그리고 [`docs/service-registry.md`](../../../../../docs/service-registry.md)(타 서비스 노출·소비 규칙 포함)를 최신 상태로 업데이트했는가?
+- [x] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가?
+- [x] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
+- [x] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
+- [x] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-shared/docs/todo.md`, 그리고 [`docs/service-registry.md`](../../../../../docs/service-registry.md)(타 서비스 노출·소비 규칙 포함)를 최신 상태로 업데이트했는가?
