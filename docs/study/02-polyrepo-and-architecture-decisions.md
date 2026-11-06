@@ -210,8 +210,9 @@
 | 비교 항목 | **Vite / Rspack (CSR 대시보드·어드민 MFE)**<br>*(본 프로젝트 실습 아키텍처)* | **Next.js App Router (SSR/RSC 커머스·포털 MFE)**<br>*(최신 Next.js 실무 표준)* |
 | :--- | :--- | :--- |
 | **핵심 결합 단위** | **컴포넌트 단위 런타임 조립 (`Module Federation 2.0`)**<br>한 화면 안에서 `ProductList`, `CartWidget` 등을 브라우저 런타임에 네트워크로 불러와 실시간 합성 | **URL 경로 단위 분리 (`Multi-Zones`)**<br>`next.config.ts`의 `rewrites`로 `/`는 메인 레포, `/products/*`는 상품 레포가 각각 독립 SSR/RSC 처리 *(과거 Pages Router용 `@module-federation/nextjs-mf`는 RSC 미지원으로 공식 종료)* |
-| **공통 디자인 시스템(`shared`) 공유** | 브라우저 런타임에 `remote-shared(3004)` 서버에서 네트워크로 로드 (`remote_shared/ui`) | 서버(Node.js)에서 먼저 HTML을 그려야 하므로, 사내 Private NPM(GitHub Packages, Verdaccio 등)에 `@company/ui` 패키지로 배포 후 각 레포에서 버전 지정 설치 |
-| **원격 타입(`.d.ts`) 동기화** | 공급자 서버(`3004`)가 서빙하는 **`@mf-types.zip`을 외부 URL에서 다운로드해 내 앱의 `./@mf-types/` 폴더에 자동 압축 해제** (`tsconfig.json` `paths` 연결) | 사내 NPM 패키지(`@company/ui`) 설치 시 `node_modules` 안에 JS 코드와 `.d.ts`가 세트로 들어오므로 **별도 원격 서버 기동 없이 즉시 해결** (API 타입은 `OpenAPI codegen` 활용) |
+| **공통 디자인 시스템(`shared`) 공유** | 브라우저 런타임에 `remote-shared(3004)` 서버에서 네트워크로 로드 (`remote_shared/ui`) | RSC 구조상 브라우저 런타임 MF가 제한되어 사내 Private NPM(`@company/ui`) 버전 설치(빌드 타임 결합)로 타협하거나, `'use client'` 아일랜드 영역만 원격 마운트 |
+| **원격 타입(`.d.ts`) 동기화** | 공급자 서버(`3004`)가 서빙하는 **`@mf-types.zip`을 외부 URL에서 다운로드해 내 앱의 `./@mf-types/` 폴더에 자동 압축 해제** (`tsconfig.json` `paths` 연결) | 사내 NPM 패키지(`@company/ui`) 설치 시 `node_modules` 안에 JS 코드와 `.d.ts`가 세트로 들어오므로 별도 서버 없이 해결 (단, 공통 UI 수정 시 각 앱 재빌드·재배포 필요) |
+| **재빌드 없는 진짜 '런타임 SSR MFE' 대안** | `N/A (순수 CSR 런타임 조립)` | ① **Node.js 서버 사이드 런타임 MF (`@module-federation/node` / `Modern.js` / `Rsbuild SSR`)**: 호스트 Node.js 서버가 원격 `ssr/remoteEntry.js`를 런타임에 `fetch`·실행하여 SSR HTML 생성<br>② **SSR HTML Fragment 스트리밍 조립 (`Podium`, `Tailor`, `Edge Workers`)**: 각 마이크로 앱 서버가 렌더링된 HTML 조각을 서빙하고 게이트웨이/호스트가 스트림 합성 |
 
 ---
 
