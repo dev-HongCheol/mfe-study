@@ -24,7 +24,10 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- *(현재 진행 중인 작업이 없습니다)*
+- [-] **[`20261106-enable-mf-types`](./features/20261106-enable-mf-types/01-plan-and-design.md)**: [Phase 1 - Step 1.2 보강] Module Federation 2.0 정식 원격 타입(`@mf-types.zip`) 생성·서빙(`generateTypes: true`) 활성화 (`Port 3004`)
+  - **작업 브랜치**: `shared/feat/enable-mf-types`
+  - **설계 문서**: [01-plan-and-design.md](./features/20261106-enable-mf-types/01-plan-and-design.md)
+  - **TDD 명세**: [02-tdd-spec.md](./features/20261106-enable-mf-types/02-tdd-spec.md)
 
 ---
 

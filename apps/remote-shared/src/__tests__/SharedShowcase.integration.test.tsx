@@ -87,4 +87,13 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     await user.click(darkBtn);
     expect(document.documentElement.getAttribute('data-mfe-theme')).toBe('dark');
   });
+
+  it('4) vite.config.ts에 Module Federation @mf-types 원격 타입 자동 생성(generateTypes: true)이 활성화되어 있어야 한다 (Study 04 #04)', () => {
+    const viteConfigPath = resolve(srcRoot, '../vite.config.ts');
+    const viteConfigCode = readFileSync(viteConfigPath, 'utf-8');
+
+    expect(viteConfigCode).not.toContain('dts: false');
+    expect(viteConfigCode).toContain('generateTypes: true');
+    expect(viteConfigCode).toContain("tsConfigPath: './tsconfig.json'");
+  });
 });

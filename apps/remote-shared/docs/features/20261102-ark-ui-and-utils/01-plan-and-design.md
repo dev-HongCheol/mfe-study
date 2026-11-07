@@ -50,7 +50,7 @@
 ## 3. 최신 기술 스펙 확인 요약 (`Context7` MCP) — `[공통 필수]`
 - **조회 대상 라이브러리**: `@module-federation/vite` (`/module-federation/vite`, `v1.23.7`), `@ark-ui/react` (`/websites/ark-ui` & `/chakra-ui/ark`, `v5.40.0`), `Vite` (`v7.3.7` — 루트 `vitest@3.2.7` 내장 Vite와 동일 버전)
 - **핵심 스펙 및 주의사항**:
-  1. **`@module-federation/vite` 서브패스 노출 및 매니페스트**: `federation({ name: 'remote_shared', filename: 'remoteEntry.js', manifest: true, dts: false, exposes: { './ui', './theme', './utils' }, shared: { react, 'react-dom', '@tanstack/react-query' } })` 설정으로 Vite(`3000`)와 Rspack(`3001`) 호스트 양쪽 호환 `mf-manifest.json`을 생성합니다.
+  1. **`@module-federation/vite` 서브패스 노출 및 매니페스트·원격 타입(`@mf-types`)**: `federation({ name: 'remote_shared', filename: 'remoteEntry.js', manifest: true, dts: { generateTypes: true, tsConfigPath: './tsconfig.json' }, exposes: { './ui', './theme', './utils' }, shared: { react, 'react-dom', '@tanstack/react-query' } })` 설정으로 Vite(`3000`)와 Rspack(`3001`) 호스트 양쪽 호환 `mf-manifest.json` 및 `@mf-types.zip`을 생성합니다.
   2. **`Vitest 3.2` ↔ `Vite 7.3` 버전 정렬**: `vite@^7.3.7` + `@vitejs/plugin-react@^5.2.0` 조합으로 플러그인 타입 충돌을 차단합니다.
   3. **`@ark-ui/react` v5 원본 `RootProps` 및 `HTMLArkProps` 활용**:
      - 상태 머신 4종(`Select`, `Splitter`, `Tabs`, `Collapsible`)은 각각 `Select.RootProps<SelectOptionItem>`, `Splitter.RootProps`, `Tabs.RootProps`, `Collapsible.RootProps`를 `Omit`으로 상속하고 나머지 속성(`...rest`)을 `<Ark*.Root {...rest}>`에 그대로 투과합니다.
