@@ -1,8 +1,8 @@
 {
-  "scope": "root",
-  "path": ".",
-  "branch": "root/docs/mf-types-contract",
-  "featureDir": "docs/features/20261027-phase1-service-contracts",
+  "scope": "shared",
+  "path": "apps/remote-shared",
+  "branch": "shared/feat/enable-mf-types",
+  "featureDir": "apps/remote-shared/docs/features/20261106-enable-mf-types",
   "currentStep": 5,
-  "isDocsOnly": true
+  "isDocsOnly": false
 }

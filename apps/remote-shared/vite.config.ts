@@ -30,7 +30,10 @@ export default defineConfig({
       name: 'remote_shared',
       filename: 'remoteEntry.js',
       manifest: true,
-      dts: false,
+      dts: {
+        generateTypes: true,
+        tsConfigPath: './tsconfig.json',
+      },
       exposes: {
         './ui': './src/exposed/ui.ts',
         './theme': './src/exposed/theme.ts',
