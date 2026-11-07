@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[Phase 1 - Step 1.2 보강] `remote-shared` Module Federation 2.0 정식 원격 타입(`@mf-types.zip`, `dts.generateTypes: true`) 생성·서빙 활성화 완료** (`apps/remote-shared`, `docs/service-registry.md`)
   - **[Phase 1 - Step 1.2] 원격 공통 디자인 시스템(`Ark UI`), 실시간 4종 테마 & MFE 공통 유틸리티 구축 완료** (`apps/remote-shared`, `docs/service-registry.md`)
   - **[Phase 1 - Step 1.1] 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축 완료** (`apps/api-server`, `docs/service-registry.md`)
   - **[Phase 1 - Step 1.0] Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props · `@mf-types` 원격 타입 동기화) 정본 설계 및 머지 완료** (`docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`)
@@ -62,9 +63,9 @@
 - [x] **Step 1.1: 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축** (`Scope: api` | `Branch: api/feat/sqlite-and-rest-api`)
   - 문서 경로: `apps/api-server/docs/todo.md` 및 `apps/api-server/docs/features/20261031-sqlite-and-rest-api/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - DB 3종 SQL (`01-schema.sql`, `02-reset-seed.sql`, `03-drop-all.sql` + `_schema_comments` + `.sql-hashes.json`) 및 REST API TDD 구현 완료 (`Port 4000`, `docs/service-registry.md` 신설)
-- [x] **Step 1.2: 원격 공통 디자인 시스템 & 유틸리티 구축** (`Scope: shared` | `Branch: shared/feat/ark-ui-and-utils`)
-  - 문서 경로: `apps/remote-shared/docs/todo.md` 및 `apps/remote-shared/docs/features/20261102-ark-ui-and-utils/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
-  - `Ark UI (@ark-ui/react)` 캡슐화 컴포넌트(`Button`, `Heading(H1~H5)`, `Select`, `Skeleton`, `Badge`), 공통 레이아웃(`Container`, `Grid`, `Flex`, `Stack`, `Card`, `Splitter`, `Tabs`, `Collapsible`), 실시간 테마(`Indigo`/`Emerald`/`Rose`/`Dark`), 공통 유틸리티(`mfeEventBus`, `useMfeEvent`, `createScopedStorage`, `formatCurrency`, `formatDate`, `httpClient`, `sharedQueryClient`) TDD 구현 및 노출 완료 (`Port 3004` / Vite, `docs/service-registry.md` 반영)
+- [x] **Step 1.2: 원격 공통 디자인 시스템 & 유틸리티 구축** (`Scope: shared` | `Branch: shared/feat/ark-ui-and-utils`, `shared/feat/enable-mf-types`)
+  - 문서 경로: `apps/remote-shared/docs/todo.md`, `apps/remote-shared/docs/features/20261102-ark-ui-and-utils/` 및 `apps/remote-shared/docs/features/20261106-enable-mf-types/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
+  - `Ark UI (@ark-ui/react)` 캡슐화 컴포넌트(`Button`, `Heading(H1~H5)`, `Select`, `Skeleton`, `Badge`), 공통 레이아웃(`Container`, `Grid`, `Flex`, `Stack`, `Card`, `Splitter`, `Tabs`, `Collapsible`), 실시간 테마(`Indigo`/`Emerald`/`Rose`/`Dark`), 공통 유틸리티(`mfeEventBus`, `useMfeEvent`, `createScopedStorage`, `formatCurrency`, `formatDate`, `httpClient`, `sharedQueryClient`) 및 Module Federation 2.0 정식 원격 타입 아카이브(`@mf-types.zip`, `dts.generateTypes: true`) TDD 구현·노출 완료 (`Port 3004` / Vite, `docs/service-registry.md` 반영)
 - [ ] **Step 1.3: 상품 목록 원격 앱 구축** (`Scope: products` | `Branch: products/feat/catalog-list`)
   - 문서 경로: `apps/remote-products/docs/todo.md` 및 `apps/remote-products/docs/features/YYYYMMDD-catalog-list/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - `./ProductList` 컴포넌트, 장바구니 담기 **비교 학습 모드(`Mode A: 리모트별 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)** 지원, 단독 실행(Standalone) 화면 TDD 구현 (`Port 3002` / Vite)
