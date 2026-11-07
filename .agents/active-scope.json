@@ -1,8 +1,8 @@
 {
-  "scope": "shared",
-  "path": "apps/remote-shared",
-  "branch": "shared/feat/enable-mf-types",
-  "featureDir": "apps/remote-shared/docs/features/20261106-enable-mf-types",
+  "scope": "products",
+  "path": "apps/remote-products",
+  "branch": "products/feat/catalog-list",
+  "featureDir": "apps/remote-products/docs/features/20261107-catalog-list",
   "currentStep": 5,
   "isDocsOnly": false
 }
