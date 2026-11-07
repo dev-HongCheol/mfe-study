@@ -42,6 +42,7 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
         targetPath: 'F:/work/mfe-study/apps/remote-products/src/exposed/ProductList.tsx',
         workspaceRoot: 'F:/work/mfe-study',
         activeScope: productsScope,
+        currentBranch: 'products/feat/catalog-list',
       });
       expect(appFileResult.decision).toBe('allow');
 
@@ -50,6 +51,7 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
         targetPath: 'F:/work/mfe-study/todo.md',
         workspaceRoot: 'F:/work/mfe-study',
         activeScope: productsScope,
+        currentBranch: 'products/feat/catalog-list',
       });
       expect(rootTodoResult.decision).toBe('allow');
     });
@@ -59,11 +61,24 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
         targetPath: 'F:/work/mfe-study/apps/remote-cart/src/exposed/CartWidget.tsx',
         workspaceRoot: 'F:/work/mfe-study',
         activeScope: productsScope,
+        currentBranch: 'products/feat/catalog-list',
       });
 
       expect(crossAppResult.decision).toBe('deny');
       expect(crossAppResult.reason).toContain('products');
       expect(crossAppResult.reason).toContain('apps/remote-cart');
+    });
+
+    it('EC-04: 현재 Git 브랜치가 main 또는 master일 때는 전역 허용 파일을 포함해 모든 파일 수정을 deny로 차단해야 한다', () => {
+      const mainBranchWriteResult = evaluateScopeAccess({
+        targetPath: 'F:/work/mfe-study/docs/features/20261107-test/01-plan-and-design.md',
+        workspaceRoot: 'F:/work/mfe-study',
+        activeScope: productsScope,
+        currentBranch: 'main',
+      });
+
+      expect(mainBranchWriteResult.decision).toBe('deny');
+      expect(mainBranchWriteResult.reason).toContain('main');
     });
   });
 
@@ -105,11 +120,12 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
       });
       const step5Msg = step5Output.injectSteps?.[0]?.ephemeralMessage ?? '';
       expect(step5Msg).toContain('Argon High');
+      expect(step5Msg).toContain('PR 생성까지만');
     });
   });
 
-  describe('EC-02: 머지 직전 todo.md 업데이트 검증 및 main 무단 푸시 차단 (verify-todo-before-merge.mjs)', () => {
-    it('EC-02: git merge 실행 시 todo.md가 변경 목록에 없으면 deny를 반환하고, 업데이트되었으면 allow를 반환해야 한다', () => {
+  describe('EC-02, EC-05, EC-06: PR 생성·머지 동시 실행 차단 및 머지 직전 커밋된 TODO 검증 (verify-todo-before-merge.mjs)', () => {
+    it('EC-02 & TC-06: git merge / gh pr merge 실행 시 커밋된 변경 목록에 todo.md가 없으면 deny, 커밋 완료되고 워킹 트리가 깨끗하면 allow를 반환해야 한다', () => {
       // 1) 마이크로 앱(products) 머지 시 루트 todo.md만 수정하고 앱 docs/todo.md를 누락한 경우 -> 차단
       const missingAppTodo = evaluateTodoBeforeMerge({
         commandLine: 'git merge products/feat/catalog-list',
@@ -120,12 +136,13 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
           featureDir: 'apps/remote-products/docs/features/20261022-catalog-list',
           currentStep: 5,
         },
-        modifiedFiles: ['todo.md', 'apps/remote-products/src/exposed/ProductList.tsx'],
+        committedFiles: ['todo.md', 'apps/remote-products/src/exposed/ProductList.tsx'],
+        uncommittedFiles: [],
       });
       expect(missingAppTodo.decision).toBe('deny');
       expect(missingAppTodo.reason).toContain('apps/remote-products/docs/todo.md');
 
-      // 2) 루트(root) 스코프 머지 시 루트 todo.md 1개만 수정되어 있어도 정상 허용
+      // 2) 루트(root) 스코프 머지 시 루트 todo.md가 커밋 완료되고 미커밋 파일이 없으면 정상 허용
       const validRootMerge = evaluateTodoBeforeMerge({
         commandLine: 'git merge root/chore/init-workspace-harness',
         activeScope: {
@@ -135,9 +152,44 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
           featureDir: 'docs/features/20261022-init-workspace-harness',
           currentStep: 5,
         },
-        modifiedFiles: ['todo.md', 'GEMINI.md'],
+        committedFiles: ['todo.md', 'GEMINI.md'],
+        uncommittedFiles: [],
       });
       expect(validRootMerge.decision).toBe('allow');
+    });
+
+    it('EC-05: 한 명령줄에서 gh pr create와 gh pr merge(또는 git merge)를 동시에 실행하려 하면 즉시 deny로 차단해야 한다', () => {
+      const combinedPrAndMerge = evaluateTodoBeforeMerge({
+        commandLine: 'gh pr create --title "feat: test" --body "ok" ; gh pr merge --merge',
+        activeScope: {
+          scope: 'root',
+          path: '.',
+          branch: 'root/chore/refine-workflow-gates',
+          featureDir: 'docs/features/20261107-refine-workflow-gates',
+          currentStep: 5,
+        },
+        committedFiles: ['todo.md', 'GEMINI.md'],
+        uncommittedFiles: [],
+      });
+      expect(combinedPrAndMerge.decision).toBe('deny');
+      expect(combinedPrAndMerge.reason).toContain('PR 생성');
+    });
+
+    it('EC-06: 워킹 트리에 아직 커밋되지 않은 변경사항(uncommittedFiles)이 남아 있는 상태에서 머지를 시도하면 deny로 차단해야 한다', () => {
+      const dirtyTreeMerge = evaluateTodoBeforeMerge({
+        commandLine: 'gh pr merge 7 --merge',
+        activeScope: {
+          scope: 'products',
+          path: 'apps/remote-products',
+          branch: 'products/feat/catalog-list',
+          featureDir: 'apps/remote-products/docs/features/20261107-catalog-list',
+          currentStep: 5,
+        },
+        committedFiles: ['apps/remote-products/src/exposed/ProductList.tsx'],
+        uncommittedFiles: ['todo.md', 'apps/remote-products/docs/todo.md'],
+      });
+      expect(dirtyTreeMerge.decision).toBe('deny');
+      expect(dirtyTreeMerge.reason).toContain('커밋');
     });
   });
 

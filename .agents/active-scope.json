@@ -1,8 +1,8 @@
 {
-  "scope": "shared",
-  "path": "apps/remote-shared",
-  "branch": "shared/feat/enable-mf-types",
-  "featureDir": "apps/remote-shared/docs/features/20261106-enable-mf-types",
+  "scope": "root",
+  "path": ".",
+  "branch": "root/chore/refine-workflow-gates",
+  "featureDir": "docs/features/20261107-refine-workflow-gates",
   "currentStep": 5,
   "isDocsOnly": false
 }

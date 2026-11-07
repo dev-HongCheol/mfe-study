@@ -10,24 +10,25 @@
 
 ```mermaid
 flowchart TD
-    S1["1단계 [🔴 Argon High]: TODO 로드 및 기획·설계서 작성<br/>- 훅이 루트 todo.md 및 앱 docs/todo.md 자동 로드<br/>- Context7 최신 스펙 확인 및 작업 범위 분리 검토<br/>- features/YYYYMMDD-작업명/01-plan-and-design.md 작성<br/>🔔 완료 후 Argon Medium 전환 알림"]
-    S2["2단계 [🟡 Argon Medium]: TDD 명세서 작성·스코프 선정 및 사용자 승인<br/>- features/YYYYMMDD-작업명/02-tdd-spec.md 작성<br/>- 사용자 승인 시 브랜치 생성 및 .agents/active-scope.json 잠금"]
+    S1["1단계 [🔴 Argon High]: 브랜치 선생성·전환 & 스코프 잠금 후 기획·설계서 작성<br/>- main에서 먼저 작업 브랜치 생성·전환 및 .agents/active-scope.json 설정<br/>- 루트 todo.md, service-registry.md, 앱 docs/todo.md 확인 및 Context7 조회<br/>- features/YYYYMMDD-작업명/01-plan-and-design.md 작성<br/>🔔 완료 후 Argon Medium 전환 알림"]
+    S2["2단계 [🟡 Argon Medium]: TDD 명세서 작성 및 사용자 구현 승인 게이트<br/>- features/YYYYMMDD-작업명/02-tdd-spec.md 작성<br/>- 사용자 구현 승인 전까지 본 코드 작성 금지"]
     S3["3단계 [🟡 Argon Medium]: 실패하는 테스트 코드 먼저 작성 (Red)<br/>- 승인된 02-tdd-spec.md 기반으로 Vitest 테스트 작성<br/>- 테스트 실행 후 의도된 실패(Red) 확인"]
     S4["4단계 [🟡 Argon Medium]: 본 코드 및 3종 SQL 구현 (Green & Refactor)<br/>- 테스트를 통과(Green)하는 코드 및 SQL 구현<br/>- 6대 주석 원칙 준수 & PostToolUse 훅으로 Biome 자동 포맷팅<br/>🔔 완료 후 Argon High 전환 알림"]
-    S5["5단계 [🔴 High 리뷰 -> 🟡 Medium 마무리]: 코드 리뷰 -> PR 보고 -> 머지<br/>- [High] 03-code-review.md로 보안·MFE 14대·서비스 16대 이슈 정밀 감사<br/>- [Medium] pull-request.template.md 기반 PR 보고 및 머지 직전 todo.md 업데이트"]
+    S5A["5단계-A [🔴 Argon High]: 심층 코드 리뷰 및 PR 초안 보고<br/>- 03-code-review.md 작성 및 PR 초안·커밋 메시지 보고<br/>- ⚠️ 머지 동시 요청 금지 (오직 'PR 생성 승인'만 요청)"]
+    S5B["5단계-B [🟡 Argon Medium]: 커밋·푸시 및 PR 생성 후 즉시 정지 (STOP)<br/>- gh pr create 실행까지만 수행 후 반드시 턴 종료<br/>- 사용자가 GitHub에서 PR을 직접 확인하고 머지 여부를 결정할 때까지 대기"]
+    S5C["5단계-C [🟡 Argon Medium]: 별도 머지 승인 후 TODO·레지스트리 커밋 및 머지<br/>- 별도 머지 승인 직후 todo.md, 앱 docs/todo.md, service-registry.md 커밋·푸시<br/>- gh pr merge 실행 후 로컬 main 브랜치 동기화"]
 
-    S1 --> S2 --> S3 --> S4 --> S5
+    S1 --> S2 --> S3 --> S4 --> S5A --> S5B --> S5C
 ```
 
 ### 단계별 핵심 체크포인트
-1. **왜 1단계에서 `todo.md`를 가장 먼저 읽나요?**
-   - 매번 에이전트가 프로젝트의 수십 개 파일을 뒤지며 *"지금 어디까지 했지?"*를 추론하면 시간과 토큰이 낭비되고 누락이 발생할 수 있습니다.
-   - 대신 문서화된 [`todo.md`](../../todo.md)와 각 앱의 `docs/todo.md`를 훅으로 가장 먼저 읽게 하면 즉시 현재 위치와 목표를 100% 정확하게 파악합니다.
-2. **왜 2단계에서 사용자 승인 후에 스코프를 잠그나요 (`Scope Lock`)?**
-   - 설계와 TDD 명세가 승인되기 전에는 본 코드를 건드리지 못하게 막고, 승인이 떨어지면 **선정된 단일 서비스 폴더(예: `apps/remote-products`)만 수정할 수 있도록** `.agents/active-scope.json`에 기록하여 물리적 멀티레포와 동일한 작업 격리를 강제하기 위해서입니다.
-3. **왜 5단계에서 '머지 승인 직후, 실제 머지 직전'에 `todo.md`를 업데이트하나요?**
-   - 구현 중간에 미리 완료 체크(`[x]`)를 해버리면 리뷰 과정에서 수정이나 반려가 생겼을 때 문서 상태가 꼬이고, 반대로 머지한 뒤에 업데이트하려 하면 별도의 추가 커밋이 발생합니다.
-   - 따라서 **PR 초안을 보고해 사용자가 최종 머지를 승인한 직후 → 실제 머지 명령을 실행하기 바로 직전**에 `todo.md`를 업데이트하고 함께 머지하는 것이 가장 깔끔합니다.
+1. **왜 1단계 문서 작성 전에 반드시 작업 브랜치를 먼저 만들고 스코프를 잠그나요 (`Branch & Scope Lock`)?**
+   - 설계서(`01`)나 TDD 명세서(`02`)를 `main` 브랜치 위에서 작성하면 `main` 워킹 트리가 오염되거나 브랜치 분기 시점이 꼬이게 됩니다.
+   - 따라서 **새 작업을 시작할 때는 어떤 파일도 수정하기 전에 반드시 `main`에서 작업 브랜치를 먼저 생성·전환하고 `.agents/active-scope.json`을 설정**합니다. 만약 실수로 `main` 브랜치 위에서 파일 생성·수정을 시도하면 `verify-scope.mjs` 훅이 즉시 차단합니다.
+2. **왜 5단계를 `PR 생성 후 정지(5-B)`와 `별도 승인 후 머지(5-C)`로 엄격히 분리하나요?**
+   - 에이전트가 PR 생성과 머지를 한 번에 묶어서 실행해 버리면, 승인자(사용자)가 GitHub PR 화면에서 전체 변경분(Diff)과 리뷰 문서를 직접 검토하고 반려·보완을 지시할 기회가 사라집니다.
+   - 따라서 **5단계-B에서는 반드시 `gh pr create`(PR 생성)까지만 수행하고 즉시 턴을 종료**하며, `verify-todo-before-merge.mjs` 훅이 `gh pr create`와 `gh pr merge`를 한 명령줄에 묶어 실행하는 시도를 기계적으로 차단합니다.
+   - 이후 사용자가 PR을 검토하고 **별도로 머지를 승인했을 때(`5단계-C`)에만** 루트 `todo.md`, 앱 `docs/todo.md`, `docs/service-registry.md`를 업데이트해 먼저 커밋·푸시한 뒤 실제 머지를 수행합니다.
 4. **왜 단계별로 `Argon High`와 `Argon Medium` 모델을 번갈아 사용하며, 어떻게 훅으로 알림을 받나요?**
    - 실제 작업에서 **토큰 소모량의 약 70% 이상은 긴 테스트 코드, 본 코드, JSDoc 주석을 타이핑하는 2~4단계**에서 발생합니다. 이 구간은 이미 1단계에서 완성된 설계서를 보고 구현하는 정형화된 작업이므로 `Argon Medium`으로 진행하면 품질 저하 없이 토큰을 절반 이하로 절약할 수 있습니다.
    - 반면 **깊은 추론과 비판적 검증이 필요한 1단계(기획·설계)와 5단계 전반부(`03-code-review.md` 보안·실전 이슈 정밀 감사)**에만 `Argon High`를 집중 투입합니다.
@@ -57,11 +58,13 @@ flowchart TD
 
 ### 3.2 `PreToolUse` — 작업 스코프 강제 게이트 & 머지 전 TODO 검증 (`verify-scope.mjs` / `verify-todo-before-merge.mjs`)
 * **언제 실행되나요?**: 에이전트가 파일 생성·수정 도구(`write_file`, `edit_file`)나 터미널 명령 도구(`run_command`)를 실행하기 **바로 직전**에 실행됩니다.
-* **핵심 동작 1 — 물리적 멀티레포 스코프 격리 (`verify-scope.mjs`)**:
-  - 현재 `.agents/active-scope.json`에 설정된 서비스가 `products`(`apps/remote-products`)인데, 에이전트가 실수로 `apps/remote-cart`나 `apps/host-vite`의 파일을 수정하려 하면 즉시 **`"decision": "deny"`(차단)**를 반환합니다.
-  - **전역 예외 허용 (`Global Whitelist`)**: 단, 전체 워크플로우나 프로젝트 공통 설정에 해당하는 파일들(`todo.md`, `GEMINI.md`, `docs/**`, `.agents/**`, `scripts/**`, 루트 `package.json`, `biome.json`, `turbo.json`, `lefthook.yml`, `tsconfig.base.json` 등)은 현재 어떤 스코프가 선택되어 있든 언제든 수정할 수 있도록 예외로 허용합니다.
-* **핵심 동작 2 — 머지 직전 TODO 업데이트 확인 (`verify-todo-before-merge.mjs`)**:
-  - 에이전트가 `git merge`나 PR 머지 명령을 실행하려 할 때, 현재 브랜치에서 루트 `todo.md` 및 해당 서비스의 `docs/todo.md`가 수정되었는지 확인합니다. 만약 TODO 문서를 업데이트하지 않고 머지하려 하면 이를 차단하고 먼저 TODO를 업데이트하도록 안내합니다.
+* **핵심 동작 1 — `main` 직접 수정 차단 및 물리적 멀티레포 스코프 격리 (`verify-scope.mjs`)**:
+  - 현재 체크아웃된 Git 브랜치가 `main` 또는 `master`일 경우, 문서를 포함한 모든 파일 생성·수정을 즉시 **`"decision": "deny"`(차단)**하여 작업 브랜치 선생성을 강제합니다.
+  - 또한 `.agents/active-scope.json`에 설정된 서비스가 `products`(`apps/remote-products`)인데, 에이전트가 실수로 `apps/remote-cart`나 `apps/host-vite`의 파일을 수정하려 하면 즉시 차단합니다.
+  - **전역 예외 허용 (`Global Whitelist`)**: 단, 작업 브랜치 위에서는 전체 워크플로우나 프로젝트 공통 설정에 해당하는 파일들(`todo.md`, `GEMINI.md`, `docs/**`, `.agents/**`, `scripts/**`, 루트 `package.json`, `biome.json`, `turbo.json`, `lefthook.yml`, `tsconfig.base.json` 등)을 언제든 수정할 수 있도록 허용합니다.
+* **핵심 동작 2 — PR 생성·머지 동시 실행 차단 및 머지 직전 커밋된 TODO 검증 (`verify-todo-before-merge.mjs`)**:
+  - 에이전트가 한 명령줄에서 `gh pr create`와 `gh pr merge`(`git merge`)를 동시에 실행하려 하면 **즉시 차단**하여, 반드시 PR 생성 후 턴을 종료하고 사용자의 별도 PR 검토·머지 승인을 거치도록 강제합니다.
+  - 별도 머지 승인 후 머지 명령을 실행할 때에는 워킹 트리에 미커밋 파일이 없는지 확인하고, 현재 브랜치 커밋 내역에 루트 `todo.md` 및 해당 서비스의 `docs/todo.md` 업데이트가 반영되어 있는지 검증합니다.
 
 ### 3.3 `PostToolUse` — 파일 저장 직후 자동 포맷팅 (`auto-format.mjs`)
 * **언제 실행되나요?**: 에이전트가 `write_file`이나 `edit_file`로 코드 파일을 생성·수정한 **직후**에 실행됩니다.

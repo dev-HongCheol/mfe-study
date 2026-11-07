@@ -60,4 +60,5 @@
 ## 6. 머지 전 최종 체크리스트 (Pre-Merge Checklist)
 - [ ] 작업 스코프(`.agents/active-scope.json`) 외 타 서비스 폴더 수정이 없는지 확인했는가?
 - [ ] 코드 변경에 맞춰 관련 JSDoc 주석 및 문서가 최신화되었는가?
-- [ ] **(머지 승인 직후 필수)** 실제 머지 실행 직전에 루트 [`todo.md`](../../todo.md) 및 해당 앱의 `docs/todo.md` 진행 상태를 업데이트했는가?
+- [ ] **(5단계-B 필수)** `gh pr create`로 PR 생성까지만 수행한 뒤 즉시 멈추어 사용자의 PR 확인 및 별도 머지 결정을 대기했는가?
+- [ ] **(5단계-C 별도 머지 승인 직후 필수)** 실제 머지 실행 직전에 루트 [`todo.md`](../../todo.md), 해당 앱의 `docs/todo.md` 및 [`docs/service-registry.md`](../service-registry.md) 진행 상태를 업데이트하여 커밋·푸시했는가?
