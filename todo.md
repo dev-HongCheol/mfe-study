@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[하네스 & 워크플로우 보강] 1단계 착수 전 작업 브랜치 선생성 강제(`Branch Gate`) 및 5단계 PR 생성·머지 분리(`5-A / 5-B / 5-C`, `PR Gate`) 하네스 구축 완료** (`GEMINI.md`, `Study 03`, `scripts/verify-scope.mjs`, `scripts/verify-todo-before-merge.mjs`)
   - **[Phase 1 - Step 1.2 보강] `remote-shared` Module Federation 2.0 정식 원격 타입(`@mf-types.zip`, `dts.generateTypes: true`) 생성·서빙 활성화 완료** (`apps/remote-shared`, `docs/service-registry.md`)
   - **[Phase 1 - Step 1.2] 원격 공통 디자인 시스템(`Ark UI`), 실시간 4종 테마 & MFE 공통 유틸리티 구축 완료** (`apps/remote-shared`, `docs/service-registry.md`)
   - **[Phase 1 - Step 1.1] 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축 완료** (`apps/api-server`, `docs/service-registry.md`)
@@ -44,11 +45,11 @@
   - 프론트엔드(`exposed/` + 경량 FSD 세그먼트 `features/{ui,api,model}` + `testing/{stubs,msw}`), 백엔드(`app.ts`/`server.ts` 분리 + `modules/`), 테스트 코드(`Co-location` 단위 테스트 + `__tests__/` 통합 테스트) 하이브리드 아키텍처 확정 및 문서 반영 완료
 - [x] **Step 0.2: 범용·최신 추천 유틸리티 및 보조 라이브러리 조사·선정 및 학습 문서 업데이트**
   - 클라이언트 패칭(`@tanstack/react-query` + `ky`), 폼·스키마 검증(`react-hook-form` + `@hookform/resolvers` + `zod`), 날짜(`date-fns`), 유틸리티(`es-toolkit`), 스타일 병합(`clsx`), TDD 모킹(`msw`, `supertest`), DB(`node:sqlite`), 버전 통제(`pnpm catalog:`) 선정 및 학습 문서 업데이트 완료
-- [x] **Step 0.3: 루트 기본 워크스페이스 설정 및 AI 워크플로우 하네스(`GEMINI.md`, `.agents/hooks.json`, `scripts/*.mjs`) 구축** (`Branch: root/chore/init-workspace-harness`)
-  - 문서 경로: 루트 `todo.md` 및 `docs/features/20261022-init-workspace-harness/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
-  - `.gitignore`(`temp/` 추적 제외 포함) 생성 및 루트 임시 설계서 3종(`02~04`)을 `temp/` 폴더로 이동 완료
+- [x] **Step 0.3: 루트 기본 워크스페이스 설정 및 AI 워크플로우 하네스(`GEMINI.md`, `.agents/hooks.json`, `scripts/*.mjs`) 구축** (`Branch: root/chore/init-workspace-harness`, `root/chore/refine-workflow-gates`)
+  - 문서 경로: 루트 `todo.md`, `docs/features/20261022-init-workspace-harness/` 및 `docs/features/20261107-refine-workflow-gates/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
+  - `.gitignore`(`temp/`, `.mf/` 추적 제외 포함) 생성 및 루트 임시 설계서 3종(`02~04`)을 `temp/` 폴더로 이동 완료
   - `.gitattributes`, `.editorconfig`, `biome.json`, `pnpm-workspace.yaml`(`catalog:` 포함), `turbo.json`, `tsconfig.base.json`, `README.md` 생성 완료
-  - 에이전트 하네스(`GEMINI.md`, `.agents/hooks.json`, `.agents/active-scope.json`, `scripts/*.mjs` 8종) 및 Git 훅(`lefthook.yml`) TDD 구축 완료
+  - 에이전트 하네스(`GEMINI.md`, `.agents/hooks.json`, `.agents/active-scope.json`, `scripts/*.mjs` 8종 — `main` 직접 쓰기 차단 및 PR 생성·머지 분리 게이트 포함) 및 Git 훅(`lefthook.yml`) TDD 구축 완료
 - [x] **Step 0.4: ★ [필수 승인 게이트] 최종 문서(`docs/study/*`, 템플릿 5종) 및 워크플로우 하네스 전체 리뷰 및 승인**
   - Step 0.1 ~ 0.3의 결과가 모두 반영된 전체 문서와 하네스 최종 리뷰 통과 및 `main` 반영 완료 (`temp/` 폴더 내 초기 설계서는 Git 추적 없이 로컬 참조용으로 유지하며 전체 구축 완료 후 삭제)
 
