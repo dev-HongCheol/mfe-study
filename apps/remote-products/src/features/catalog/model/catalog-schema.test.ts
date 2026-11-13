@@ -50,7 +50,6 @@ describe('catalog-schema & products 스코프 스토리지 (TC-01, EC-01)', () =
         category: 'electronics',
         stock: 15,
         description: '설명',
-        createdAt: '2026-10-31T09:00:00.000Z',
       },
     ];
 

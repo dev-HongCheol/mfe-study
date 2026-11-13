@@ -35,9 +35,6 @@ export interface ProductEntity {
 
   /** 상품 상세 설명 문구 */
   description: string;
-
-  /** 등록 일시 (ISO-8601 문자열) */
-  createdAt: string;
 }
 
 /**
@@ -80,7 +77,6 @@ export const productEntitySchema: z.ZodType<ProductEntity> = z.object({
   category: z.enum(['electronics', 'office', 'accessories']),
   stock: z.number().int().nonnegative(),
   description: z.string(),
-  createdAt: z.string(),
 });
 
 /** 상품 목록 배열 런타임 검증용 Zod 스키마 */

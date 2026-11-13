@@ -173,7 +173,6 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
               category: 'electronics',
               stock: 15,
               description: '무선 키보드',
-              createdAt: '2026-10-31T09:00:00.000Z',
             },
           ],
         });

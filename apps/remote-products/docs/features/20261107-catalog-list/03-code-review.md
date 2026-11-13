@@ -104,6 +104,8 @@
 2. **`@mf-types/remote_shared` 정적 타입 검사(`tsc --noEmit`) 시 `FlexProps.wrap` 타입 및 `HTMLArkProps` 해석 보완**:
    - `remote_shared/ui`의 `FlexProps.wrap`은 `boolean`이 아닌 `'nowrap' | 'wrap'` 유니온 타입임을 `@mf-types` 타입체크 과정에서 확인하여 `wrap="wrap"`으로 전수 수정했습니다.
    - 또한 소비자 앱(`remote-products`)이 `@ark-ui/react`를 직접 설치하지 않는 캡슐화 원칙을 유지하면서도 `@mf-types` 내부의 `HTMLArkProps`·`Ark*.RootProps` 상속 속성(`children`, `className`, `onClick` 등)을 `tsc`가 완벽히 추론하도록 `src/vite-env.d.ts`에 타입 호환 매핑을 추가하여 `pnpm --filter @mfe-study/remote-products typecheck`가 에러 0건으로 통과하도록 조치했습니다. (해결 완료)
+3. **실제 백엔드(`GET /api/products`) 연동 시 `ProductEntity` 스키마 정합성(`createdAt` 제거) 패치**:
+   - 루트 계약 정본(`§ 5.1.2`)과 백엔드 SQLite `products` 테이블에는 `createdAt` 컬럼이 없으나(`CartItemView`에만 존재), 초기 `ProductEntity` 및 `productEntitySchema`에 `createdAt: z.string()`이 포함되어 실제 API 연동 시 `RESPONSE_SCHEMA_INVALID`가 발생하던 문제를 발견하여 `catalog-schema.ts`, `handlers.ts`, `catalog-schema.test.ts`, `ProductList.integration.test.tsx` 4개 파일에서 제거 완료했습니다. (해결 완료)
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
 1. **`Mode A` vs `Mode B` 상태 동기화 실험 설계 (`src/exposed/ProductList.tsx` & `src/features/catalog/model/use-catalog-queries.ts`)**:

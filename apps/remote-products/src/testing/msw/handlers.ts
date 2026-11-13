@@ -22,8 +22,6 @@ export interface MockProductFixture {
   stock: number;
   /** 상품 설명 */
   description: string;
-  /** 등록 시각 */
-  createdAt: string;
 }
 
 /** 백엔드 02-reset-seed.sql과 1:1 일치하는 6종 상품 시드 픽스처 */
@@ -35,7 +33,6 @@ export const MOCK_PRODUCTS_SEED: readonly MockProductFixture[] = [
     category: 'electronics',
     stock: 15,
     description: '로우 프로파일 적축 스위치와 멀티 페어링을 지원하는 개발자용 무선 키보드',
-    createdAt: '2026-10-31T09:00:00.000Z',
   },
   {
     id: 2,
@@ -44,7 +41,6 @@ export const MOCK_PRODUCTS_SEED: readonly MockProductFixture[] = [
     category: 'electronics',
     stock: 20,
     description: '손목 터널 증후군 예방을 위한 57도 인체공학 수직형 무선 마우스',
-    createdAt: '2026-10-31T09:05:00.000Z',
   },
   {
     id: 3,
@@ -53,7 +49,6 @@ export const MOCK_PRODUCTS_SEED: readonly MockProductFixture[] = [
     category: 'electronics',
     stock: 8,
     description: 'USB-C PD 65W 충전과 눈부심 방지 패널을 탑재한 코딩 특화 모니터',
-    createdAt: '2026-10-31T09:10:00.000Z',
   },
   {
     id: 4,
@@ -62,7 +57,6 @@ export const MOCK_PRODUCTS_SEED: readonly MockProductFixture[] = [
     category: 'office',
     stock: 5,
     description: '듀얼 모터 높이 조절과 4단계 메모리 프리셋을 제공하는 전동 데스크',
-    createdAt: '2026-10-31T09:15:00.000Z',
   },
   {
     id: 5,
@@ -71,7 +65,6 @@ export const MOCK_PRODUCTS_SEED: readonly MockProductFixture[] = [
     category: 'accessories',
     stock: 30,
     description: '발열 해소 통풍구와 6단 각도 조절이 가능한 고강도 알루미늄 스탠드',
-    createdAt: '2026-10-31T09:20:00.000Z',
   },
   {
     id: 6,
@@ -80,7 +73,6 @@ export const MOCK_PRODUCTS_SEED: readonly MockProductFixture[] = [
     category: 'accessories',
     stock: 0,
     description: '단축키 치트시트가 각인된 방수 패브릭 데스크 매트 (재고 소진 테스트용)',
-    createdAt: '2026-10-31T09:25:00.000Z',
   },
 ] as const;
 
