@@ -10,7 +10,13 @@
     "pnpm": ">=9.15.0"
   },
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "node scripts/dev-menu.mjs",
+    "dev:menu": "node scripts/dev-menu.mjs",
+    "dev:products": "turbo run dev --filter=@mfe-study/api-server --filter=@mfe-study/remote-shared --filter=@mfe-study/remote-products",
+    "dev:cart": "turbo run dev --filter=@mfe-study/api-server --filter=@mfe-study/remote-shared --filter=@mfe-study/remote-cart",
+    "dev:shared": "turbo run dev --filter=@mfe-study/remote-shared",
+    "dev:api": "turbo run dev --filter=@mfe-study/api-server",
+    "dev:all": "turbo run dev",
     "build": "turbo run build",
     "test": "vitest run",
     "test:apps": "turbo run test",

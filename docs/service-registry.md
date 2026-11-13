@@ -25,7 +25,10 @@
 
 | 목적 | 실행 명령어 | 동작 설명 |
 | :--- | :--- | :--- |
-| **전체 개발 서버 기동** | `pnpm dev` | `turbo run dev`로 모든 마이크로 앱 및 백엔드 서버 동시 기동 |
+| **대화형 개발 서버 기동** | `pnpm dev` (또는 `pnpm dev:menu`) | `scripts/dev-menu.mjs` 대화형 메뉴로 번호 선택 후 `turbo run dev --filter`를 TUI 모드로 기동 (탭 전환 지원) |
+| **상품 리모트 개발 세트 기동** | `pnpm dev:products` | `api-server(4000)` + `remote-shared(3004)` + `remote-products(3002)`를 즉시 TUI 모드로 동시 기동 |
+| **장바구니 리모트 개발 세트 기동** | `pnpm dev:cart` | `api-server(4000)` + `remote-shared(3004)` + `remote-cart(3003)`를 즉시 TUI 모드로 동시 기동 |
+| **전체 개발 서버 일괄 기동** | `pnpm dev:all` | `turbo run dev`로 모든 마이크로 앱 및 백엔드 서버 동시 기동 |
 | **전체 TDD 테스트** | `pnpm test` | 루트 하네스 테스트(`scripts/__tests__`) 및 모든 앱 단위·통합 테스트 일괄 실행 |
 | **포맷팅·린트 검사** | `pnpm check` | `Biome` 포맷팅·린트·`LF` 줄바꿈 검사 (자동 수정: `pnpm check:write`) |
 | **3종 SQL 해시 갱신** | `pnpm sql:update` | `apps/api-server/sql/` 내 3종 SQL의 SHA-256 해시를 `.sql-hashes.json`에 기록 |
