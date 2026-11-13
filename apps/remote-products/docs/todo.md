@@ -11,7 +11,7 @@
 - **스코프 ID (`Scope ID`)**: `products`
 - **대상 경로**: `apps/remote-products` (루트 작업은 루트 [`todo.md`](../../../todo.md)에서 통합 관리)
 - **기술 스택**: `Vite 7 + React 19 + TypeScript 5.7 + @module-federation/vite + TanStack Query v5 + React Hook Form + Zod + ky + es-toolkit + MSW + Vitest`
-- **최종 업데이트**: `2026-11-07`
+- **최종 업데이트**: `2026-11-13`
 - **핵심 역할**: 상품 카탈로그 조회·카테고리/검색어 필터링 및 장바구니 담기(`POST /api/cart`) 기능을 담당하는 도메인 원격 마이크로 앱입니다 (`Port 3002`). `remote_shared`(`Port 3004`)의 디자인 시스템·테마·유틸리티를 런타임 소비하는 동시에 호스트(`host-vite:3000`, `host-rspack:3001`)에 `./ProductList` 컴포넌트를 노출하며, **상태 동기화 아키텍처 비교 학습 모드(`Mode A: 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)**를 지원합니다.
 - **노출 모듈 (`exposes`)**:
   - `./ProductList` (`./src/exposed/ProductList.tsx`): 상품 카탈로그 그리드, 카테고리/키워드 필터 바, 1.5초 로딩 지연 시뮬레이션 스켈레톤 및 장바구니 담기 통합 컴포넌트 (`@mf-types.zip` 원격 타입 생성 포함)
@@ -25,10 +25,21 @@
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
 - [-] **[`20261107-catalog-list`](./features/20261107-catalog-list/01-plan-and-design.md)**: [Phase 1 - Step 1.3] 상품 목록 원격 앱(`./ProductList`), `Mode A vs Mode B` 상태 동기화 및 단독 실행 쇼케이스 구축 (`Port 3002`)
-  - **작업 브랜치**: `products/feat/catalog-list`
+  - **작업 브랜치**: `products/feat/catalog-list` (`Scope: products`)
   - **설계 문서**: [01-plan-and-design.md](./features/20261107-catalog-list/01-plan-and-design.md)
   - **TDD 명세**: [02-tdd-spec.md](./features/20261107-catalog-list/02-tdd-spec.md)
   - **코드 리뷰**: [03-code-review.md](./features/20261107-catalog-list/03-code-review.md)
+  - **📍 다른 장비 작업 인계 현황 및 다음 진행 순서 (`Scope: products`)**:
+    1. **[현황 요약]**: `remote-products` 본 코드 구현, 단위·통합 테스트 20건 통과 및 `03-code-review.md` 작성까지 완료된 상태이나, 실제 백엔드(`GET /api/products`) 연동 실행(`pnpm dev:products`) 시 **`상품 목록 조회 실패 (RESPONSE_SCHEMA_INVALID)`** 에러가 확인됨.
+    2. **[원인]**: 루트 계약 정본([`01-plan-and-design.md`](../../../docs/features/20261027-phase1-service-contracts/01-plan-and-design.md) `§ 5.1.2`)과 백엔드 DB 스키마([`01-schema.sql`](../../api-server/sql/01-schema.sql) `products` 테이블)의 `ProductEntity`는 6개 필드(`id`, `name`, `price`, `category`, `stock`, `description`)만 가지며 `createdAt`은 `CartItemView`에만 존재함. 반면 `remote-products`의 `ProductEntity` 및 `productEntitySchema`에 계약에 없는 `createdAt: z.string()`이 필수 필드로 잘못 선언되어 런타임 검증이 실패함.
+    3. **[다음 진행 1단계 — `Scope: products` 스키마 정합성 수정]**: 아래 4개 파일에서 `ProductEntity` 관련 `createdAt` 필드를 제거 (`CartItemView`의 `createdAt`은 유지)
+       - [ ] [`src/features/catalog/model/catalog-schema.ts`](../src/features/catalog/model/catalog-schema.ts): `ProductEntity` 인터페이스 및 `productEntitySchema`에서 `createdAt` 제거
+       - [ ] [`src/testing/msw/handlers.ts`](../src/testing/msw/handlers.ts): `MockProductFixture` 인터페이스 및 `MOCK_PRODUCTS_SEED`에서 `createdAt` 제거
+       - [ ] [`src/features/catalog/model/catalog-schema.test.ts`](../src/features/catalog/model/catalog-schema.test.ts): `TC-01` `validList` 픽스처에서 `createdAt` 제거
+       - [ ] [`src/__tests__/ProductList.integration.test.tsx`](../src/__tests__/ProductList.integration.test.tsx): `EC-03` 모킹 응답 데이터에서 `createdAt` 제거
+    4. **[다음 진행 2단계 — 검증 및 5단계-B PR/머지]**:
+       - [ ] `pnpm --filter @mfe-study/remote-products test`, `pnpm --filter @mfe-study/remote-products typecheck`, `pnpm check` 통과 확인 및 `pnpm dev:products`(`http://localhost:3002`) 정상 렌더링 확인
+       - [ ] PR 초안 보고 및 머지 승인 시 [`todo.md`](../../../todo.md), 본 문서([`apps/remote-products/docs/todo.md`](./todo.md)), [`docs/service-registry.md`](../../../docs/service-registry.md)(`§ 1`, `§ 5`에 `remote-products` 명령어 및 `./ProductList` 노출 시그니처 등록) 업데이트 후 `main` 브랜치 머지
 
 ---
 

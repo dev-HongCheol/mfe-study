@@ -19,8 +19,11 @@
   - `docs/templates/` 표준 문서·코드 리뷰·PR 템플릿 5종(`todo`, `01-plan-and-design`, `02-tdd-spec`, `03-code-review`, `pull-request`) 생성 및 한국어 가독성 원칙 반영
   - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료
   - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 승인 완료
-- **다음 진행 예정 작업 (Next Up)**:
-  - **[Phase 1 - Step 1.3] 상품 목록 원격 앱 구축** (`Scope: products` | `Branch: products/feat/catalog-list`)
+- **다음 진행 예정 작업 (Next Up — 타 장비 인계 사항)**:
+  1. **[진행 중 | `Scope: products` | `Branch: products/feat/catalog-list`] [Phase 1 - Step 1.3] 상품 목록 원격 앱 마무리 및 머지**:
+     - 현재 `remote-products` 본 코드·TDD 테스트·`03-code-review.md` 작성 및 대화형 실행기(`pnpm dev` / `pnpm dev:products`) 구축까지 완료됨.
+     - **즉시 진행할 작업**: [`apps/remote-products/docs/todo.md`](./apps/remote-products/docs/todo.md)의 인계 체크리스트에 따라 `ProductEntity` Zod 스키마(`catalog-schema.ts` 및 테스트·MSW 픽스처 총 4개 파일)에서 루트 계약(`§ 5.1.2`)에 없는 `createdAt` 필드를 제거하여 `RESPONSE_SCHEMA_INVALID` 에러를 해결한 뒤, `todo.md` · `docs/service-registry.md` 갱신 후 `main`에 머지.
+  2. **[다음 대기 | `Scope: cart` | `Branch: cart/feat/cart-widget-sync`] [Phase 1 - Step 1.4] 장바구니 원격 앱(`apps/remote-cart`, `Port 3003`, `Rspack`) 구축**
 
 ---
 
@@ -66,9 +69,9 @@
 - [x] **Step 1.2: 원격 공통 디자인 시스템 & 유틸리티 구축** (`Scope: shared` | `Branch: shared/feat/ark-ui-and-utils`, `shared/feat/enable-mf-types`)
   - 문서 경로: `apps/remote-shared/docs/todo.md`, `apps/remote-shared/docs/features/20261102-ark-ui-and-utils/` 및 `apps/remote-shared/docs/features/20261106-enable-mf-types/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - `Ark UI (@ark-ui/react)` 캡슐화 컴포넌트(`Button`, `Heading(H1~H5)`, `Select`, `Skeleton`, `Badge`), 공통 레이아웃(`Container`, `Grid`, `Flex`, `Stack`, `Card`, `Splitter`, `Tabs`, `Collapsible`), 실시간 테마(`Indigo`/`Emerald`/`Rose`/`Dark`), 공통 유틸리티(`mfeEventBus`, `useMfeEvent`, `createScopedStorage`, `formatCurrency`, `formatDate`, `httpClient`, `sharedQueryClient`) 및 Module Federation 2.0 정식 원격 타입 아카이브(`@mf-types.zip`, `dts.generateTypes: true`) TDD 구현·노출 완료 (`Port 3004` / Vite, `docs/service-registry.md` 반영)
-- [ ] **Step 1.3: 상품 목록 원격 앱 구축** (`Scope: products` | `Branch: products/feat/catalog-list`)
-  - 문서 경로: `apps/remote-products/docs/todo.md` 및 `apps/remote-products/docs/features/YYYYMMDD-catalog-list/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
-  - `./ProductList` 컴포넌트, 장바구니 담기 **비교 학습 모드(`Mode A: 리모트별 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)** 지원, 단독 실행(Standalone) 화면 TDD 구현 (`Port 3002` / Vite)
+- [-] **Step 1.3: 상품 목록 원격 앱 구축** (`Scope: products` | `Branch: products/feat/catalog-list`)
+  - 문서 경로: `apps/remote-products/docs/todo.md` 및 `apps/remote-products/docs/features/20261107-catalog-list/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
+  - `./ProductList` 컴포넌트, 장바구니 담기 **비교 학습 모드(`Mode A: 리모트별 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)** 지원, 단독 실행(Standalone) 화면 TDD 구현 완료 (`Port 3002` / Vite) — *`ProductEntity` 스키마(`createdAt` 제거) 정합성 패치 후 머지 대기 중*
 - [ ] **Step 1.4: 장바구니 원격 앱 구축** (`Scope: cart` | `Branch: cart/feat/cart-widget-sync`)
   - 문서 경로: `apps/remote-cart/docs/todo.md` 및 `apps/remote-cart/docs/features/YYYYMMDD-cart-widget-sync/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - `./CartWidget` 컴포넌트, **비교 학습 모드(`Mode A: CustomEvent 수신 후 자체 QueryClient 재조회` vs `Mode B: sharedQueryClient 캐시 무효화 자동 감지`)**, CSS 스타일 충돌/격리 토글, 단독 실행(Standalone) 화면 TDD 구현 (`Port 3003` / Rspack)
