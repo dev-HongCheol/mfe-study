@@ -151,14 +151,73 @@
 
 ---
 
-### #08. 호스트 라우터와 리모트 라우터의 `window.history` 충돌 문제
-* **왜 안 해본 사람은 모르나요?**
-  - 브라우저에는 주소창(`window.location` / `window.history`)이 단 하나뿐입니다.
-* **어떤 증상이 나타나나요?**
-  - 호스트도 최상위에서 `<BrowserRouter>`를 쓰고, 리모트(`products`)도 자기 내부에서 `<BrowserRouter>`를 중복으로 생성하면, 리모트 안에서 상품 상세(`/products/1`)를 클릭했을 때 호스트 라우터가 이를 인식하지 못하거나 브라우저 뒤로가기를 눌렀을 때 두 라우터가 동시에 반응해 히스토리가 꼬입니다.
-* **실무 해결책 (Phase 2 라우팅 학습 핵심)**:
-  - 앞서 Q8에서 배운 **진입점 분리 원리**를 그대로 적용합니다!
-  - 단독 실행 파일(`App.tsx`)에서만 `<BrowserRouter>`로 감싸고, 호스트로 노출되는 알맹이 컴포넌트(`ProductList.tsx`)는 `<BrowserRouter>`를 직접 생성하지 않고 호스트의 라우터 컨텍스트를 이어받거나 상대 경로/메모리 라우터를 사용합니다.
+### #08. 호스트 라우터와 리모트 라우터의 `window.history` 충돌 (BrowserHistory vs MemoryHistory 심층 해부)
+* **왜 안 해본 사람은 모르나요? (Next.js / TanStack Router 시대에도 MFE에서 이 문제가 터지는 이유)**
+  - 최신 웹 개발에서는 `Next.js`의 파일 기반 라우팅이나 `TanStack Router` 같은 완전한 타입 세이프 라우터를 쓰는 것이 일반적입니다.
+  - 하지만 엔터프라이즈 MFE(마이크로 프론트엔드) 실무에서는 독립 배포와 번들 런타임 제어권을 위해 **`Vite` 또는 `Rspack` 기반의 순수 CSR(Client-Side Rendering)**을 주로 채택합니다 (`Next.js`는 SSR 하이드레이션 타이밍과 프레임워크 런타임이 너무 무거워 런타임 원격 조립 시 심각한 결합 문제가 발생하기 때문).
+  - 그리고 라우팅 라이브러리가 무엇이든 간에(React Router든 최신 TanStack Router든 자체 라우터든), **브라우저 탭 전체에서 실제 주소창과 세션 히스토리(`window.history`, `window.location`, `popstate` 이벤트)는 물리적으로 단 1개뿐**이라는 하드웨어적 제약은 절대 변하지 않습니다.
+
+* **🔬 `BrowserHistory` vs `MemoryHistory` 내부 구조와 동작 메커니즘 심층 해부**:
+
+  | 비교 항목 | `BrowserHistory` (브라우저 주소창 바인딩) | `MemoryHistory` (순수 JS 메모리 격리) |
+  | :--- | :--- | :--- |
+  | **데이터 저장 위치** | **브라우저(C++) 내부의 탭 네비게이션 세션 스택** | **순수 자바스크립트 힙(Heap) 메모리의 배열 객체** |
+  | **내부 자료구조** | 브라우저 엔진 비공개 네이티브 스택 | `{ entries: ['/step1', '/step2'], index: 1 }` |
+  | **경로 이동 API** | `window.history.pushState(state, '', url)` 호출 | `entries.push(url); index++;` 단순 배열 연산 |
+  | **주소창(URL) 영향** | **실제 주소창 텍스트가 바뀜 (`localhost:3000/orders`)** | **주소창이 단 1글자도 바뀌지 않음 (`localhost:3000` 유지)** |
+  | **브라우저 뒤로가기 버튼** | 브라우저 툴바의 [←] 버튼 활성화 및 클릭 시 감지 | 브라우저 [←] 버튼은 반응 안 함 (컴포넌트 내부 버튼으로만 제어) |
+  | **전역 이벤트 발생** | **`window.addEventListener('popstate')` 전역 브로드캐스팅** | **전역 이벤트 0% (내부 Pub/Sub 이벤트만 조용히 발생)** |
+  | **새로고침(F5) 시 동작** | 변경된 URL로 웹 서버(Nginx)에 실제 HTTP GET 요청<br>*(SPA Rewrite `try_files $uri /index.html` 필수)* | 메모리가 초기화되어 처음 지정한 `initialEntries`('/')로 리셋 |
+  | **MFE에서의 역할** | **호스트(Host) 앱이 전체 화면을 조율할 때 독점 사용** | **리모트(Remote) 앱이 호스트 내부에서 위젯/모달/탭 렌더 시 사용** |
+
+* **어떤 증상이 나타나나요? (주소창 쟁탈전과 404 참사 메커니즘)**
+  1. **더블 팝스택(Double Popstate) 레이스 컨디션**:
+     - 호스트와 리모트가 둘 다 브라우저 주소창을 감시하는 라우터(`createBrowserHistory` / `BrowserRouter`)를 켜두면, 사용자가 브라우저 [뒤로가기]를 누를 때 전역 `popstate` 이벤트를 두 라우터가 동시에 수신합니다.
+     - 두 라우터가 각자의 히스토리 스택을 기준으로 동시에 주소를 되돌리면서 **뒤로가기가 2번 연속 실행되어 엉뚱한 페이지로 튕기거나 무한 루프**에 빠집니다.
+  2. **호스트 `basename` 무시와 404 Not Found 화면 덮어쓰기 참사**:
+     - 리모트 앱(상품 카탈로그) 내부에서 상세 페이지로 이동하려고 `navigate('/products/123')`를 호출해 실제 주소창을 변경합니다.
+     - 주소창 변경을 감지한 호스트 라우터는 자기 라우트 테이블에 `/products/123`이 등록되어 있지 않으므로 **"정의되지 않은 경로"로 판단하여 화면 전체를 404 에러 페이지로 덮어써 버립니다.**
+
+* **🏗️ MFE 공존 아키텍처 다이어그램**:
+  ```mermaid
+  flowchart TD
+      subgraph Browser["브라우저 전역 공간 (단 1개만 존재)"]
+          AddressBar["🌐 실제 주소창 URL: /dashboard<br/>(window.location / window.history)"]
+          PopstateEvt["⚡ window popstate 이벤트"]
+      end
+
+      subgraph HostApp["호스트 앱 (Host Dashboard)"]
+          HostRouter["🧭 호스트 라우터 (BrowserHistory)<br/>주소창을 독점 제어함"]
+      end
+
+      subgraph RemoteApp["리모트 앱 (Remote Products Widget)"]
+          RemoteMemory["📦 리모트 가상 라우터 (MemoryHistory)<br/>entries: ['/tab-info', '/tab-reviews']<br/>주소창을 전혀 건드리지 않고 메모리 안에서만 작동!"]
+      end
+
+      AddressBar <-->|양방향 동기화| HostRouter
+      PopstateEvt -->|호스트만 단독 수신| HostRouter
+      HostRouter -.->|Props / Event로 상태 전달| RemoteApp
+      RemoteMemory -.->|주소창과 완전 격리 (간섭 0%)| AddressBar
+  ```
+
+* **실무 해결책: 엔터프라이즈 MFE 라우팅 3대 아키텍처 패턴**:
+  1. **패턴 1. Props 주도형 (No-Router 패턴 — 실무 80% 권장)**:
+     - 리모트 앱 알맹이(`ProductList.tsx`)는 내부에 라우터를 일절 두지 않고 **순수 프레젠테이션 컴포넌트**로 유지합니다.
+     - 호스트가 주소창 URL 파싱(`/:productId`)을 전담하고, 리모트에는 `productId`를 단순 Props로 전달하며, 리모트의 상세 이동 클릭은 콜백 함수(`onSelectProduct`)로 호스트에 위임합니다.
+  2. **패턴 2. 메모리 히스토리 격리 (`createMemoryHistory` / `MemoryRouter` 패턴)**:
+     - 리모트가 내부에 복잡한 다단계 폼(1단계 배송지 -> 2단계 결제)이나 상세 탭 이동을 품어야 할 때, 리모트 내부 라우터에는 브라우저 주소창을 전혀 건드리지 않는 **`MemoryHistory`**를 주입합니다.
+     - 실제 브라우저 주소창은 변경되지 않고 자바스크립트 메모리 배열(`['/step1', '/step2']`) 안에서만 가상으로 경로가 전환되므로 호스트와의 충돌이 100% 원천 차단됩니다.
+     ```tsx
+     // 리모트 진입점 분기 패턴 (Standalone vs Hosted)
+     export function ProductWidget({ isStandalone }: { isStandalone?: boolean }) {
+       // 단독 실행(3002)일 때만 BrowserHistory 사용, 호스트에 들어갈 땐 MemoryHistory 강제!
+       const history = isStandalone ? createBrowserHistory() : createMemoryHistory();
+       return <Router history={history}><ProductRoutes /></Router>;
+     }
+     ```
+  3. **패턴 3. 양방향 히스토리 동기화 어댑터 (`Bidirectional History Sync` 패턴)**:
+     - 리모트가 단독 실행(`Standalone`, Port 3002)될 때는 `BrowserHistory`로 주소창을 직접 움직이고,
+     - 호스트에 결합될 때는 `MemoryHistory`로 띄운 뒤, 호스트의 `history.listen` 이벤트와 리모트의 메모리 히스토리를 브릿지 어댑터로 연결하여 필요한 하위 서브패스만 선별적으로 주소창과 맞추는 고급 패턴입니다.
 
 ---
 
@@ -185,16 +244,20 @@
 
 ## 영역 D. 테스트 · 환경 변수 · 무중단 배포 · 개발 경험 이슈 (#11 ~ #14)
 
-### #11. `Vitest` 단독 TDD 실행 시 리모트 네트워크 모듈(`remote_shared/*`) 로딩 실패
+### #11. `Vitest` 단독 TDD 실행 vs 브라우저 단독 실행(`#RUNTIME-003`)의 구조적 차이와 MSW 이원화
 * **왜 안 해본 사람은 모르나요?**
-  - 물리적 멀티레포에서는 다른 앱 서버(`3004`)를 켜지 않고 내 앱(`3002`) 폴더 안에서만 `pnpm test`를 돌려야 합니다.
+  - 물리적 멀티레포에서는 다른 앱 서버(`3004`, `4000`)를 켜지 않고 내 앱(`3002`) 폴더 안에서만 `pnpm test`를 돌려야 합니다.
+  - 반대로 브라우저에서 `http://localhost:3002`만 단독으로 열었을 때는 왜 `Vitest`처럼 혼자 동작하지 않고 `[Federation Runtime] #RUNTIME-003: Failed to get manifest (http://localhost:3004/mf-manifest.json)` 에러가 발생하는지 혼동하기 쉽습니다.
 * **어떤 증상이 나타나나요?**
-  - `Vitest`는 브라우저 런타임이 아니므로 `import { Button } from 'remote_shared/ui'`를 만나는 순간 `Cannot find module 'remote_shared/ui'` 에러를 내며 테스트가 즉시 중단됩니다.
-* **실무 해결책 (`vitest.config.ts` 로컬 스텁 Alias 매핑 + Phase 1 런타임 MF 스모크 테스트)**:
-  1. **단위·통합 TDD용 로컬 스텁 매핑**: 각 마이크로 앱의 `vitest.config.ts`에 `remote_shared/*`, `remote_products/*` 등의 경로를 해당 앱 내부의 테스트용 경량 스텁(`src/testing/stubs/`)으로 연결하는 `alias` 설정을 기본 탑재합니다.
+  1. **`Vitest` 환경**: 브라우저 런타임이 아니므로 `import { Button } from 'remote_shared/ui'`를 만나는 순간 `Cannot find module 'remote_shared/ui'` 에러를 내며 테스트가 중단됩니다.
+  2. **브라우저(`localhost:3002`) 단독 접속 환경**: 일반 `npm`이나 `workspace:*` 패키지는 빌드 타임에 코드가 물리적으로 합쳐지지만, **Module Federation은 런타임(페이지 진입·새로고침 시점)마다 브라우저가 `http://localhost:3004/mf-manifest.json`으로 실시간 HTTP 네트워크 요청을 보내 JS 청크를 다운로드**합니다. 따라서 `3004(remote-shared)` 서버가 꺼져 있으면 브라우저가 공통 UI/테마 청크를 가져오지 못해 `#RUNTIME-003 (TypeError: Failed to fetch)` 에러가 발생합니다. (만약 `shared` 빌드 산출물을 각 앱의 `public/`에 복사해 정적 번들링하면 MFE의 최대 목적인 **'리모트 단독 배포 시 전사 즉시 반영(독립 배포)'**이 무너지게 됩니다.)
+* **실무 해결책 (`vitest.config.ts` 로컬 스텁 + MSW Node/Browser 역할 분리 + 런타임 스모크 테스트)**:
+  1. **`Vitest` 단위·통합 TDD 격리 (`msw/node` + 로컬 스텁 Alias)**:
+     - 각 마이크로 앱의 `vitest.config.ts`에 `remote_shared/*` 경로를 앱 내부의 테스트용 경량 스텁(`src/testing/stubs/`)으로 연결하는 `alias`를 설정합니다.
+     - API 모킹은 Node.js의 `fetch`/`http` 계층을 가로채는 **`msw/node`(`setupServer`)**를 `src/testing/setup.ts`에서 실행합니다. (브라우저 Service Worker 기반인 `msw/browser`(`setupWorker`)와 달리 Node 테스트 런타임 전용으로 동작하므로 `3004`, `4000` 서버 없이도 100% 독립 테스트가 통과합니다.)
   2. **스텁 모킹의 맹점을 보완하는 '런타임 Module Federation 스모크 테스트 (`Step 1.6`)'**:
-     - `Vitest`는 리모트를 로컬 스텁으로 대체하므로, 만약 실제 번들러 설정(`vite.config.ts` / `rsbuild.config.ts`)에서 `remoteEntry.js` 경로 오타, `CORS` 누락, 싱글톤 협상 에러가 발생하더라도 `Vitest`는 통과(`Green`)해버릴 수 있습니다.
-     - 따라서 Phase 3의 본격적인 `Playwright` 멀티 시나리오 E2E 이전이라도, **Phase 1 끝에 실제 6개 서버를 띄워 `Host → remoteEntry.js → Remote → remote-shared → 실제 렌더링` 연결이 깨지지 않았는지 확인하는 얇은 런타임 스모크 테스트(`scripts/verify-mfe-smoke.mjs`)를 필수로 실행**하여 스텁과 실제 런타임 사이의 간극을 완벽히 메웁니다.
+     - `Vitest`는 리모트를 로컬 스텁으로 대체하므로, 실제 번들러 설정(`vite.config.ts` / `rsbuild.config.ts`)에서 `remoteEntry.js` 경로 오타, `CORS` 누락, 싱글톤 협상 에러가 발생하더라도 `Vitest`는 통과(`Green`)해버릴 수 있습니다.
+     - 따라서 Phase 3의 본격적인 `Playwright` 멀티 시나리오 E2E 이전이라도, **Phase 1 끝에 실제 6개 서버를 띄워 `Host → remoteEntry.js → Remote → remote-shared → 실제 렌더링` 연결이 깨지지 않았는지 확인하는 런타임 스모크 테스트(`scripts/verify-mfe-smoke.mjs`)를 필수로 실행**하여 스텁과 실제 런타임 사이의 간극을 완벽히 메웁니다.
 
 ---
 
@@ -220,9 +283,18 @@
 
 ---
 
-### #14. 호스트↔리모트 경계에서의 `HMR`(코드 수정 실시간 반영) 메커니즘 이해
+### #14. 호스트↔리모트 경계에서의 `HMR` 메커니즘과 실무 로컬 개발·디버깅 (`Module Federation DevTools`)
 * **왜 안 해본 사람은 모르나요?**
-  - 단일 앱에서는 코드를 고치면 0.1초 만에 화면이 바뀌지만, MFE에서는 `3002`번(Vite 리모트)이나 `3003`번(Rspack 리모트)의 코드를 고쳤을 때 내가 보고 있는 `3000`번(호스트) 브라우저 화면이 어떻게 그걸 알아채고 갱신하는지 궁금해집니다.
-* **동작 원리 및 해결책**:
-  - 과거 Module Federation 1.0에서는 리모트 코드를 고치면 호스트 브라우저를 수동으로 새로고침해야 하는 불편함이 있었습니다.
-  - 우리가 사용하는 **Module Federation 2.0 (`@module-federation/vite` & `@module-federation/rsbuild-plugin`)**은 `mf-manifest.json`과 개발 서버 간 웹소켓 신호를 통해 리모트 코드가 수정되면 호스트 화면에서도 자동으로 변경을 감지해 리로드해 주며, 단독 개발 시에는 각 리모트 포트(`3002`, `3003`, `3004`)에서 초고속 자체 HMR을 그대로 활용할 수 있습니다.
+  - 단일 앱에서는 코드를 고치면 0.1초 만에 화면이 바뀌지만, MFE에서는 ① 리모트 코드 수정이 호스트 화면에 어떻게 반영되는지, ② 마이크로 앱이 10~20개로 늘어났을 때 내 로컬 PC에서 모든 서버를 다 띄우지 않고 어떻게 개발·디버깅하는지 실무 워크플로우를 알기 어렵습니다.
+* **동작 원리 및 실무 해결책**:
+  1. **Module Federation 2.0 `mf-manifest.json` 기반 HMR**:
+     - 과거 Module Federation 1.0에서는 리모트 코드를 고치면 호스트 브라우저를 수동으로 새로고침해야 하는 불편함이 있었습니다.
+     - 우리가 사용하는 **Module Federation 2.0 (`@module-federation/vite` & `@module-federation/rsbuild-plugin`)**은 `mf-manifest.json`과 개발 서버 간 웹소켓 신호를 통해 리모트 코드가 수정되면 호스트 화면에서도 자동으로 변경을 감지해 리로드해 주며, 단독 개발 시에는 각 리모트 포트(`3002`, `3003`, `3004`)에서 초고속 자체 HMR을 그대로 활용할 수 있습니다.
+  2. **공식 [Module Federation DevTools (Chrome 확장 프로그램)](https://chromewebstore.google.com/detail/module-federation/aeoilchhomapofiopejjlecddfldpeom)을 활용한 실시간 프록시 및 디버깅**:
+     - 우리 프로젝트는 `@module-federation/vite`를 통해 `mf-manifest.json`을 생성하므로, 공식 Chrome 확장 프로그램과 즉시 연동됩니다.
+     - **① Live Module Proxying (실시간 URL 오버라이드)**: 실무에서 수십 개의 리모트 앱이 사내 개발 서버(Dev CDN)에 배포되어 있을 때, 내 PC에는 작업 중인 `remote-products(3002)` 딱 1개만 띄우고 Chrome DevTools의 **[Module Federation]** 패널에서 `remote_products`의 매니페스트 주소만 `http://localhost:3002/mf-manifest.json`으로 클릭해 오버라이드(바꿔치기)합니다. 코드 한 줄 바꾸지 않고도 배포된 호스트 화면 위에서 내 로컬 모듈을 실시간으로 조합해 테스트할 수 있습니다.
+     - **② Shared Scope 싱글톤 감사**: `react`, `react-dom`, `@tanstack/react-query`가 호스트와 리모트 사이에서 정확히 단 1개의 싱글톤으로 협상되었는지, 버전 불일치로 중복 로드(Dual Instance)가 발생했는지 시각적으로 검증합니다.
+     - **③ Hierarchy Graph & Loading Trace**: 호스트-리모트 간 의존성 트리와 매니페스트/청크 네트워크 로딩 타이밍을 추적합니다.
+  3. **대규모 엔터프라이즈 MFE 오케스트레이션 생태계 참고 도구**:
+     - **Turborepo TUI (`pnpm dev`)**: 로컬에서 4~6개 내외의 서비스를 동시에 띄울 때는 `turbo.json`의 `"ui": "tui"` 모드를 사용해 터미널에서 키보드 방향키(`↑`/`↓`)로 앱별 로그를 섞이지 않게 분리 확인하고 특정 앱만 재시작(`r`)합니다.
+     - **Zephyr Cloud / 로컬 미니 CDN 프록시**: 앱이 수십 개 이상인 대규모 조직에서는 Module Federation 전용 엣지 배포·버전 관리 플랫폼인 `Zephyr Cloud`(`zephyr-rspack-plugin`)를 사용하거나, 로컬 Nginx/Node 정적 서버에 빌드 산출물을 모아 서빙하는 로컬 미니 CDN 프록시 패턴, 또는 `Requestly`(브라우저 네트워크 리다이렉트), `import-map-overrides`(Single-SPA 진영) 등을 조합해 로컬 리소스 소모를 최소화합니다.

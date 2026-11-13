@@ -114,9 +114,10 @@ catalog:
   - `pnpm check:write`: `biome check --write .` (린트·포맷 자동 수정)
   - `pnpm sql:verify` / `pnpm sql:update`: `node scripts/verify-sql-sync.mjs` (백엔드 3종 SQL 해시 및 순차 실행 검증/갱신)
   - `pnpm smoke:phase1`: `node scripts/verify-mfe-smoke.mjs` (실제 6개 서버 기동 후 Module Federation 런타임 연결 검증)
-- **[`turbo.json`](../../turbo.json) 주의사항**:
+- **[`turbo.json`](../../turbo.json) 주의사항 및 대화형 TUI 로그 확인법**:
   - `Turborepo v2`부터는 구버전의 `"pipeline"` 키 대신 반드시 **`"tasks"`** 키(`build`, `dev`, `test`, `check`, `typecheck`)를 사용해야 합니다.
   - `dev` 태스크는 개발 서버가 종료되지 않고 계속 떠 있어야 하므로 `"cache": false, "persistent": true` 옵션을 필수로 줍니다.
+  - `"ui": "tui"` 옵션이 활성화되어 있으므로, 루트에서 `pnpm dev`를 실행하면 일반 터미널처럼 6개 서비스의 로그가 뒤섞이지 않고 **대화형 대시보드(TUI)**가 열립니다. 키보드 방향키(`↑`/`↓`)로 원하는 서비스(`api-server`, `remote-shared`, `remote-products` 등)를 선택해 **해당 앱의 로그만 독립적으로 확인**할 수 있으며, `r` 키로 선택한 서비스만 즉시 재시작할 수 있습니다.
 
 ### 3.3 패키지 설치 실행 명령어
 ```powershell
@@ -376,9 +377,9 @@ git push -u origin main
 
 ---
 
-## 6. [Step 1.1] 백엔드 API 서버(`apps/api-server`) 및 내장 SQLite 3종 SQL 세팅 가이드
+## 10. [Step 1.1] 백엔드 API 서버(`apps/api-server`) 및 내장 SQLite 3종 SQL 세팅 가이드
 
-### 6.1 폴더 생성 및 패키지 설치 명령어 (Windows PowerShell & macOS 공통)
+### 10.1 폴더 생성 및 패키지 설치 명령어 (Windows PowerShell & macOS 공통)
 ```powershell
 # 1. api-server 폴더 구조 생성 (PowerShell)
 New-Item -ItemType Directory -Force -Path apps/api-server/sql, apps/api-server/src/db, apps/api-server/src/middlewares, apps/api-server/src/modules, apps/api-server/src/__tests__, apps/api-server/docs/features
@@ -388,7 +389,7 @@ New-Item -ItemType Directory -Force -Path apps/api-server/sql, apps/api-server/s
 pnpm install
 ```
 
-### 6.2 3종 SQL 해시 동기화 및 DB 관리 명령어
+### 10.2 3종 SQL 해시 동기화 및 DB 관리 명령어
 ```powershell
 # 1. 3종 SQL(01-schema.sql, 02-reset-seed.sql, 03-drop-all.sql) 작성/수정 후 SHA-256 해시(.sql-hashes.json) 갱신
 pnpm sql:update
@@ -403,7 +404,7 @@ pnpm --filter @mfe-study/api-server db:schema  # 스키마 및 _schema_comments 
 pnpm --filter @mfe-study/api-server db:drop    # 모든 테이블 및 인덱스 삭제 (03)
 ```
 
-### 6.3 백엔드 서버 실행 및 TDD 테스트 명령어
+### 10.3 백엔드 서버 실행 및 TDD 테스트 명령어
 ```powershell
 # 1. 개발 서버 실행 (http://localhost:4000, 파일 변경 감시 모드)
 pnpm --filter @mfe-study/api-server dev
@@ -412,3 +413,39 @@ pnpm --filter @mfe-study/api-server dev
 pnpm --filter @mfe-study/api-server test
 pnpm --filter @mfe-study/api-server typecheck
 ```
+
+---
+
+## 11. [Step 1.2 & 1.3] 원격 앱(`remote-shared`, `remote-products`) 세팅 및 `Module Federation DevTools` 디버깅 가이드
+
+### 11.1 원격 공통 모듈(`apps/remote-shared`, Port `3004`) 및 상품 리모트(`apps/remote-products`, Port `3002`) 실행·검증 명령어
+```powershell
+# 1. remote-shared (Port 3004 | Ark UI 캡슐화 컴포넌트·테마·유틸리티 공급자)
+pnpm --filter @mfe-study/remote-shared dev
+pnpm --filter @mfe-study/remote-shared test
+pnpm --filter @mfe-study/remote-shared typecheck
+pnpm --filter @mfe-study/remote-shared build
+
+# 2. remote-products (Port 3002 | 상품 카탈로그 리모트 앱)
+# - Vitest 단위·통합 테스트는 msw/node(setupServer)와 로컬 스텁(src/testing/stubs/)으로 3004/4000 서버 없이 100% 독립 실행됩니다.
+pnpm --filter @mfe-study/remote-products test
+pnpm --filter @mfe-study/remote-products typecheck
+pnpm --filter @mfe-study/remote-products build
+
+# 3. 브라우저 단독 쇼케이스(http://localhost:3002) 확인 시
+# - Module Federation 런타임이 http://localhost:3004/mf-manifest.json을 실시간 fetch하므로 루트에서 TUI로 통합 실행합니다.
+pnpm dev
+```
+
+### 11.2 공식 `Module Federation DevTools` Chrome 확장 프로그램 설치 및 실무 활용법
+우리 프로젝트의 Vite 및 Rspack 리모트/호스트 앱은 **Module Federation 2.0 (`@module-federation/vite` & `@module-federation/rsbuild-plugin`)**을 통해 `mf-manifest.json`을 자동 생성하므로 공식 브라우저 개발자 도구와 100% 연동됩니다.
+
+1. **공식 Chrome 확장 프로그램 설치**:
+   - **[Module Federation DevTools (Chrome 웹 스토어)](https://chromewebstore.google.com/detail/module-federation/aeoilchhomapofiopejjlecddfldpeom)** 에 접속하여 브라우저에 확장 프로그램을 설치합니다.
+2. **주요 실무 디버깅 및 프록시 기능 (`F12` → `Module Federation` 탭)**:
+   - **Live Module Proxying (URL 오버라이드)**:
+     - 실무에서 다수의 마이크로 앱이 개발 CDN 서버에 배포되어 있을 때, 내 로컬 PC에서는 작업 중인 특정 리모트(예: `remote-products`, `3002`)만 띄운 뒤 DevTools 패널에서 해당 모듈의 매니페스트 URL만 `http://localhost:3002/mf-manifest.json`으로 즉시 오버라이드하여 테스트합니다.
+   - **Shared Dependencies (싱글톤 협상 검증)**:
+     - `react`, `react-dom`, `@tanstack/react-query`가 호스트와 리모트 간에 단 하나의 싱글톤 인스턴스로 공유되고 있는지, 버전 불일치 경고가 없는지 실시간으로 확인합니다.
+   - **Dependency Graph & Loading Trace**:
+     - 현재 페이지에 마운트된 호스트-리모트 간 노출 모듈(`exposes`) 소비 구조와 네트워크 로딩 상태를 시각적으로 점검합니다.
