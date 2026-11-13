@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PRODUCT_FILTER,
+  formatCatalogErrorReport,
   loadCatalogFilter,
   productEntityListSchema,
   productFilterSchema,
@@ -79,5 +80,42 @@ describe('catalog-schema & products 스코프 스토리지 (TC-01, EC-01)', () =
     if (!result.success) {
       expect(result.error.issues[0]?.message).toContain('최대 50자');
     }
+  });
+
+  it('EC-01: formatCatalogErrorReport는 DEV 환경에서 Zod 실패 필드 좌표([0].price 등)를 노출하고 PROD 환경에서는 내부 스키마 필드를 숨긴다', () => {
+    const brokenPayload = [
+      {
+        id: 1,
+        name: '기계식 무선 키보드 Pro',
+        price: 'not-a-number',
+        category: 'electronics',
+        stock: 15,
+        description: '설명',
+      },
+    ];
+
+    const parsed = productEntityListSchema.safeParse(brokenPayload);
+    expect(parsed.success).toBe(false);
+    if (parsed.success) {
+      return;
+    }
+
+    const normalized = {
+      code: 'RESPONSE_SCHEMA_INVALID',
+      message: '서버 응답 데이터 형식이 계약과 일치하지 않습니다.',
+      originalError: parsed.error,
+    };
+
+    const devReport = formatCatalogErrorReport(normalized, true);
+    expect(devReport.code).toBe('RESPONSE_SCHEMA_INVALID');
+    expect(devReport.devDetails.length).toBeGreaterThan(0);
+    expect(devReport.devDetails[0]?.path).toBe('[0].price');
+
+    const prodReport = formatCatalogErrorReport(normalized, false);
+    expect(prodReport.code).toBe('RESPONSE_SCHEMA_INVALID');
+    expect(prodReport.devDetails).toEqual([]);
+    expect(prodReport.userMessage).toBe(
+      '일시적인 데이터 형식 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+    );
   });
 });

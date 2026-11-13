@@ -4,7 +4,7 @@
  * @exposed false
  * @description 필터 바, 로딩 스켈레톤, 에러/빈 결과 복구 뷰 및 상품 카드 그리드를 조합하는 카탈로그 메인 뷰 컴포넌트입니다.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge, Button, Flex, Grid, Heading, Stack } from 'remote_shared/ui';
 import {
   type CartUpdatedEventPayload,
@@ -13,18 +13,19 @@ import {
   type SyncMode,
   normalizeError,
 } from 'remote_shared/utils';
-import { DEFAULT_SIMULATE_DELAY_MS } from '../api/catalog-api.js';
+import { DEFAULT_SIMULATE_DELAY_MS } from '../api/catalog-api';
 import {
   type ProductEntity,
   type ProductFilterValues,
+  formatCatalogErrorReport,
   loadCatalogFilter,
   resetCatalogFilter,
   saveCatalogFilter,
-} from '../model/catalog-schema.js';
-import { useAddToCartMutation, useProductsQuery } from '../model/use-catalog-queries.js';
-import { ProductCard } from './ProductCard.js';
-import { ProductFilterBar } from './ProductFilterBar.js';
-import { ProductGridSkeleton } from './ProductGridSkeleton.js';
+} from '../model/catalog-schema';
+import { useAddToCartMutation, useProductsQuery } from '../model/use-catalog-queries';
+import { ProductCard } from './ProductCard';
+import { ProductFilterBar } from './ProductFilterBar';
+import { ProductGridSkeleton } from './ProductGridSkeleton';
 import './catalog.css';
 
 /**
@@ -139,11 +140,38 @@ export function ProductCatalogView({
   /** 조회된 상품 배열 (로딩 중이거나 에러 시 빈 배열 폴백) */
   const products = productsQuery.data ?? [];
 
-  /** 장바구니 추가 실패 시 정규화된 에러 메시지 */
-  const mutationError = addToCartMutation.error ? normalizeError(addToCartMutation.error) : null;
+  /** 장바구니 추가 실패 시 환경별(DEV vs PROD)로 이원화된 에러 리포트 */
+  const mutationError = addToCartMutation.error
+    ? formatCatalogErrorReport(normalizeError(addToCartMutation.error))
+    : null;
 
-  /** 상품 목록 조회 실패 시 정규화된 에러 메시지 */
-  const queryError = productsQuery.error ? normalizeError(productsQuery.error) : null;
+  /** 상품 목록 조회 실패 시 환경별(DEV vs PROD)로 이원화된 에러 리포트 */
+  const queryError = productsQuery.error
+    ? formatCatalogErrorReport(normalizeError(productsQuery.error))
+    : null;
+
+  // [분기 설명] 개발 환경(DEV)에서 쿼리 또는 뮤테이션 에러 발생 시 F12 콘솔에 원본 에러와 실패 필드 좌표를 자동 출력합니다 (Study 05 #10).
+  useEffect(() => {
+    if (!import.meta.env.DEV || import.meta.env.MODE === 'test') {
+      return;
+    }
+    if (productsQuery.error && queryError) {
+      console.error('[remote-products] 상품 목록 조회 에러 상세 진단:', {
+        code: queryError.code,
+        message: queryError.userMessage,
+        schemaIssues: queryError.devDetails,
+        rawError: productsQuery.error,
+      });
+    }
+    if (addToCartMutation.error && mutationError) {
+      console.error('[remote-products] 장바구니 담기 에러 상세 진단:', {
+        code: mutationError.code,
+        message: mutationError.userMessage,
+        schemaIssues: mutationError.devDetails,
+        rawError: addToCartMutation.error,
+      });
+    }
+  }, [addToCartMutation.error, mutationError, productsQuery.error, queryError]);
 
   return (
     <section className="prod-catalog-root" aria-label="상품 카탈로그">
@@ -170,7 +198,19 @@ export function ProductCatalogView({
 
         {mutationError ? (
           <div role="alert" className="prod-alert-banner">
-            장바구니 담기 실패 ({mutationError.code}): {mutationError.message}
+            <div>
+              장바구니 담기 실패 ({mutationError.code}): {mutationError.userMessage}
+            </div>
+            {mutationError.devDetails.length > 0 ? (
+              <div className="prod-alert-dev-details" data-testid="dev-error-details">
+                <strong>[DEV 상세 진단 - 스키마 불일치 필드]</strong>
+                {mutationError.devDetails.map((issue) => (
+                  <div key={`${issue.path}-${issue.code}`} className="prod-alert-dev-item">
+                    • {issue.path} ({issue.code}): {issue.message}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -186,7 +226,7 @@ export function ProductCatalogView({
           <div role="alert" className="prod-alert-banner">
             <Flex justify="between" align="center" gap="md" wrap="wrap">
               <span>
-                상품 목록 조회 실패 ({queryError.code}): {queryError.message}
+                상품 목록 조회 실패 ({queryError.code}): {queryError.userMessage}
               </span>
               <Button
                 variant="secondary"
@@ -198,6 +238,16 @@ export function ProductCatalogView({
                 다시 시도
               </Button>
             </Flex>
+            {queryError.devDetails.length > 0 ? (
+              <div className="prod-alert-dev-details" data-testid="dev-error-details">
+                <strong>[DEV 상세 진단 - 스키마 불일치 필드]</strong>
+                {queryError.devDetails.map((issue) => (
+                  <div key={`${issue.path}-${issue.code}`} className="prod-alert-dev-item">
+                    • {issue.path} ({issue.code}): {issue.message}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : products.length === 0 ? (
           /* [분기 설명 3] 필터링 결과가 0건일 때 빈 상태 안내와 즉시 초기화 버튼을 제공합니다. */

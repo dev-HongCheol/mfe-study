@@ -129,6 +129,22 @@
   font-weight: 500;
 }
 
+.prod-alert-dev-details {
+  margin-top: var(--mfe-space-xs);
+  padding: var(--mfe-space-xs) var(--mfe-space-sm);
+  border-radius: var(--mfe-radius-sm);
+  background-color: var(--mfe-bg-surface);
+  border: 1px solid var(--mfe-border-subtle);
+  color: var(--mfe-text-secondary);
+  font-size: 0.8125rem;
+  font-family: monospace;
+}
+
+.prod-alert-dev-item {
+  margin: 0.125rem 0;
+  word-break: break-all;
+}
+
 .prod-feedback-banner {
   padding: var(--mfe-space-sm) var(--mfe-space-md);
   border-radius: var(--mfe-radius-md);
