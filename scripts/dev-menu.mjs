@@ -7,7 +7,7 @@
 import { spawn } from 'node:child_process';
 import { stdin as input, stdout as output } from 'node:process';
 import { createInterface } from 'node:readline/promises';
-import { WORKSPACE_ROOT } from './harness-utils.mjs';
+import { WORKSPACE_ROOT, isDirectExecution } from './harness-utils.mjs';
 
 /**
  * @typedef {Object} DevTargetPreset
@@ -216,9 +216,8 @@ async function main() {
   }
 }
 
-// [분기 설명] 직접 실행된 경우에만 main() 실행
-const isDirect = import.meta.url === `file://${process.argv[1]}`;
-if (isDirect) {
+// [분기 설명] 직접 실행된 경우에만 main() 실행 (Windows 백슬래시 경로 및 macOS POSIX 경로 모두 호환)
+if (isDirectExecution(import.meta.url)) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

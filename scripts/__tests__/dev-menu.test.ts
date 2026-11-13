@@ -4,8 +4,11 @@
  * @exposed false
  * @description 개발 환경 선택기(dev-menu.mjs)의 프리셋 조회 및 Turborepo 인자 생성 로직을 검증하는 단위 테스트입니다.
  */
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEV_TARGETS, buildTurboArgs, resolvePreset } from '../dev-menu.mjs';
+import { isDirectExecution } from '../harness-utils.mjs';
 
 describe('개발 환경 선택기 (dev-menu.mjs) 단위 테스트', () => {
   describe('resolvePreset(): 사용자 입력 해석', () => {
@@ -71,6 +74,20 @@ describe('개발 환경 선택기 (dev-menu.mjs) 단위 테스트', () => {
 
       const args = buildTurboArgs(allPreset);
       expect(args).toEqual(['turbo', 'run', 'dev']);
+    });
+
+    it('isDirectExecution은 Windows 및 POSIX 경로에서 현재 실행 스크립트 URL과 process.argv[1]의 일치 여부를 정확히 판별한다', () => {
+      const originalArgv1 = process.argv[1];
+      try {
+        const scriptPath = resolve('scripts/dev-menu.mjs');
+        process.argv[1] = scriptPath;
+        const scriptUrl = pathToFileURL(scriptPath).href;
+        const otherUrl = pathToFileURL(resolve('scripts/other-script.mjs')).href;
+        expect(isDirectExecution(scriptUrl)).toBe(true);
+        expect(isDirectExecution(otherUrl)).toBe(false);
+      } finally {
+        process.argv[1] = originalArgv1;
+      }
     });
   });
 });
