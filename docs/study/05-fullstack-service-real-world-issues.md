@@ -222,12 +222,49 @@
 * **실무 해결 아키텍처**:
   - `remote-shared`의 노출 경로를 역할별로 엄격히 분리(`./ui`, `./theme`, `./utils`)하고, 내부 의존성은 무조건 **`utils`(최하단) -> `theme`(중간) -> `ui`(최상단)** 단방향으로만 흐르도록 강제합니다.
 
-### #10. 네트워크·이벤트·스토리지 데이터를 `as Type`으로만 믿었다가 런타임에 터지는 현상
+### #10. 네트워크·이벤트·스토리지 데이터를 `as Type`으로만 믿었다가 런타임에 터지는 현상 & `RESPONSE_SCHEMA_INVALID` 실무 디버깅 아키텍처
 * **왜 문제가 되나요?**
   - TypeScript의 `as CartItem[]`이나 `interface`는 빌드 후 런타임 JS 코드에서는 완전히 사라집니다.
   - 다른 마이크로 앱이 `CustomEvent`로 잘못된 형태의 페이로드를 보냈거나, `localStorage`에 예전 스키마의 데이터가 남아 있을 때 검증 없이 프로퍼티에 접근하면 즉시 화면이 하얗게 죽습니다.
-* **실무 해결 아키텍처 (경계 데이터 `Zod` 런타임 스키마 검증 & `React Hook Form` 연동)**:
-  - 외부와 맞닿는 3대 경계(① 백엔드 API 요청/응답, ② `mfeEventBus` 이벤트 페이로드, ③ `localStorage` 읽기)에는 **`zod` (`safeParse`)** 런타임 스키마 검증을 적용하여 데이터가 오염되었더라도 안전하게 폴백 처리하며, 사용자 입력 폼에는 **`react-hook-form` + `@hookform/resolvers/zod`(`zodResolver`)**를 결합해 클라이언트-서버 스키마를 일원화합니다.
+* **🔥 [실전 심화] 왜 단순히 `"서버 응답 데이터 형식이 계약과 일치하지 않습니다 (RESPONSE_SCHEMA_INVALID)"`라고만 띄우면 실무에서 디버깅 재앙이 되는가?**:
+  - **개발자가 겪는 3중 맹점**:
+    1. **브라우저 Network 탭에서는 `200 OK` 정상으로 표시됨**: 백엔드 서버는 정상 응답을 내려주었으므로 F12 개발자 도구의 Network 탭을 열어도 빨간색 실패 요청(`400`/`500`)이 없고 모두 초록색 `200 OK`로 보입니다.
+    2. **TanStack Query v5의 무음(Silent) 에러 처리**: TanStack Query v4까지는 쿼리 실패 시 브라우저 콘솔에 자동으로 에러를 찍어주었으나, **v5부터는 콘솔 자동 로깅을 완전히 제거**하고 `query.error` 상태에만 조용히 담습니다.
+    3. **대규모 DTO 스키마에서 육안 대조 불가능**: `unwrapApiResponse`가 `ZodError.issues` 상세 내역을 `originalError` 속성에 숨기고 겉 `message`에 추상적인 문구만 넣으면, 필드가 수십 개이고 API가 수백 개인 실제 서비스에서는 어떤 API의 몇 번째 아이템의 무슨 필드가 문제인지 찾는 데 엄청난 시간이 소모됩니다.
+* **실무 해결 아키텍처 (경계 데이터 `Zod` 검증 + `ZodError.issues` 좌표 추출 + `DEV` / `PROD` 환경별 이원화)**:
+  1. **외부 3대 경계 `safeParse` 검증 및 Tolerant Reader(관대한 소비자) 원칙**:
+     - 외부와 맞닿는 3대 경계(① 백엔드 API 요청/응답, ② `mfeEventBus` 이벤트 페이로드, ③ `localStorage` 읽기)에는 `zod` (`safeParse`) 런타임 스키마 검증을 적용합니다.
+     - 이때 마틴 파울러의 **Tolerant Reader 원칙**에 따라, 프론트엔드 화면 렌더링에 실제로 사용하는 필수 필드만 엄격히 검증하고 미사용 부가 메타데이터는 스키마에 넣지 않거나 `.optional()`로 선언하여 불필요한 스키마 결합도를 낮춥니다.
+  2. **`ZodError.issues` 기반 실패 필드 좌표(`path`, `code`, `message`) 구조화 추출**:
+     - 스키마 검증 실패 시 `originalError.issues` 배열을 파싱하여 **`[0].createdAt — Invalid input: expected string, received undefined`**처럼 정확히 몇 번째 데이터의 어느 필드 경로(`path`)가 왜 실패했는지 즉시 문자열/객체로 추출합니다.
+  3. **환경별(`DEV` vs `PROD`) 에러 표시 및 로깅 이원화 아키텍처**:
+     | 구분 | 개발 환경 (`import.meta.env.DEV === true`) | 운영 환경 (`import.meta.env.PROD === true`) |
+     | :--- | :--- | :--- |
+     | **화면(UI) 에러 배너** | 기본 에러 메시지 하단에 **`[DEV 상세 진단 - 스키마 불일치 필드]`** 블록을 렌더링하여 실패한 필드 경로(`[0].createdAt`)와 사유를 화면에 즉시 표시 | 내부 DB/스키마 필드명 노출(보안 위협)을 차단하고 사용자 친화적 안내 문구만 깔끔하게 표시 |
+     | **브라우저 F12 Console** | `console.error`로 구조화된 `schemaIssues` 배열 및 원본 에러(`rawError`)를 자동 출력하여 F12 콘솔에서 1초 만에 원인 파악 | 브라우저 콘솔 출력 생략 (사내 모니터링·Sentry/Datadog RUM 파이프라인으로만 `zod_issues` 전송) |
+     ```ts
+     // 실무 표준 패턴: ZodError.issues 좌표 추출 및 환경별(DEV vs PROD) 리포트 이원화
+     export function formatCatalogErrorReport(
+       error: NormalizedApiError,
+       isDev: boolean = import.meta.env.DEV,
+     ): CatalogErrorReport {
+       const isSchemaInvalid = error.code === 'RESPONSE_SCHEMA_INVALID';
+       if (!isDev) {
+         return {
+           code: error.code,
+           userMessage: isSchemaInvalid
+             ? '데이터 형식이 일시적으로 일치하지 않습니다. 잠시 후 다시 시도해 주세요.'
+             : error.message,
+           devDetails: [], // PROD에서는 내부 스키마 경로를 절대 UI에 노출하지 않음
+         };
+       }
+       return {
+         code: error.code,
+         userMessage: error.message,
+         devDetails: isSchemaInvalid ? extractSchemaIssues(error.originalError) : [],
+       };
+     }
+     ```
 
 ### #11. 공통 컴포넌트의 과도한 추상화(`Props` 폭발)로 인한 유지보수 불가
 * **왜 문제가 되나요?**

@@ -67,6 +67,60 @@
      });
      ```
   - 결론적으로 메인은 시작점으로서 싱글톤 준비를 발동시키고, 실제 화면 렌더링 코드는 비동기로 분리해 둠으로써 **이벤트 루프를 통해 싱글톤 React 적재가 100% 완료된 직후에만 화면이 그려지도록 완벽히 보장**됩니다.
+* **🔥 [실전 심화] 서버 최초 기동 후 첫 접속에서만 발생하는 `TypeError: createScopedStorage is not a function` (모듈 Top-Level 원격 함수 호출 경합)**:
+  - **당황스러운 증상**:
+    - `main.ts` + `bootstrap.tsx` 분리를 적용했는데도, `pnpm dev`로 서버들을 처음 띄운 직후 브라우저로 첫 접속을 하면 콘솔에 `Uncaught (in promise) TypeError: createScopedStorage is not a function (at catalog-schema.ts:156)` 에러가 터지며 화면이 멈춥니다.
+    - 그런데 **신기하게도 브라우저를 한 번 새로고침(F5)하면 그때부터는 아무 문제 없이 정상 작동**합니다!
+  - **근본 원인 (`@module-federation/vite`의 `DeferredRemoteProxy`와 Vite `optimizeDeps` 초회 워밍업 지연)**:
+    1. `@module-federation/vite`는 `import { createScopedStorage } from 'remote_shared/utils'` 같은 정적 원격 import를 만났을 때, 원격 컨테이너(`http://localhost:3004/mf-manifest.json`) 다운로드가 완료되기 전까지 임시로 **`DeferredRemoteProxy`(지연 프록시)** 객체를 바인딩합니다.
+    2. 개발 서버(`pnpm dev`)를 처음 켜고 최초 접속을 하면, 공급자 서버인 `remote-shared(3004)`의 Vite가 최초 의존성 사전 번들링(`optimizeDeps`)을 수행하느라 원격 모듈 응답이 수백 ms 지연됩니다.
+    3. 이때 소비자 앱(`remote-products`)의 모듈 파일 최상단(Top-Level)에 아래와 같이 **파일이 import되는 즉시 원격 함수를 동기 호출하는 코드**가 있으면, React 컴포넌트가 마운트되기도 전(원격 모듈 초기화 완료 전)에 함수가 실행되어 `is not a function` 에러가 터집니다:
+       ```ts
+       // ❌ 나쁜 예: 모듈 Top-Level(파일 로드 즉시)에서 원격 함수를 동기 호출!
+       // 첫 접속 시 remote_shared/utils 초기화보다 먼저 실행되어 TypeError 발생
+       export const productsScopedStorage = createScopedStorage('products');
+       ```
+    4. 두 번째 접속(새로고침)부터는 `remote-shared`의 Vite `.vite/deps` 캐시와 브라우저 캐시가 이미 생성되어 있어 타이밍 경합을 우연히 통과하기 때문에 재현되지 않았던 것입니다.
+  - **실무 정석 해결책 (원격 유틸리티·팩토리 함수의 Lazy Initialization 패턴)**:
+    - 원격 모듈(`remote_shared/*`)에서 가져온 함수는 **절대 모듈 최상단(Top-Level)에서 즉시 호출하지 않고, 실제 함수가 실행되는 시점(컴포넌트 마운트 이후)에 지연 생성(Lazy Singleton Getter)**하도록 작성해야 합니다:
+      ```ts
+      // ✅ 좋은 예: 모듈 로드 시점에는 선언만 하고, 실제 호출 시점에 지연 초기화(Lazy Init)
+      let cachedProductsStorage: ScopedStorage | null = null;
+
+      export function getProductsScopedStorage(): ScopedStorage {
+        if (!cachedProductsStorage) {
+          cachedProductsStorage = createScopedStorage('products');
+        }
+        return cachedProductsStorage;
+      }
+      ```
+    - **② `@module-federation/vite`의 `registerEntryImports` 스캐너 함정(`.js` 확장자 표기 금지) 및 `main.ts` 명시적 리모트 프리로드**:
+      - **증상**: 모듈 Top-Level 호출을 제거했음에도 첫 접속 시 `Uncaught Error: Element type is invalid: expected a string ... but got: undefined`가 발생하며 `<ThemeProvider>`나 `<Container>` 등 `remote_shared` 컴포넌트가 `undefined`로 평가되는 현상.
+      - **내부 동작 해부 (`DeferredRemoteProxy` 변환과 `registerEntryImports` 스캐너)**:
+        1. `@module-federation/vite`는 `import { ThemeProvider } from 'remote_shared/theme'` 같은 정적 Named Import를 내부적으로 아래와 같이 변환합니다:
+           ```js
+           import { __moduleExports as __mf_ns_0, __mf_remote_pending as __mf_ns_0_pending } from "remote_shared/theme";
+           let ThemeProvider;
+           if ("ThemeProvider" in __mf_ns_0) { ThemeProvider = __mf_ns_0["ThemeProvider"]; }
+           __mf_ns_0_pending.then(() => { ThemeProvider = __mf_ns_0["ThemeProvider"]; });
+           ```
+           즉, 네트워크를 통해 `http://localhost:3004/remoteEntry.js` 로딩(`__mf_ns_0_pending`)이 끝나기 전까지는 `ThemeProvider`, `Container`, `Button` 등이 모두 `undefined`입니다.
+        2. 원래 `@module-federation/vite`는 서버 기동 시 `registerEntryImports`라는 정적 파일 스캐너로 `index.html` → `src/main.ts` → `src/bootstrap.tsx` → `src/App.tsx`를 따라가며 원격 모듈 목록(`preloadRemotes`)을 수집한 뒤, `import('./bootstrap')`이 실행되기 전에 해당 리모트들의 `__mf_remote_pending`을 먼저 기다려 줍니다.
+        3. 그런데 로컬 상대 경로를 `import('./bootstrap.js')`처럼 **`.js` 확장자로 작성하면 스캐너(`isFile`)가 디스크에서 `bootstrap.js`만 찾고 실제 파일인 `bootstrap.tsx`를 찾지 못해 하위 트리 스캔을 즉시 중단**합니다! 그 결과 `preloadRemotes`가 빈 배열(`[]`)이 되어 첫 접속 시 리모트 로딩을 기다리지 않고 `bootstrap.tsx`가 곧바로 실행되면서 `undefined` 에러가 터진 것입니다.
+      - **실무 정석 해결책 및 엔터프라이즈 표준 패턴 구분**:
+        | 구분 | 적용 패턴 | 현업 표준 여부 및 도입 목적 |
+        | :--- | :--- | :--- |
+        | **1. Lazy Singleton Getter** (`getProductsScopedStorage`) | 모듈 Top-Level에서 원격 팩토리 함수를 즉시 호출하지 않고 함수 호출 시점에 지연 생성 | **100% 엔터프라이즈 표준 정석** (MFE·SSR/CSR·트리셰이킹·단위 테스트 격리 공통 원칙) |
+        | **2. 상대 경로 `.js` 확장자 생략** (`import './App'`) | 프론트엔드 번들러(`moduleResolution: "bundler"`)에서 로컬 TS/TSX import 시 `.js` 확장자 생략 | **100% 프론트엔드 번들러 표준** (`NodeNext` 백엔드 전용 규칙과 분리하여 Vite/Webpack 플러그인 정적 분석기 호환성 보장) |
+        | **3. `main.ts`의 `Promise.all` 리모트 선행 프리로드** | `bootstrap` 동적 import 전에 필수 원격 서브패스들을 `Promise.all`로 병렬 프리로드 | **`@module-federation/vite` ESM 개발 서버 방어 + 초기 렌더링 Waterfall 단축(Preload) 기법** (Webpack/Rspack에서는 `import('./bootstrap')` 단독 사용만으로도 동작하나, Vite Dev 안정성 및 병렬 네트워크 로딩 최적화를 위해 현업에서도 자주 활용) |
+        ```ts
+        // src/main.ts — 리모트 병렬 선행 프리로드 후 bootstrap 마운트
+        void Promise.all([
+          import('remote_shared/utils'),
+          import('remote_shared/theme'),
+          import('remote_shared/ui'),
+        ]).then(() => import('./bootstrap'));
+        ```
 
 ---
 
@@ -110,6 +164,10 @@
      - **③ 공급자 서버 실행 시점과 로컬 디스크 캐시 유지 원리**:
        - 최초에 `@mf-types.zip`을 내려받거나 공급자의 타입이 변경되어 새로 갱신할 때는 공급자 서버(`remote-shared:3004`)가 떠 있어야(또는 빌드 산출물이 서빙 중이어야) 합니다.
        - 하지만 **일단 한 번 다운로드되어 `./@mf-types/` 폴더에 `.d.ts` 파일들이 풀리고 나면 해당 파일들은 내 디스크에 그대로 남아있기 때문에**, 이후 공급자 서버(`3004`)를 꺼놓아도 소비자 앱 단독으로 `tsc --noEmit` 타입 검사와 에디터 자동 완성이 100% 정상 동작합니다.
+     - **④ [트러블슈팅] 브라우저 콘솔의 `ws://127.0.0.1:xxxxx (dynamic-remote-type-hints-plugin)` WebSocket 연결 실패 오류 해결**:
+       - **증상**: `@module-federation/vite`에서 `dts` 옵션을 켜고 개발 서버를 실행하면 브라우저 콘솔에 `WebSocket connection to 'ws://127.0.0.1:16322/?WEB_SOCKET_CONNECT_MAGIC_ID=...' failed (dynamic-remote-type-hints-plugin.mjs)` 에러가 반복 출력되는 현상이 발생합니다.
+       - **원인**: `@module-federation/dts-plugin`은 개발 모드에서 원격 타입 힌트를 브라우저 런타임에 전달하기 위해 임시 로컬 포트로 RPC WebSocket 서버를 띄우고 `dynamic-remote-type-hints-plugin`을 Vite `optimizeDeps`에 주입합니다. 그러나 Vite가 이 플러그인을 `.vite/deps`에 사전 번들링할 때 이전 실행의 임시 포트 번호가 캐싱되거나 다중 리모트 기동 시 워커 초기화 타이밍이 어긋나면서 죽은 포트로 WebSocket 접속을 시도하게 됩니다.
+       - **해결책**: `vite.config.ts`의 `federation({ ... })` 최상위 옵션에 `dev: { disableDynamicRemoteTypeHints: true }`를 지정하면, 빌드·개발 시점의 `@mf-types.zip` 생성 및 `./@mf-types/` 자동 압축 해제는 100% 그대로 동작하면서 불필요한 브라우저 WebSocket 런타임 플러그인 주입만 깔끔하게 비활성화됩니다. 또한 로컬 진단 캐시 폴더인 `.mf/`는 `.gitignore`에 등록하여 머신별 절대 경로 로그(`.mf/diagnostics/latest.json`)가 Git에 추적되지 않게 격리합니다.
 
 ---
 
