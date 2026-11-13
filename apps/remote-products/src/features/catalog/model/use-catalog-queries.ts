@@ -14,8 +14,8 @@ import {
   mfeEventBus,
   sharedQueryClient,
 } from 'remote_shared/utils';
-import { DEFAULT_SIMULATE_DELAY_MS, fetchProducts, postAddToCart } from '../api/catalog-api.js';
-import type { CartItemView, ProductEntity, ProductFilterValues } from './catalog-schema.js';
+import { DEFAULT_SIMULATE_DELAY_MS, fetchProducts, postAddToCart } from '../api/catalog-api';
+import type { CartItemView, ProductEntity, ProductFilterValues } from './catalog-schema';
 
 /**
  * @description useProductsQuery 훅 입력 옵션 인터페이스

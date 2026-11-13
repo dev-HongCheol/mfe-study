@@ -13,7 +13,7 @@ import {
   type ProductCategoryFilter,
   type ProductFilterValues,
   productFilterSchema,
-} from '../model/catalog-schema.js';
+} from '../model/catalog-schema';
 
 /** 카테고리 드롭다운 선택 옵션 목록 상수 */
 const CATEGORY_SELECT_OPTIONS: SelectOptionItem[] = [

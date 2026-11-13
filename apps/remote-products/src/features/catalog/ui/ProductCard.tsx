@@ -6,7 +6,7 @@
  */
 import { Badge, Button, Card, Flex, Heading, Stack } from 'remote_shared/ui';
 import { formatCurrency } from 'remote_shared/utils';
-import { CATEGORY_LABELS, type ProductEntity } from '../model/catalog-schema.js';
+import { CATEGORY_LABELS, type ProductEntity } from '../model/catalog-schema';
 
 /**
  * @description ProductCard 컴포넌트 Props 인터페이스

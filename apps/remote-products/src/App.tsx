@@ -24,7 +24,7 @@ import {
   type ThemeMode,
   useMfeEvent,
 } from 'remote_shared/utils';
-import { ProductList } from './exposed/ProductList.js';
+import { ProductList } from './exposed/ProductList';
 
 /** 단독 실행 쇼케이스용 사용자 선택 옵션 상수 */
 const USER_OPTIONS: SelectOptionItem[] = [

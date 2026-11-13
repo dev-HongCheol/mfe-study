@@ -12,7 +12,7 @@ import {
   type ProductEntity,
   cartItemViewSchema,
   productEntityListSchema,
-} from '../model/catalog-schema.js';
+} from '../model/catalog-schema';
 
 /** 기본 로딩 지연 시뮬레이션 시간 상수 (1.5초) */
 export const DEFAULT_SIMULATE_DELAY_MS = 1_500;

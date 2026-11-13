@@ -30,6 +30,9 @@ export default defineConfig({
       name: 'remote_products',
       filename: 'remoteEntry.js',
       manifest: true,
+      dev: {
+        disableDynamicRemoteTypeHints: true,
+      },
       dts: {
         generateTypes: {
           tsConfigPath: './tsconfig.json',

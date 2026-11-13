@@ -14,9 +14,9 @@ import {
   sharedQueryClient,
   useMfeEvent,
 } from 'remote_shared/utils';
-import { DEFAULT_SIMULATE_DELAY_MS } from '../features/catalog/api/catalog-api.js';
-import type { ProductListProps } from '../features/catalog/model/catalog-schema.js';
-import { ProductCatalogView } from '../features/catalog/ui/ProductCatalogView.js';
+import { DEFAULT_SIMULATE_DELAY_MS } from '../features/catalog/api/catalog-api';
+import type { ProductListProps } from '../features/catalog/model/catalog-schema';
+import { ProductCatalogView } from '../features/catalog/ui/ProductCatalogView';
 
 export type {
   CartItemView,
@@ -25,7 +25,7 @@ export type {
   ProductEntity,
   ProductFilterValues,
   ProductListProps,
-} from '../features/catalog/model/catalog-schema.js';
+} from '../features/catalog/model/catalog-schema';
 
 /**
  * Module Federation './ProductList' 노출 컴포넌트입니다.

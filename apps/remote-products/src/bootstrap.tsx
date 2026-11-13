@@ -7,7 +7,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider } from 'remote_shared/theme';
-import { App } from './App.js';
+import { App } from './App';
 
 /**
  * #root 엘리먼트를 찾아 단독 실행 쇼케이스(App)를 마운트합니다.
