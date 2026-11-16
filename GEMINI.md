@@ -22,12 +22,13 @@
 
 | 단계 | 핵심 작업 내용 | 권장 모델 | 필수 산출물 및 참조 템플릿/문서 |
 | :---: | :--- | :---: | :--- |
-| **1단계** | 루트 [`todo.md`](./todo.md) · [`service-registry.md`](./docs/service-registry.md) 및 대상 앱 `docs/todo.md` 확인 · `Context7` 스펙 선조회 · 기획/설계서 작성 | 🔴 **`Argon High`** | [`01-plan-and-design.template.md`](./docs/templates/01-plan-and-design.template.md) 참조 → `01-plan-and-design.md` 작성 후 **🟡 `Argon Medium` 전환 알림** |
-| **2단계** | TDD 명세서 작성 · 스코프 선정 및 **사용자 구현 승인 요청** | 🟡 **`Argon Medium`** | [`02-tdd-spec.template.md`](./docs/templates/02-tdd-spec.template.md) 참조 → `02-tdd-spec.md` 작성 → **승인 시 브랜치 생성 및 `.agents/active-scope.json` 잠금** |
+| **1단계** | **작업 브랜치 선생성·전환** · `.agents/active-scope.json` 설정(`currentStep: 1`) · 루트 [`todo.md`](./todo.md) · [`service-registry.md`](./docs/service-registry.md) 및 앱 `docs/todo.md` 확인 · `Context7` 스펙 선조회 · 기획/설계서 작성 | 🔴 **`Argon High`** | `main` 위 문서 작성 절대 금지 (`verify-scope.mjs` 차단) → [`01-plan-and-design.template.md`](./docs/templates/01-plan-and-design.template.md) 참조 `01-plan-and-design.md` 작성 후 **🟡 `Argon Medium` 전환 알림** |
+| **2단계** | TDD 명세서 작성 및 **사용자 구현 승인 요청** | 🟡 **`Argon Medium`** | [`02-tdd-spec.template.md`](./docs/templates/02-tdd-spec.template.md) 참조 → `02-tdd-spec.md` 작성 → **사용자 구현 승인 전까지 본 코드 작성 금지** |
 | **3단계** | 실패하는 테스트 코드(`Red`) 먼저 작성 (`Vitest`) | 🟡 **`Argon Medium`** | 단위 테스트(`Co-location`) 및 통합 테스트(`__tests__/`) 작성 후 의도된 실패(`Red`) 확인 |
 | **4단계** | 본 코드 · 6대 주석 · 3종 SQL 구현 (`Green & Refactor`) | 🟡 **`Argon Medium`** | [`Study 04`](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md) · [`Study 05`](./docs/study/05-fullstack-service-real-world-issues.md) 방어 설계 적용 → 테스트 통과(`Green`) 후 **🔴 `Argon High` 전환 알림** |
-| **5단계-A** | PR 생성 전 심층 코드 리뷰 문서 작성 및 자체 감사 | 🔴 **`Argon High`** | [`03-code-review.template.md`](./docs/templates/03-code-review.template.md) 참조 → `03-code-review.md` 작성 (보안 4대 + MFE 14대 + 서비스 16대 전수 점검) |
-| **5단계-B** | PR 초안 및 커밋 메시지 보고 → **머지 승인 시 TODO · 레지스트리 업데이트 후 머지** | 🟡 **`Argon Medium`** | [`pull-request.template.md`](./docs/templates/pull-request.template.md) 참조 보고 → 승인 직후·실제 머지 직전에 `todo.md` 및 [`docs/service-registry.md`](./docs/service-registry.md) 업데이트 후 머지 |
+| **5단계-A** | PR 생성 전 심층 코드 리뷰 문서 작성 · PR 초안 보고 및 **PR 생성 승인만 요청** | 🔴 **`Argon High`** | [`03-code-review.template.md`](./docs/templates/03-code-review.template.md) (`03-code-review.md`) + [`pull-request.template.md`](./docs/templates/pull-request.template.md) 초안 보고 → **⚠️ 머지 동시 승인 요청 절대 금지 (오직 PR 생성 승인만 요청)** |
+| **5단계-B** | 커밋 · 푸시 및 **`gh pr create` 실행 후 반드시 즉시 정지(턴 종료)** | 🟡 **`Argon Medium`** | **PR 생성까지만 수행하고 즉시 멈춤** → 사용자가 GitHub에서 PR을 직접 확인하고 머지 여부를 결정할 때까지 대기 (`gh pr create`와 `gh pr merge` 연속 실행 시 훅으로 즉시 차단) |
+| **5단계-C** | 사용자의 **별도 머지 승인 후** TODO · 레지스트리 커밋·푸시 및 머지 실행 | 🟡 **`Argon Medium`** | 별도 머지 승인을 받은 직후 · 실제 머지 직전에 루트 `todo.md`, 앱 `docs/todo.md`, [`docs/service-registry.md`](./docs/service-registry.md) 업데이트를 먼저 커밋·푸시한 뒤 머지 실행 |
 
 ---
 
@@ -79,8 +80,8 @@
    - 서비스별 TODO 초기화 시: [`./docs/templates/todo.template.md`](./docs/templates/todo.template.md)
    - [1단계] 기획 및 설계서 작성 시: [`./docs/templates/01-plan-and-design.template.md`](./docs/templates/01-plan-and-design.template.md)
    - [2단계] TDD 명세서 작성 시: [`./docs/templates/02-tdd-spec.template.md`](./docs/templates/02-tdd-spec.template.md)
-   - [5단계-A] PR 전 심층 코드 리뷰 시: [`./docs/templates/03-code-review.template.md`](./docs/templates/03-code-review.template.md)
-   - [5단계-B] PR 초안 및 커밋 메시지 보고 시: [`./docs/templates/pull-request.template.md`](./docs/templates/pull-request.template.md)
+   - [5단계-A] PR 생성 전 심층 코드 리뷰 작성 시: [`./docs/templates/03-code-review.template.md`](./docs/templates/03-code-review.template.md)
+   - [5단계-A/B] PR 초안 보고(PR 생성 승인 요청) 및 PR 생성 후 정지 시: [`./docs/templates/pull-request.template.md`](./docs/templates/pull-request.template.md)
 2. **영구 아키텍처·실전 이슈·세팅 가이드 정본 6종 (`./docs/study/`)**:
    - MFE 핵심 원리 및 `Mode A vs Mode B` 비교 학습: [`./docs/study/01-mfe-concepts-and-guide.md`](./docs/study/01-mfe-concepts-and-guide.md)
    - 경량 FSD 폴더 아키텍처(`exposed/`, `features/{ui,api,model}`, `testing/`), 선정 라이브러리, SSOT 참조 원칙: [`./docs/study/02-polyrepo-and-architecture-decisions.md`](./docs/study/02-polyrepo-and-architecture-decisions.md)

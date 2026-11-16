@@ -2,7 +2,7 @@
  * @file inject-context.mjs
  * @app mfe-study-root (Scope: root)
  * @exposed false
- * @description [SessionStart / PreInvocation] 루트 todo.md 및 활성 앱의 docs/todo.md 현황과 단계별 모델(Argon High <-> Argon Medium) 전환 알림을 에이전트 컨텍스트에 자동 주입합니다.
+ * @description [SessionStart / PreInvocation] 루트 todo.md 및 활성 앱의 docs/todo.md 현황, 단계별 모델(Argon High <-> Argon Medium) 전환 알림 및 PR 생성·머지 분리 규칙을 에이전트 컨텍스트에 자동 주입합니다.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -22,24 +22,24 @@ import {
  * @returns {string} 모델 운영 및 전환 안내 메시지
  */
 export function getModelGuidanceBanner(currentStep, isDocsOnly = false) {
-  // [분기 설명] 코드 구현이 없는 루트 공통 설계 전용 브랜치(isDocsOnly)는 1단계 설계 후 바로 5단계 머지로 이동합니다.
+  // [분기 설명] 코드 구현이 없는 루트 공통 설계 전용 브랜치(isDocsOnly)는 1단계 설계 후 5단계 PR 생성으로 이동합니다.
   if (isDocsOnly) {
-    return '🔴 [권장 모델: Argon High] 루트 공통 설계(SSOT) 전용 브랜치입니다. 01-plan-and-design.md 승인 후 바로 PR/머지를 진행하세요.';
+    return '🔴 [권장 모델: Argon High] 루트 공통 설계(SSOT) 전용 브랜치입니다. 01-plan-and-design.md 승인 후 PR 생성까지만 진행하고 즉시 멈추세요(사용자의 별도 머지 승인 전 머지 금지).';
   }
 
   switch (currentStep) {
     case 1:
-      return '🔴 [현재 1단계 (기획·설계) | 권장 모델: Argon High] "docs/templates/01-plan-and-design.template.md" 및 "docs/study/02-polyrepo-and-architecture-decisions.md"를 참조해 01-plan-and-design.md를 작성하고, 완료 직후 "🟡 Argon Medium" 모델 전환을 안내하세요.';
+      return '🔴 [현재 1단계 (브랜치 선생성 & 기획·설계) | 권장 모델: Argon High] 반드시 작업 브랜치를 먼저 생성·전환한 뒤(main 위에서 문서 작성 금지) "docs/templates/01-plan-and-design.template.md"를 참조해 01-plan-and-design.md를 작성하고, 완료 직후 "🟡 Argon Medium" 모델 전환을 안내하세요.';
     case 2:
-      return '🟡 [현재 2단계 (TDD 명세 & 승인 게이트) | 권장 모델: Argon Medium] "docs/templates/02-tdd-spec.template.md"를 참조해 02-tdd-spec.md를 작성하세요. 토큰 절감을 위해 2~4단계는 Argon Medium 모델을 권장하며 승인 전까지 본 코드 구현을 금지합니다.';
+      return '🟡 [현재 2단계 (TDD 명세 & 구현 승인 게이트) | 권장 모델: Argon Medium] "docs/templates/02-tdd-spec.template.md"를 참조해 02-tdd-spec.md를 작성하세요. 토큰 절감을 위해 2~4단계는 Argon Medium 모델을 권장하며 사용자 구현 승인 전까지 본 코드 구현을 금지합니다.';
     case 3:
       return '🟡 [현재 3단계 (Red: 실패 테스트 작성) | 권장 모델: Argon Medium] 본 코드 작성 전 실패하는 Vitest 테스트를 먼저 작성하고 Red 상태를 확인하세요.';
     case 4:
       return '🟡 [현재 4단계 (Green: 본 코드 & 3종 SQL 구현) | 권장 모델: Argon Medium] "docs/study/04-mfe-real-world-pitfalls-and-solutions.md" 및 "docs/study/05-fullstack-service-real-world-issues.md" 방어 설계와 6대 주석 원칙을 준수해 테스트를 통과(Green)시키고, 완료 직후 "🔴 Argon High" 모델 전환을 안내하세요.';
     case 5:
-      return '🔴 [현재 5단계 (심층 코드 리뷰 & PR·머지) | 권장 모델: Argon High (리뷰) -> 🟡 Argon Medium (PR/머지)] "docs/templates/03-code-review.template.md" 및 "docs/templates/pull-request.template.md"를 참조해 보안·MFE 14대(Study 04)·서비스 16대(Study 05) 이슈를 정밀 감사하고, 머지 직전에 todo.md를 업데이트하세요.';
+      return '🔴 [현재 5단계 | 5-A(Argon High: 코드 리뷰) -> 5-B(Argon Medium: PR 생성까지만 수행 후 즉시 멈춤) -> 5-C(별도 머지 승인 시 TODO·레지스트리 커밋 후 머지)] "03-code-review.md" 작성 후 PR 초안을 보고할 때는 "PR 생성 승인"만 요청하세요. ⚠️ 절대 PR 생성과 머지를 한 번에 묶어 제안하거나 연속 실행하지 말고, PR 생성까지만 완료한 뒤 턴을 종료하여 사용자의 PR 확인 및 별도 머지 결정을 대기하세요.';
     default:
-      return '🔴 [권장 모델: Argon High] 현재 스코프와 todo.md, docs/study/* 및 docs/templates/*를 먼저 확인하세요.';
+      return '🔴 [권장 모델: Argon High] 새 작업 착수 전 반드시 작업 브랜치를 먼저 생성·전환하고 todo.md, docs/service-registry.md 및 docs/templates/*를 확인하세요.';
   }
 }
 
@@ -104,7 +104,7 @@ export function buildContextInjection(options = {}) {
     `📌 루트 TODO 요약: ${rootTodoSummary}`,
     activeScope.scope !== 'root' ? `📌 앱(${activeScope.scope}) TODO 요약: ${appTodoSummary}` : '',
     '📚 구현된 서비스 명령어·API·노출모듈 정본: docs/service-registry.md (상세 계약 SSOT: docs/features/20261027-phase1-service-contracts/01-plan-and-design.md)',
-    '⚠️ 필수 준수: (1) 계획 설명 및 사용자 승인 전 코드 수정 금지 (2) 연계 작업은 루트 정본(SSOT)의 항목(제목)만 참조(복붙 금지) (3) 6대 주석 원칙(인터페이스 내부 속성 /** */ 주석 필수) (4) 머지 직전 todo.md 및 docs/service-registry.md 갱신 필수',
+    '⚠️ 필수 준수: (1) 계획 설명 및 승인 전 수정 금지 + 1단계 전 작업 브랜치 선생성 필수(main 직접 수정 금지) (2) 연계 작업은 루트 정본(SSOT) 항목만 참조 (3) 6대 주석 원칙 준수 (4) 5단계는 PR 생성까지만 수행 후 정지하며, 사용자의 별도 머지 승인 후에만 todo.md·service-registry.md 커밋 후 머지',
   ]
     .filter(Boolean)
     .join('\n');
