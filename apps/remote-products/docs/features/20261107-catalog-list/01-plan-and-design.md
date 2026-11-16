@@ -32,7 +32,7 @@
   - `ProductList` 진입부에서 `syncMode === 'mode-a-event'`일 때는 `createMfeQueryClient()`로 생성한 리모트 전용 독립 `QueryClient`를 주입하고 담기 성공 시 `mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, payload)`만 발송합니다.
   - 반대로 `syncMode === 'mode-b-query'`일 때는 `remote_shared/utils`의 싱글톤 `sharedQueryClient`를 주입하고 담기 시작 시 `cancelQueries({ queryKey: CART_QUERY_KEY })`(응답 역전 방지) 및 성공 시 `invalidateQueries({ queryKey: CART_QUERY_KEY })`로 직접 캐시를 무효화하여 두 아키텍처의 순수 동작 차이를 명확히 검증합니다.
 - **MFE 및 풀스택 실전 방어 설계 내재화 ([Study 04](../../../../../docs/study/04-mfe-real-world-pitfalls-and-solutions.md) & [Study 05](../../../../../docs/study/05-fullstack-service-real-world-issues.md))**:
-  - `main.ts` + `bootstrap.tsx` 2단 비동기 분리(`Study 04 #01`), `.prod-*` CSS 클래스 프리픽스 및 시맨틱 변수 강제(`Study 04 #05`, `Study 05 #14`), `createScopedStorage('products')` 필터 영속화(`Study 04 #10`), `Vitest` 로컬 스텁 매핑 + `MSW` 모킹(`Study 04 #11`), `AbortSignal` 연동 1.5초 지연 스켈레톤 CLS 방지(`Study 05 #01, #13`), 플렉스 말줄임 및 고정폭 숫자 `tabular-nums`(`Study 05 #16`)를 빠짐없이 적용합니다.
+  - `main.ts`(`remote_shared` 서브패스 3종 `Promise.all` 선행 프리로드) + `bootstrap.tsx` 2단 비동기 분리 및 원격 함수 지연 초기화(`getProductsScopedStorage` Lazy Getter)(`Study 04 #01`), `disableDynamicRemoteTypeHints`를 통한 불필요한 WebSocket 연결 차단(`Study 04 #04`), `.prod-*` CSS 클래스 프리픽스 및 시맨틱 변수 강제(`Study 04 #05`, `Study 05 #14`), `createScopedStorage('products')` 필터 영속화(`Study 04 #10`), `Vitest` 로컬 스텁 매핑 + `MSW` 모킹(`Study 04 #11`), `AbortSignal` 연동 1.5초 지연 스켈레톤 CLS 방지(`Study 05 #01, #13`), 스키마 검증 에러(`RESPONSE_SCHEMA_INVALID`)의 `DEV`/`PROD` 환경별 진단 리포트 이원화(`Study 05 #10`), 플렉스 말줄임 및 고정폭 숫자 `tabular-nums`(`Study 05 #16`)를 빠짐없이 적용합니다.
 
 ### 2.3 루트 공통 설계 정본(SSOT) 참조 — `[타 서비스 연계 작업 시 필수]`
 - **참조 정본 문서**: [Phase 1 서비스 간 공통 연동 계약 (`01-plan-and-design.md`)](../../../../../docs/features/20261027-phase1-service-contracts/01-plan-and-design.md) 및 [서비스 레지스트리 (`service-registry.md`)](../../../../../docs/service-registry.md)
@@ -53,9 +53,10 @@
 ## 3. 최신 기술 스펙 확인 요약 (`Context7` / 공식 타입 검증) — `[공통 필수]`
 - **조회 대상 라이브러리**: `@module-federation/vite` (`v1.23.7`, `pluginDts`), `@tanstack/react-query` (`v5.74.4`), `react-hook-form` (`v7.56.1`) + `@hookform/resolvers/zod` (`v5.0.1`), `msw` (`v2.7.0`)
 - **핵심 스펙 및 주의사항**:
-  1. **`@module-federation/vite` 양방향(`remotes` + `exposes`) 및 `dts` 옵션**:
+  1. **`@module-federation/vite` 양방향(`remotes` + `exposes`), `DeferredRemoteProxy` 프리로드 및 `dts` 옵션**:
      - `remotes`에 매니페스트 객체 `{ type: 'module', name: 'remote_shared', entry: 'http://localhost:3004/mf-manifest.json', entryGlobalName: 'remote_shared', shareScope: 'default' }`를 지정합니다.
-     - `dts`에 `{ generateTypes: { tsConfigPath: './tsconfig.json', abortOnError: false }, consumeTypes: { typesOnBuild: true, abortOnError: false } }`를 지정하면 개발(`vite dev`)과 빌드(`vite build`) 시 모두 `http://localhost:3004/@mf-types.zip`을 받아 `./@mf-types/`에 풀고, 동시에 `./ProductList`의 `@mf-types.zip`을 생성합니다 (`abortOnError: false`로 오프라인 단독 빌드 시에도 중단 방지).
+     - `@module-federation/vite`는 원격 모듈의 정적 Named Import를 내부적으로 `DeferredRemoteProxy`(원격 컴포넌트·함수 등이 다운로드 및 초기화되기 전까지 빈 대기 상태(`undefined`)로 두었다가 로드 완료 시 실제 원격 값으로 치환하는 지연 바인딩)로 변환하고 엔트리 정적 스캐너(`registerEntryImports`)를 통해 하위 원격 의존성을 수집합니다. 스캐너가 하위 의존성 트리를 중간에 끊지 않고 끝까지 추적하도록 로컬 상대 경로 import에서는 `.js` 확장자를 생략하며, `src/main.ts`에서 `remote_shared/utils`, `remote_shared/theme`, `remote_shared/ui`를 `Promise.all`로 병렬 프리로드한 후 `./bootstrap`을 마운트합니다.
+     - `dts`에 `{ generateTypes: { tsConfigPath: './tsconfig.json', abortOnError: false }, consumeTypes: { typesOnBuild: true, abortOnError: false } }`를 지정하여 `http://localhost:3004/@mf-types.zip`을 `./@mf-types/`에 자동 수신하는 동시에 `./ProductList`의 `@mf-types.zip`을 생성합니다. 아울러 `dev: { disableDynamicRemoteTypeHints: true }`를 함께 설정하여 `@mf-types` 파일 동기화는 유지하면서 브라우저 런타임에 불필요한 동적 타입 힌트 WebSocket 클라이언트가 주입되어 연결 에러를 일으키는 현상을 차단합니다.
      - `tsconfig.json`에는 `"baseUrl": "."`, `"paths": { "*": ["./@mf-types/*"] }`, `"include": ["src", "@mf-types", "vite.config.ts", "vitest.config.ts"]`를 선언해 수동 `remotes.d.ts` 없이 원격 타입을 정식 인식합니다.
   2. **`@tanstack/react-query` v5 단일 객체 문법 및 `AbortSignal` 취소 규약**:
      - v5에서는 `useQuery({ queryKey, queryFn })`, `useMutation({ mutationFn, onMutate, onSuccess })`, `queryClient.cancelQueries({ queryKey })`, `queryClient.invalidateQueries({ queryKey })` 모두 단일 옵션 객체 시그니처만 허용됩니다.
@@ -75,22 +76,22 @@
 | `NEW` | `docs/features/20261107-catalog-list/02-tdd-spec.md` | *(2단계 작성 예정)* 단위·통합 TDD 테스트 명세서 |
 | `NEW` | `package.json` | `@mfe-study/remote-products` 매니페스트 (`catalog:` 공유 의존성 사용, `@ark-ui/react`·`clsx` 미설치) |
 | `NEW` | `tsconfig.json` | 루트 `tsconfig.base.json` 상속 + `./@mf-types/*` 경로 매핑 설정 |
-| `NEW` | `vite.config.ts` | Port `3002`, `strictPort: true`, `cors: true`, `remote_shared` 소비 및 `./ProductList` 노출 설정 |
+| `NEW` | `vite.config.ts` | Port `3002`, `strictPort: true`, `cors: true`, `remote_shared` 소비, `./ProductList` 노출 및 `disableDynamicRemoteTypeHints: true` 설정 |
 | `NEW` | `vitest.config.ts` | `jsdom` 환경 및 `remote_shared/*` 로컬 테스트 스텁 `resolve.alias` 매핑 설정 |
 | `NEW` | `index.html` | 단독 실행(`Standalone`, `Port 3002`) 진입 HTML 문서 |
-| `NEW` | `src/main.ts` | `eager consumption` 방지를 위한 비동기 `import('./bootstrap')` 진입 스크립트 (`.ts`) |
+| `NEW` | `src/main.ts` | `eager consumption` 및 첫 접속 시 `DeferredRemoteProxy` 초기화 경합 방지를 위한 `remote_shared/*` 병렬 프리로드(`Promise.all`) + 비동기 `import('./bootstrap')` 진입 스크립트 (`.ts`) |
 | `NEW` | `src/bootstrap.tsx` | 단독 실행 시 `ThemeProvider`와 `<App />`을 `#root`에 마운트하는 부트스트랩 엔트리 |
 | `NEW` | `src/App.tsx` | `http://localhost:3002` 단독 실행용 컨트롤 바(유저·동기화모드·테마·지연 토글 + 이벤트 모니터) 및 카탈로그 쇼케이스 (`PascalCase`) |
 | `NEW` | `src/exposed/ProductList.tsx` | Module Federation `./ProductList` 공개 진입 컴포넌트 — `syncMode`에 따라 독립 `QueryClient`(`Mode A`) 또는 싱글톤 `sharedQueryClient`(`Mode B`)를 선택 주입 (`PascalCase`) |
-| `NEW` | `src/features/catalog/model/catalog-schema.ts` | 상품·장바구니 응답 검증용 `Zod` 스키마, 필터 폼 스키마(`productFilterSchema`), `ProductListProps` 및 `createScopedStorage('products')` 연동 도우미 (`+ catalog-schema.test.ts`) |
+| `NEW` | `src/features/catalog/model/catalog-schema.ts` | 루트 계약(`§ 5.1.2`) 정합성을 맞춘 상품·장바구니 `Zod` 스키마, 필터 스키마(`productFilterSchema`), 지연 초기화된 `getProductsScopedStorage()` 도우미 및 `DEV/PROD` 환경별 스키마 에러 리포트 이원화(`formatCatalogErrorReport`) 유틸리티 (`+ catalog-schema.test.ts`) |
 | `NEW` | `src/features/catalog/api/catalog-api.ts` | `createApiClient` + `unwrapApiResponse` 기반 `fetchProducts`, `postAddToCart` 및 `AbortSignal` 연동 `delayWithSignal` (`+ catalog-api.test.ts`) |
 | `NEW` | `src/features/catalog/model/use-catalog-queries.ts` | `useProductsQuery` 및 `Mode A / Mode B` 분기 로직이 내장된 `useAddToCartMutation` 커스텀 훅 |
-| `NEW` | `src/features/catalog/ui/catalog.css` | `.prod-*` 프리픽스 격리 스타일, `var(--mfe-*)` 시맨틱 변수, `min-width: 0` 말줄임 및 `tabular-nums` 숫자 정렬 |
+| `NEW` | `src/features/catalog/ui/catalog.css` | `.prod-*` 프리픽스 격리 스타일, `var(--mfe-*)` 시맨틱 변수, `min-width: 0` 말줄임, `tabular-nums` 숫자 정렬 및 `DEV` 스키마 진단 배너 스타일 |
 | `NEW` | `src/features/catalog/ui/ProductFilterBar.tsx` | 카테고리 `Select` + `React Hook Form` 키워드 검색 바 + 결과 요약 배지 컴포넌트 (`PascalCase`, `+ ProductFilterBar.test.tsx`) |
 | `NEW` | `src/features/catalog/ui/ProductGridSkeleton.tsx` | 1.5초 로딩 지연 시 실제 카드 높이와 1:1 매칭되어 CLS를 방지하는 6-카드 그리드 스켈레톤 컴포넌트 (`PascalCase`) |
 | `NEW` | `src/features/catalog/ui/ProductCard.tsx` | 개별 상품 정보, 카테고리·재고 `Badge`, 중복 클릭 방지(`isPending`) 담기 버튼 및 인라인 에러 알림 카드 컴포넌트 (`PascalCase`, `+ ProductCard.test.tsx`) |
-| `NEW` | `src/features/catalog/ui/ProductCatalogView.tsx` | 필터 상태(`createScopedStorage('products')`), 목록/스켈레톤/빈 결과/조회 에러 복구 뷰를 조합하는 카탈로그 본문 컴포넌트 (`PascalCase`) |
-| `NEW` | `src/testing/setup.ts` | `@testing-library/jest-dom/vitest` 및 `MSW` 서버(`listen`/`resetHandlers`/`close`) 생명주기 설정 |
+| `NEW` | `src/features/catalog/ui/ProductCatalogView.tsx` | 필터 상태(`getProductsScopedStorage()`), 목록/스켈레톤/빈 결과/조회 에러 복구 뷰 및 환경별(`DEV`/`PROD`) 에러 진단 배너를 조합하는 카탈로그 본문 컴포넌트 (`PascalCase`) |
+| `NEW` | `src/testing/setup.ts` | `@testing-library/jest-dom/vitest`, `jsdom` + Node `undici` 간 `AbortSignal` 호환 어댑터(`JsdomCompatibleRequest`) 및 `MSW` 서버 생명주기 설정 |
 | `NEW` | `src/testing/stubs/remote-shared-ui.tsx` | `Vitest` 단독 실행용 `remote_shared/ui` 경량 로컬 스텁 |
 | `NEW` | `src/testing/stubs/remote-shared-theme.tsx` | `Vitest` 단독 실행용 `remote_shared/theme` 경량 로컬 스텁 |
 | `NEW` | `src/testing/stubs/remote-shared-utils.ts` | `Vitest` 단독 실행용 `remote_shared/utils` 로컬 스텁 (실제 `QueryClient`, `CustomEvent` 버스, `ky` 클라이언트 연동) |
@@ -103,25 +104,45 @@
 ---
 
 ## 5. 상세 인터페이스 및 데이터 설계 (`TypeScript` & `Zod` 스키마) — `[공통 필수]`
-> 공통 API 엔벨로프, 도메인 엔티티(`ProductEntity`, `CartItemView`), 이벤트 페이로드 및 `ProductListProps` 원본 계약은 **루트 정본(`§ 5.1 ~ § 5.4.2`)을 그대로 준수**하며, 아래에는 `remote-products` 내부에서 사용하는 런타임 검증 스키마와 내부 모델 인터페이스를 정의합니다. 모든 인터페이스 속성에는 `/** ... */` 한글 설명 주석을 필수로 작성합니다.
+> 공통 API 엔벨로프, 도메인 엔티티(`ProductEntity`, `CartItemView`), 이벤트 페이로드 및 `ProductListProps` 원본 계약은 **루트 정본(`§ 5.1 ~ § 5.4.2`)을 그대로 준수**하며, 아래에는 `remote-products` 내부에서 사용하는 런타임 검증 스키마, 지연 스토리지 헬퍼, 환경별(`DEV`/`PROD`) 에러 리포트 이원화 인터페이스를 정의합니다. 모든 인터페이스 속성에는 `/** ... */` 한글 설명 주석을 필수로 작성합니다.
 
 ```ts
 import { z } from 'zod';
-import type { CartUpdatedEventPayload, HostOriginType, SyncMode } from 'remote_shared/utils';
+import type {
+  CartUpdatedEventPayload,
+  HostOriginType,
+  NormalizedError,
+  ScopedStorage,
+  SyncMode,
+} from 'remote_shared/utils';
 
 /**
- * @description 상품 카테고리 필터 선택 값 타입 ('all' 전체 보기 포함)
+ * @description 상품 카테고리 구분 및 필터 선택 값 타입 ('all' 전체 보기 포함)
  */
-export type ProductCategoryFilter = 'all' | 'electronics' | 'office' | 'accessories';
+export type ProductCategory = 'electronics' | 'office' | 'accessories';
+export type ProductCategoryFilter = 'all' | ProductCategory;
+
+/**
+ * @description 단일 상품 엔티티 런타임 검증용 Zod 스키마
+ * (루트 SSOT § 5.1.2 ProductEntity의 6대 필수 속성과 1:1 매핑하며, createdAt은 CartItemView에만 존재함)
+ */
+export const productEntitySchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().min(1),
+  price: z.number().int().nonnegative(),
+  category: z.enum(['electronics', 'office', 'accessories']),
+  stock: z.number().int().nonnegative(),
+  description: z.string(),
+});
 
 /**
  * @description 상품 카탈로그 필터 바(카테고리 + 검색어) 상태 및 로컬 스토리지 검증용 Zod 스키마
  */
 export const productFilterSchema = z.object({
   /** 선택된 카테고리 필터 ('all' | 'electronics' | 'office' | 'accessories') */
-  category: z.enum(['all', 'electronics', 'office', 'accessories']).default('all'),
+  category: z.enum(['all', 'electronics', 'office', 'accessories']),
   /** 상품명·설명 부분 일치 검색 키워드 (양끝 공백 제거, 최대 50자) */
-  search: z.string().trim().max(50, '검색어는 최대 50자까지 입력할 수 있습니다.').default(''),
+  search: z.string().trim().max(50, '검색어는 최대 50자까지 입력할 수 있습니다.'),
 });
 
 /**
@@ -183,6 +204,47 @@ export interface AddToCartMutationInput {
   /** 장바구니 담기 성공 시 상위 호스트에 알리는 선택적 콜백 */
   onCartAdded?: (payload: CartUpdatedEventPayload) => void;
 }
+
+/**
+ * @description Zod 스키마 검증 실패(RESPONSE_SCHEMA_INVALID) 시 개별 필드 불일치 좌표를 나타내는 인터페이스 (Study 05 #10)
+ */
+export interface SchemaIssueDetail {
+  /** 실패한 데이터 경로 문자열 (예: '[0].price', 'category') */
+  path: string;
+
+  /** Zod 이슈 코드 (예: 'invalid_type', 'too_big') */
+  code: string;
+
+  /** 상세 실패 사유 메시지 */
+  message: string;
+}
+
+/**
+ * @description 환경별(DEV vs PROD)로 이원화된 에러 표시 모델 인터페이스 (Study 05 #10)
+ */
+export interface CatalogErrorReport {
+  /** 에러 식별 코드 (예: 'RESPONSE_SCHEMA_INVALID', 'OUT_OF_STOCK') */
+  code: string;
+
+  /** 사용자에게 표시할 기본 안내 문구 (운영 환경에서는 내부 스키마 구조를 숨긴 안전 문구) */
+  userMessage: string;
+
+  /** 개발 환경(DEV)에서만 노출되는 상세 스키마 불일치 필드 목록 (PROD에서는 항상 빈 배열) */
+  devDetails: SchemaIssueDetail[];
+}
+
+/**
+ * @description 원격 모듈 최상단 즉시 호출 경합(DeferredRemoteProxy)을 방지하기 위한 지연 초기화 스토리지 Getter (Study 04 #01)
+ */
+export declare function getProductsScopedStorage(): ScopedStorage;
+
+/**
+ * @description 정규화된 에러를 받아 실행 환경(DEV vs PROD)에 따라 이원화된 에러 리포트를 생성하는 함수 (Study 05 #10)
+ */
+export declare function formatCatalogErrorReport(
+  error: NormalizedError,
+  isDev?: boolean,
+): CatalogErrorReport;
 ```
 
 ---
@@ -194,7 +256,7 @@ export interface AddToCartMutationInput {
   - **노출 모듈 (`exposes`)**: `'./ProductList': './src/exposed/ProductList.tsx'`
   - **소비 모듈 (`remotes`)**: `remote_shared` (`entry: 'http://localhost:3004/mf-manifest.json'`, `type: 'module'`)
   - **공유 의존성 (`shared` & `singleton`)**: `react` (`^19.1.0`), `react-dom` (`^19.1.0`), `@tanstack/react-query` (`^5.74.4`) 모두 `singleton: true`
-  - **원격 타입 양방향 동기화 (`dts`)**: `generateTypes: { tsConfigPath: './tsconfig.json', abortOnError: false }`, `consumeTypes: { typesOnBuild: true, abortOnError: false }`
+  - **원격 타입 양방향 동기화 (`dts` & `dev`)**: `generateTypes: { tsConfigPath: './tsconfig.json', abortOnError: false }`, `consumeTypes: { typesOnBuild: true, abortOnError: false }`, `dev: { disableDynamicRemoteTypeHints: true }`
 - **단독 실행(Standalone) 및 호스트 결합 마운트 처리**:
   - **단독 실행 (`src/main.ts` → `src/bootstrap.tsx` → `src/App.tsx`)**: `ThemeProvider`로 감싸고 상단에 유저·동기화모드·테마·1.5초 지연 컨트롤 바와 실시간 `mfe:cart-updated` 이벤트 수신 모니터를 배치하여 `Port 3002` 단독으로도 모든 기능을 검증할 수 있게 합니다.
   - **호스트 결합 (`src/exposed/ProductList.tsx`)**: `<BrowserRouter>`나 전역 CSS Reset을 절대 포함하지 않으며, 상위 호스트가 내려준 `Props`(`userId`, `hostType`, `syncMode`, `simulateDelay`, `apiBaseUrl`, `onCartAdded`)를 기준으로 동작합니다. 또한 `Props`가 생략된 경우 `useMfeEvent`로 `mfe:auth-changed` 및 `mfe:sync-mode-changed` 이벤트를 보조 수신하여 유연하게 동기화합니다.
@@ -217,6 +279,46 @@ export interface AddToCartMutationInput {
 - **공통 UI 컴포넌트 (`Ark UI`) 및 스타일 격리 (CSS 변수 / 프리픽스)**:
   - 모든 버튼·제목·셀렉트·배지·스켈레톤·그리드·카드 레이아웃은 `remote_shared/ui` 컴포넌트로 조립합니다.
   - 도메인 보조 스타일(`catalog.css`)은 전역 태그 선택자를 일절 쓰지 않고 `.prod-*` 프리픽스와 `var(--mfe-*)` 시맨틱 CSS 변수만 사용하며, 카드 그리드 스켈레톤의 `min-height`를 실제 카드(`240px`)와 1:1 매칭해 CLS를 방지합니다.
+- **MFE 런타임 및 풀스택 연동 잠재 증상과 방어 아키텍처 설계 (`Symptoms & Defensive Design`)**:
+  > 양방향 Module Federation(`remote_shared` 소비 + `./ProductList` 노출) 및 실제 백엔드 API 연동 시 발생할 수 있는 5대 주요 증상과 이를 원천 차단하는 설계 방식입니다.
+
+  1. **초기 접속 시 원격 모듈 초기화 경합 (`DeferredRemoteProxy` 미초기화 증상) 및 3중 방어 설계 ([`Study 04 #01`](../../../../../docs/study/04-mfe-real-world-pitfalls-and-solutions.md))**:
+     - **잠재 증상 및 원인**:
+       - `@module-federation/vite`는 원격 모듈(`remote_shared/*`)의 정적 Named Import를 내부적으로 `DeferredRemoteProxy` 객체로 변환합니다.
+       - 만약 소비자 모듈 최상단(Top-Level)에서 `const storage = createScopedStorage('products')`처럼 원격 함수를 즉시 동기 호출하거나, 로컬 상대 경로 import에 `.js` 확장자를 붙여 번들러의 정적 AST 스캐너(`registerEntryImports`)가 하위 파일 탐색을 중단하게 되면, 서버 기동 후 **첫 브라우저 접속 시 원격 서브패스(`utils`, `theme`, `ui`) 로딩이 완료되기 전에 모듈이 평가되어 `createScopedStorage is not a function` 또는 `Element type is invalid (undefined)` 런타임 에러가 발생**합니다(새로고침 시에만 캐시로 동작하는 간헐적 경합 증상).
+     - **표준 방어 설계 방법**:
+       - **① 지연 초기화(`Lazy Singleton Getter`) 패턴**: `catalog-schema.ts` 최상단에서 원격 함수를 즉시 실행하지 않고, 함수가 실제 호출되는 시점에 최초 1회 생성·캐싱하는 `getProductsScopedStorage()`로 설계합니다.
+       - **② 정적 스캐너 호환 모듈 경로 규약**: `src/**` 내 로컬 상대 경로 import에서 `.js` 확장자를 생략하여 `@module-federation/vite`의 `registerEntryImports`가 하위 의존성 트리의 원격 모듈을 누락 없이 자동 프리로드(`preloadRemotes`)하도록 보장합니다.
+       - **③ 진입점 병렬 프리로드(`Promise.all`)**: `src/main.ts`에서 `./bootstrap`을 마운트하기 전에 `Promise.all([import('remote_shared/utils'), import('remote_shared/theme'), import('remote_shared/ui')])`로 원격 서브패스 3종을 병렬 선행 로드하여 초기화 경합과 네트워크 Waterfall을 동시에 방지합니다.
+
+  2. **동적 원격 타입 힌트 플러그인(`dynamic-remote-type-hints-plugin`)의 불필요한 WebSocket 연결 에러 차단 설계 ([`Study 04 #04`](../../../../../docs/study/04-mfe-real-world-pitfalls-and-solutions.md))**:
+     - **잠재 증상 및 원인**:
+       - `@module-federation/vite`에서 `dts` 옵션을 활성화하면 개발 모드(`vite dev`)에서 `dynamic-remote-type-hints-plugin`이 브라우저에 WebSocket 클라이언트를 자동 주입합니다. 이때 동적 타입 알림용 로컬 소켓 포트가 비활성 상태이거나 리모트 서버를 재기동할 때 브라우저 콘솔에 `WebSocket connection to 'ws://...' failed` 에러가 반복 출력되며, 로컬 진단 폴더(`.mf/diagnostics/`)가 생성되어 Git 작업 트리를 오염시킬 수 있습니다.
+     - **표준 방어 설계 방법**:
+       - `vite.config.ts`의 `federation` 설정에 `dev: { disableDynamicRemoteTypeHints: true }`를 명시합니다. 이를 통해 빌드·개발 시점의 `@mf-types.zip` 정적 타입 다운로드·생성(`dts.consumeTypes`, `dts.generateTypes`) 기능은 100% 유지하면서 불필요한 브라우저 런타임 WebSocket 연결만 비활성화합니다. 또한 루트 `.gitignore`에 `.mf/`를 등록해 로컬 진단 파일의 Git 추적을 방지합니다.
+
+  3. **도메인 엔티티(`ProductEntity` vs `CartItemView`) 스키마 경계 분리 및 `Tolerant Reader` 설계 ([`Study 05 #10`](../../../../../docs/study/05-fullstack-service-real-world-issues.md))**:
+     - **잠재 증상 및 원인**:
+       - 백엔드 `products` 테이블과 루트 서비스 계약(`§ 5.1.2`)의 `ProductEntity`는 6개 표준 속성(`id`, `name`, `price`, `category`, `stock`, `description`)으로 구성되며, `createdAt` 필드는 장바구니 조인 뷰인 `CartItemView`(`POST /api/cart` 응답)에만 존재합니다.
+       - 만약 `ProductEntity` 검증 스키마(`productEntitySchema`)에 계약에 없는 `createdAt: z.string()`을 필수 필드로 포함하면, 실제 백엔드(`GET /api/products`) 연동 시 Zod 검증이 실패하여 `RESPONSE_SCHEMA_INVALID` 에러가 발생합니다.
+     - **표준 방어 설계 방법**:
+       - 루트 SSOT 계약(`§ 5.1.2`)에 맞춰 `productEntitySchema`(6개 속성)와 `cartItemViewSchema`(9개 속성, `createdAt` 포함)의 스키마 경계를 엄격히 분리하고, Zod의 기본 `z.object()` 동작(알 수 없는 여분 필드는 통과 과정에서 무시하는 `Tolerant Reader` 원칙)을 유지하여 백엔드 필드 확장 시에도 하위 호환성을 보장합니다.
+
+  4. **스키마 검증 에러(`RESPONSE_SCHEMA_INVALID`)의 환경별(`DEV` vs `PROD`) 진단 리포트 이원화 설계 ([`Study 05 #10`](../../../../../docs/study/05-fullstack-service-real-world-issues.md))**:
+     - **잠재 증상 및 원인**:
+       - API 응답의 런타임 스키마 검증 실패 시 화면에 단일 에러 메시지만 표시하면, 개발 환경(`DEV`)에서는 배열의 몇 번째 항목, 어느 필드(`path`)에서 타입 불일치(`code`)가 발생했는지 즉시 파악하기 어렵습니다. 반대로 실패한 내부 스키마 경로를 그대로 화면에 노출하면 운영 환경(`PROD`)에서 내부 데이터 구조와 스키마 필드명이 일반 사용자에게 노출되는 보안·UX 문제가 발생합니다.
+     - **표준 방어 설계 방법**:
+       - `NormalizedError.originalError`에 보존된 `ZodError.issues`에서 실패 필드 좌표(`path`, `code`, `message`)를 추출하는 `extractSchemaIssues`와, 실행 환경(`import.meta.env.DEV`)에 따라 출력 모델을 분리하는 `formatCatalogErrorReport(error, isDev)`를 설계합니다.
+       - **개발 환경 (`DEV = true`)**: 에러 배너 하단에 `[DEV 상세 진단 — 스키마 불일치 필드]` 영역을 렌더링하여 실패 좌표(예: `[0].price (invalid_type)`)를 인라인 코드 배지로 즉시 보여주고 브라우저 F12 콘솔(`console.error`)에도 상세 이슈 배열을 출력합니다.
+       - **운영 환경 (`PROD = false`)**: `devDetails`를 빈 배열(`[]`)로 비워 내부 필드명 노출을 원천 차단하고, 사용자에게는 정제된 안전 안내 문구(`"일시적인 데이터 형식 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."`)만 표시합니다.
+
+  5. **단독 통합 테스트(`jsdom` + Node `undici`) 및 Windows 개발 실행기(`dev-menu`) 크로스 플랫폼 호환 설계**:
+     - **잠재 증상 및 원인**:
+       - ① Node 22(`undici` 기반 내장 `fetch`/`Request`)와 `jsdom` v26을 결합한 Vitest 환경에서는 `jsdom`이 전역 `AbortController`를 자체 구현체로 덮어써서, `ky`가 `new Request(url, { signal })`을 호출할 때 `AbortSignal` 인스턴스 불일치 `TypeError`가 발생할 수 있습니다.
+       - ② Windows PowerShell에서 대화형 실행 스크립트(`node scripts/dev-menu.mjs`)를 직접 실행할 때 `process.argv[1]`이 백슬래시(`\`) 경로를 반환하여, POSIX 슬래시(`/`) 기준의 단순 문자열 비교(`import.meta.url.endsWith(...)`)가 실패하고 메뉴가 실행되지 않는 현상이 발생합니다.
+     - **표준 방어 설계 방법**:
+       - ① `src/testing/setup.ts`에 `JsdomCompatibleRequest` 어댑터를 구성하여 사전 중단된 `AbortSignal`(`signal.aborted`)의 즉시 취소 검증과 Node `undici` `Request` 생성자 호환성을 동시에 보장합니다.
+       - ② `scripts/dev-menu.mjs`에서 `fileURLToPath(import.meta.url)`와 `path.resolve(process.argv[1])`로 OS 경로 구분자를 정규화하여 비교하는 `isDirectExecution()` 설계를 적용해 Windows와 POSIX 환경 모두에서 동일하게 동작하도록 보장합니다.
 
 ---
 
