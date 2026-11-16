@@ -72,7 +72,7 @@
     - `main.ts` + `bootstrap.tsx` 분리를 적용했는데도, `pnpm dev`로 서버들을 처음 띄운 직후 브라우저로 첫 접속을 하면 콘솔에 `Uncaught (in promise) TypeError: createScopedStorage is not a function (at catalog-schema.ts:156)` 에러가 터지며 화면이 멈춥니다.
     - 그런데 **신기하게도 브라우저를 한 번 새로고침(F5)하면 그때부터는 아무 문제 없이 정상 작동**합니다!
   - **근본 원인 (`@module-federation/vite`의 `DeferredRemoteProxy`와 Vite `optimizeDeps` 초회 워밍업 지연)**:
-    1. `@module-federation/vite`는 `import { createScopedStorage } from 'remote_shared/utils'` 같은 정적 원격 import를 만났을 때, 원격 컨테이너(`http://localhost:3004/mf-manifest.json`) 다운로드가 완료되기 전까지 임시로 **`DeferredRemoteProxy`(지연 프록시)** 객체를 바인딩합니다.
+    1. `@module-federation/vite`는 `import { createScopedStorage } from 'remote_shared/utils'` 같은 정적 원격 import를 만났을 때, 원격 컨테이너(`http://localhost:3004/mf-manifest.json`) 다운로드가 완료되기 전까지 임시로 **`DeferredRemoteProxy`(원격 컴포넌트·함수 등이 다운로드 및 초기화되기 전까지 빈 대기 상태(`undefined`)로 두었다가, 로드 완료 시 실제 원격 값으로 치환하는 지연 프록시)** 바인딩을 걸어둡니다.
     2. 개발 서버(`pnpm dev`)를 처음 켜고 최초 접속을 하면, 공급자 서버인 `remote-shared(3004)`의 Vite가 최초 의존성 사전 번들링(`optimizeDeps`)을 수행하느라 원격 모듈 응답이 수백 ms 지연됩니다.
     3. 이때 소비자 앱(`remote-products`)의 모듈 파일 최상단(Top-Level)에 아래와 같이 **파일이 import되는 즉시 원격 함수를 동기 호출하는 코드**가 있으면, React 컴포넌트가 마운트되기도 전(원격 모듈 초기화 완료 전)에 함수가 실행되어 `is not a function` 에러가 터집니다:
        ```ts
@@ -121,6 +121,15 @@
           import('remote_shared/ui'),
         ]).then(() => import('./bootstrap'));
         ```
+      - **💡 [기초 개념] 정적 AST 스캐너와 `AST vs React Virtual DOM` 차이**:
+        - **정적 AST 스캐너란?**: 코드를 실제로 실행(Run)하지 않고, 소스 코드 문법(`import ... from '...'` 등)을 구문 트리(AST)로 읽어내어 필요한 원격 모듈 목록을 미리 수집하는 빌드/개발 도구의 정적 분석기입니다.
+        - **AST vs Virtual DOM 비교**:
+
+          | 구분 | **AST (추상 구문 트리)** | **Virtual DOM (버츄얼 돔)** |
+          | :--- | :--- | :--- |
+          | **표현 대상** | 소스 코드 문법 글자 (`import`, `const`, `if`) | 화면에 그릴 UI 엘리먼트 (`<div>`, `<Button>`) |
+          | **동작 시점 & 주체** | 코드 실행 전 **빌드·컴파일 타임** (Vite, TypeScript, Biome) | 코드 실행 중 **브라우저 런타임** (React) |
+          | **핵심 목적** | 코드 미실행 상태에서 의존성 분석·TS→JS 변환·문법 검사 | 상태 변경 시 변경된 부분만 Diff해 실제 DOM 최소 갱신 |
 
 ---
 
@@ -164,10 +173,41 @@
      - **③ 공급자 서버 실행 시점과 로컬 디스크 캐시 유지 원리**:
        - 최초에 `@mf-types.zip`을 내려받거나 공급자의 타입이 변경되어 새로 갱신할 때는 공급자 서버(`remote-shared:3004`)가 떠 있어야(또는 빌드 산출물이 서빙 중이어야) 합니다.
        - 하지만 **일단 한 번 다운로드되어 `./@mf-types/` 폴더에 `.d.ts` 파일들이 풀리고 나면 해당 파일들은 내 디스크에 그대로 남아있기 때문에**, 이후 공급자 서버(`3004`)를 꺼놓아도 소비자 앱 단독으로 `tsc --noEmit` 타입 검사와 에디터 자동 완성이 100% 정상 동작합니다.
-     - **④ [트러블슈팅] 브라우저 콘솔의 `ws://127.0.0.1:xxxxx (dynamic-remote-type-hints-plugin)` WebSocket 연결 실패 오류 해결**:
+     - **④ [트러블슈팅] 브라우저 콘솔의 `ws://127.0.0.1:16322 (dynamic-remote-type-hints-plugin)` WebSocket 연결 실패 오류 해결**:
        - **증상**: `@module-federation/vite`에서 `dts` 옵션을 켜고 개발 서버를 실행하면 브라우저 콘솔에 `WebSocket connection to 'ws://127.0.0.1:16322/?WEB_SOCKET_CONNECT_MAGIC_ID=...' failed (dynamic-remote-type-hints-plugin.mjs)` 에러가 반복 출력되는 현상이 발생합니다.
-       - **원인**: `@module-federation/dts-plugin`은 개발 모드에서 원격 타입 힌트를 브라우저 런타임에 전달하기 위해 임시 로컬 포트로 RPC WebSocket 서버를 띄우고 `dynamic-remote-type-hints-plugin`을 Vite `optimizeDeps`에 주입합니다. 그러나 Vite가 이 플러그인을 `.vite/deps`에 사전 번들링할 때 이전 실행의 임시 포트 번호가 캐싱되거나 다중 리모트 기동 시 워커 초기화 타이밍이 어긋나면서 죽은 포트로 WebSocket 접속을 시도하게 됩니다.
-       - **해결책**: `vite.config.ts`의 `federation({ ... })` 최상위 옵션에 `dev: { disableDynamicRemoteTypeHints: true }`를 지정하면, 빌드·개발 시점의 `@mf-types.zip` 생성 및 `./@mf-types/` 자동 압축 해제는 100% 그대로 동작하면서 불필요한 브라우저 WebSocket 런타임 플러그인 주입만 깔끔하게 비활성화됩니다. 또한 로컬 진단 캐시 폴더인 `.mf/`는 `.gitignore`에 등록하여 머신별 절대 경로 로그(`.mf/diagnostics/latest.json`)가 Git에 추적되지 않게 격리합니다.
+       - **원인**: `@module-federation/dts-plugin`은 런타임 코드에서 설정에 없는 리모트를 `loadRemote()` 등으로 동적 호출할 때 타입 획득 신호를 보내기 위해, 고정 포트(`DEFAULT_WEB_SOCKET_PORT = 16322`)로 WebSocket 접속을 시도하는 `dynamic-remote-type-hints-plugin.js`를 기본 주입합니다. 그러나 실제 `remote-shared(3004)`·`remote-products(3002)` 동시 기동 환경에서 `netstat`으로 확인한 결과 `16322` 포트에 `LISTENING` 중인 브로커 서버가 떠 있지 않은 상태에서 연결 대기(`SYN_SENT`)만 발생해 WebSocket 접속 실패로 이어집니다(Module Federation 이슈 #2840 등에서도 동일 현상 보고).
+       - **해결책 및 검증 결과 (`disableDynamicRemoteTypeHints` vs `disableHotTypesReload`)**:
+         - `vite.config.ts`의 `federation({ ... })` 옵션에 `dev: { disableDynamicRemoteTypeHints: true }`를 지정하면, 정적 `remotes` 구조에서는 불필요한 **브라우저 동적 리모트 힌트 WebSocket 플러그인 주입만 비활성화**됩니다.
+         - **실시간 타입 갱신(`Hot Types Reload`) 유지 실증 완료**: `disableHotTypesReload`는 기본값(`false`) 그대로 유지되므로, `disableDynamicRemoteTypeHints: true` 상태에서도 `remote-shared(3004)`와 `remote-products(3002)`를 동시 실행한 뒤 공급자 인터페이스(`contracts.ts`)를 수정하면 **약 2.5~3초 내에 `remote-products/@mf-types/remote_shared/`에 서버 재시작 없이 자동 반영·제거됨을 실증 확인**했습니다. *(단, 향후 `registerRemotes()`나 설정에 없는 리모트를 대상으로 `loadRemote()`를 도입할 때는 동적 타입 힌트 필요 여부를 재검토해야 합니다.)*
+         - 또한 로컬 진단 캐시 폴더인 `.mf/`는 `.gitignore`에 등록하여 머신별 절대 경로 로그(`.mf/diagnostics/latest.json`)가 Git에 추적되지 않게 격리합니다.
+
+     - **⑤ `@mf-types` 폴더 구조, 다중 앱 비충돌 원리 및 소비 별칭(`remotes` Alias) 커스터마이징**:
+       - **`@mf-types`는 플러그인 기본 규약**: `@mf-types` 및 `@mf-types.zip`은 개발자가 임의로 지은 이름이 아니라 `@module-federation/dts-plugin`의 기본 규약(`typesFolder: "@mf-types"`, `remoteTypesFolder: "@mf-types"`)입니다. (`dts` 설정의 `typesFolder` 옵션으로 변경할 수도 있으나, 특별한 이유가 없다면 기본값을 유지하고 `tsconfig.json`의 `"paths": { "*": ["./@mf-types/*"] }`로 연결하는 것이 표준입니다.)
+       - **여러 앱이 동일한 이름을 써도 충돌하지 않는 2중 격리**:
+         1. **서빙(공급) 포트 격리**: `remote-shared`는 `http://localhost:3004/@mf-types.zip`, `remote-products`는 `http://localhost:3002/@mf-types.zip`처럼 각자 독립 포트·도메인에서 서빙되므로 URL이 겹치지 않습니다.
+         2. **수신(소비) 하위 폴더 격리**: 소비자 앱은 내려받은 아카이브를 `./@mf-types/` 바로 아래에 풀지 않고 **`./@mf-types/<소비자 remotes 키>/`** 하위 폴더로 분리해 저장합니다. 따라서 `host-vite(3000)`에서 여러 리모트를 동시에 소비해도 `./@mf-types/remote_shared/`와 `./@mf-types/remote_products/`로 나뉘어 절대 덮어쓰지 않습니다. 양방향 앱(`remote-products`) 역시 자신이 서빙할 아카이브(`dist/@mf-types.zip`)와 자신이 소비할 타입(`./@mf-types/remote_shared/`)의 위치가 완전히 분리되어 있습니다.
+       - **하위 폴더명(`remote_shared`)의 결정 원리와 별칭(Alias) 커스터마이징**:
+         - `./@mf-types/` 아래에 생성되는 폴더 이름은 공급자의 컨테이너 `name` 자체가 아니라 **소비자 앱의 `vite.config.ts` 내 `remotes` 객체에 선언한 키(`remoteAlias`)**입니다. 플러그인이 타입을 내려받을 때 `apis.d.ts` 내부 플레이스홀더(`REMOTE_ALIAS_IDENTIFIER`)도 이 별칭으로 자동 치환합니다.
+         - 따라서 공급자(`remote-shared`)를 수정하지 않고도 소비자 쪽 `remotes` 키만 바꾸면 원하는 별칭으로 소비할 수 있습니다:
+           ```ts
+           // apps/remote-products/vite.config.ts
+           remotes: {
+             // 소비 별칭(Alias)을 'design_kit'으로 바꾸면 './@mf-types/design_kit/'에 저장됨
+             design_kit: {
+               type: 'module',
+               name: 'remote_shared', // 실제 공급자(3004) 컨테이너의 이름 (그대로 유지)
+               entry: 'http://localhost:3004/mf-manifest.json',
+               entryGlobalName: 'remote_shared', // 공급자 전역 엔트리 이름 (그대로 유지)
+               shareScope: 'default',
+             },
+           }
+           ```
+         - 단, 별칭을 변경했다면 코드 내 `import` 경로(`'design_kit/ui'`)와 단위 테스트용 `vitest.config.ts`의 `resolve.alias` 스텁 매핑도 같은 별칭으로 일치시켜야 합니다.
+         - 참고로 공급자 `name`과 `entryGlobalName`에 하이픈(`remote-shared`) 대신 언더스코어(`remote_shared`)를 사용하는 이유는, Module Federation 런타임이 이 값을 브라우저 `window` 전역 변수명 및 JS 식별자로 사용하기 때문입니다(JS 식별자에는 `-` 사용 불가).
+     - **⑥ Vite + Rspack 혼합 환경 및 CI/CD 운영 팁**:
+       - **공통 계약 우선**: `Vite`(`remote-shared`, `remote-products`, `host-vite`)와 `Rspack`(`remote-cart`, `host-rspack`)이 공존할 때도 별도 타입 복사 스크립트를 만들지 않고 공식 `mf-manifest.json` + `@mf-types.zip` 규약을 그대로 사용합니다.
+       - **Rspack 무한 재컴파일 루프 방어 (`watchOptions.ignored`)**: Rspack 기반 앱에서 `@mf-types` 폴더가 실시간 갱신될 때 파일 워처가 이를 소스 변경으로 감지해 반복 재컴파일을 유발한다면, Rspack 설정의 `watchOptions.ignored`에 `@mf-types` 경로를 제외 등록합니다.
+       - **개발 vs CI 에러 정책 분리**: 로컬 개발 중에는 `abortOnError: false`로 원격 앱 중단 시에도 독립 작업을 보호하되, 정식 타입 무결성을 검증해야 하는 CI 파이프라인에서는 `typesOnBuild: true`와 `abortOnError: true` 조합을 별도 검토할 수 있습니다.
 
 ---
 

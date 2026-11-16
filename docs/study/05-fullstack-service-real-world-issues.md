@@ -32,10 +32,35 @@
 ### #01. 버튼 연타(Double-Click) 중복 요청과 조회·수정 응답 역전 (`Race Condition`)
 * **왜 문제가 되나요?**
   - 사용자가 [장바구니 담기] 버튼을 빠르게 2~3번 연타하면 `POST /api/cart` 요청이 중복 전송됩니다.
-  - 더 까다로운 문제는 **응답 역전(Out-of-Order Response)**입니다: 이미 진행 중이던 옛날 장바구니 조회(`GET #1`) 응답이 네트워크 지연으로 인해 방금 성공한 상품 추가(`POST #2`)보다 **0.1초 늦게 도착하면, 화면이 방금 담은 상품이 없는 옛날 데이터로 덮어써집니다.**
+  - 더 까다로운 문제는 **응답 역전(Out-of-Order Response)**입니다. 네트워크에서는 먼저 보낸 요청이 나중에 도착할 수 있어, 아래 타임라인처럼 **방금 성공한 최신 데이터가 구버전 조회 응답으로 되돌려지는 참사**가 발생합니다:
+    1. **`0.0초` (구버전 조회 출발)**: 장바구니 위젯(`remote-cart`)이 창 포커스 복귀 등으로 `GET /api/cart`(**요청 #1**)를 보냅니다. *(네트워크 지연으로 2초 소요 가정)*
+    2. **`0.5초` (장바구니 담기 클릭)**: `요청 #1`이 진행 중인 상태에서 사용자가 상품 앱(`remote-products`)에서 `[장바구니 담기]`를 눌러 `POST /api/cart`(**요청 #2**)를 보냅니다.
+    3. **`0.8초` (담기 성공 & 최신 반영)**: `요청 #2(POST)`가 먼저 성공해 DB에 **상품 1개**가 저장되고, 화면에도 **상품 1개**가 정상 표시됩니다.
+    4. **`2.0초` (💥 구버전 응답 뒤늦게 도착)**: `0.0초`에 출발했던 `요청 #1(GET)`이 당시 상태인 **`상품 0개`** 데이터를 들고 2초 만에 도착합니다.
+    5. **결과 (역전 참사)**: TanStack Query가 시간순이 아닌 **방금 도착한 응답**을 최신 상태로 인식해 캐시(`['cart']`)에 덮어쓰면서, **방금 담은 상품이 화면에서 갑자기 사라지는 버그**가 터집니다.
 * **실무 해결 아키텍처**:
   1. `useMutation`의 `isPending` 상태를 버튼의 `disabled` 및 `aria-busy`에 즉시 바인딩하여 물리적 중복 클릭을 막습니다.
-  2. `TanStack Query`의 `queryFn: ({ signal }) => httpClient.get('cart', { signal }).json()`에 **`ky`의 `signal`(`AbortSignal`)**을 연결하고, 뮤테이션 시작 시(`onMutate`) `await queryClient.cancelQueries({ queryKey: ['cart'] })`를 호출하여 진행 중이던 구버전 `GET` 요청을 네트워크 레벨에서 즉시 취소합니다.
+  2. `TanStack Query`의 `queryFn: ({ signal }) => httpClient.get('cart', { signal }).json()`에 **`ky`의 `signal`(`AbortSignal`)**을 연결하고, 뮤테이션 시작 직전(`onMutate`)에 `await queryClient.cancelQueries({ queryKey: ['cart'] })`를 호출합니다.
+     - **`cancelQueries`의 2중 방어**: ① 진행 중이던 구버전 `GET` 요청을 `AbortSignal`로 네트워크 레벨에서 즉시 중단시키고, ② 설령 이미 응답이 돌아오더라도 TanStack Query 캐시에 반영하지 않고 폐기합니다.
+     - **MFE `Mode B` (`sharedQueryClient`) 필수성**: `remote-products(3002)`와 `remote-cart(3003)`가 단일 `sharedQueryClient` 캐시를 함께 쓰는 `Mode B`에서는 두 앱이 동시에 같은 `['cart']` 캐시에 접근하므로, 수정(`POST`) 출발 전 `cancelQueries` 호출이 필수입니다.
+     ```ts
+     // apps/remote-products — Mode B 공유 캐시 수정 시 응답 역전 원천 차단 패턴
+     useMutation({
+       mutationFn: postAddToCart,
+       onMutate: async () => {
+         // 1) 진행 중이던 구버전 장바구니 GET 요청 즉시 취소 & 결과 폐기
+         if (syncMode === 'mode-b-query') {
+           await sharedQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
+         }
+       },
+       onSuccess: async () => {
+         // 2) 취소 정리 후 최신 데이터로만 재조회 트리거
+         if (syncMode === 'mode-b-query') {
+           await sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+         }
+       },
+     });
+     ```
 
 ### #02. `Suspense` 환경에서 병렬 API 요청이 직렬 폭포수(`Request Waterfall`)로 변하는 현상
 * **왜 문제가 되나요?**
@@ -163,8 +188,26 @@
        2. **`standalone`은 실행 형태일 뿐 비즈니스 도메인이 아님**: 리모트 앱의 단독 실행(`standalone`)은 개발·테스트 편의성을 위한 실행 방식이지, 고객의 장바구니 데이터가 가져야 할 도메인 속성이 아닙니다.
      - **실무에서는 이 요구사항을 어떻게 해결하나요? (3대 실무 정석 패턴)**:
        1. **비즈니스 유입 경로(채널)가 필요한 경우**: 기술 스택 이름이 아니라 비즈니스 도메인 채널(예: `channel`: `'main-mall'`, `'partner-portal'`, `'mobile-web'`, `'ios-app'`)을 저장합니다.
-       2. **개발·디버깅 및 클라이언트 환경 추적이 필요한 경우**: 비즈니스 테이블(`cart_items`)에 컬럼을 만들지 않고, HTTP 요청 헤더(`X-Client-App`, `User-Agent`)에 담아 보내 **서버 액세스 로그나 APM/텔레메트리(`Sentry`, `Datadog` 등)**에만 기록합니다.
-       3. **프론트엔드 MFE 간 실시간 출처 표시만 필요한 경우**: DB에 영구 저장하지 않고 프론트엔드 런타임 이벤트(`CustomEvent` 페이로드)나 `MfeInspector` 디버거 메모리 상태로만 주고받습니다.
+       2. **개발·디버깅 및 클라이언트 환경 추적이 필요한 경우 (`Mutation Input` 순수성 유지 + `HTTP Header` 인터셉터 분리)**:
+          - 프론트엔드 도메인 모델(`AddToCartMutationInput`)과 API 요청 바디(`POST /api/cart` JSON)에는 순수 비즈니스 데이터(`userId`, `productId`, `quantity`)만 남기고, `hostType` 같은 실행 환경 정보는 절대 인자로 끌고 다니지 않습니다.
+          - 대신 공통 HTTP 클라이언트(`createApiClient`)의 `beforeRequest` 훅(인터셉터)에서 `X-Client-Host`, `X-App-Version` 같은 HTTP 헤더로 자동 주입하고, 백엔드는 이를 DB 테이블(`cart_items`)이 아니라 **서버 액세스 로그나 APM/텔레메트리(`Sentry`, `Datadog` 등)**에만 기록합니다.
+          ```ts
+          // ✅ 실무 표준: 도메인 Mutation Input과 API Body는 순수하게 유지하고, 환경 메타데이터는 HTTP 헤더로 분리
+          // 1) 공통 HTTP 클라이언트 (createApiClient)
+          const apiClient = ky.create({
+            hooks: {
+              beforeRequest: [
+                (request) => {
+                  request.headers.set('X-Client-Host', getRuntimeHostOrigin());
+                },
+              ],
+            },
+          });
+
+          // 2) 도메인 API / Mutation 호출부 (hostType 전달 불필요)
+          addToCart({ userId, productId, quantity });
+          ```
+       3. **프론트엔드 MFE 간 실시간 출처 표시만 필요한 경우**: DB에 영구 저장하지 않고 프론트엔드 런타임 Context, 이벤트(`CustomEvent` 페이로드), 또는 `MfeInspector` 디버거 메모리 상태로만 주고받습니다.
      - **본 스터디 프로젝트에서 현행 유지(`added_from_host`)한 이유 (학습용 트레이드오프)**:
        - 본 워크스페이스는 `host-vite(:3000)`, `host-rspack(:3001)`, 그리고 각 리모트의 `standalone(:3002, :3003)` 등 **4개의 서로 다른 프론트엔드 런타임이 단일 SQLite DB(`:4000`)를 공유**하는 MFE 비교 실험실입니다.
        - 사용자가 장바구니 화면을 열었을 때 *"방금 내가 Vite 호스트에서 담은 상품이 Rspack 호스트와 Standalone 화면에서도 똑같이 보이는구나!"*를 UI 배지(`Badge`)로 한눈에 확인하도록 돕는 **학습·시각화 전용 장치**로만 허용했으며, 실무 설계 시에는 도메인 테이블에서 분리해야 합니다.
