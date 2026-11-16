@@ -59,8 +59,8 @@
 > **Step 0.4 최종 리뷰 승인 이후** 순차 진행합니다.
 > - **다중 앱 연계 설계 원칙(SSOT)**: 여러 서비스가 연계되는 기능은 **Step 1.0(`Scope: root`)**에서 공통 인터페이스·이벤트·API 계약 설계 문서를 먼저 작성·머지합니다. 이후 각 앱(`Step 1.1 ~ 1.5`)에서는 내용을 중복 작성하지 않고 루트 정본 문서의 **항목(섹션 제목)**만 참조하여 각 앱의 설계 문서를 작성합니다. (앱 작업 중 계약 변경이 필요하면 앱 브랜치를 홀드하고 `root` 브랜치에서 정본을 먼저 업데이트·머지한 뒤 이어서 진행합니다.)
 
-- [x] **Step 1.0: Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지** (`Scope: root` | `Branch: root/docs/phase1-service-contracts`)
-  - 문서 경로: `docs/features/20261027-phase1-service-contracts/01-plan-and-design.md` (본 코드 구현 없이 설계 문서만 작성 및 머지 완료)
+- [x] **Step 1.0: Phase 1 서비스 간 공통 연동 계약(API · EventBus · Shared Exposes · Remote Props) 정본 설계 및 머지** (`Scope: root` | `Branch: root/docs/phase1-service-contracts`, `root/docs/remove-default-userid-fallback`)
+  - 문서 경로: `docs/features/20261027-phase1-service-contracts/01-plan-and-design.md` (본 코드 구현 없이 설계 문서만 작성 및 머지 완료; `§ 5.4.2~§ 5.4.3` `userId` 기본값 `'user-1'` 폴백 제거 및 비인증 차단 규약 보완 포함)
 - [x] **Step 1.1: 백엔드 API 서버 & 내장 SQLite 3종 SQL 구축** (`Scope: api` | `Branch: api/feat/sqlite-and-rest-api`)
   - 문서 경로: `apps/api-server/docs/todo.md` 및 `apps/api-server/docs/features/20261031-sqlite-and-rest-api/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - DB 3종 SQL (`01-schema.sql`, `02-reset-seed.sql`, `03-drop-all.sql` + `_schema_comments` + `.sql-hashes.json`) 및 REST API TDD 구현 완료 (`Port 4000`, `docs/service-registry.md` 신설)

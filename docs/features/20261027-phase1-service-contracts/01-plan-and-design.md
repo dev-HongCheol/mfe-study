@@ -356,13 +356,14 @@ export type SyncMode = 'mode-a-event' | 'mode-b-query';
 
 #### § 5.4.2 `remote_products/ProductList` 노출 컴포넌트 `Props` 계약 (`ProductListProps`)
 - **노출 경로 (`exposes`)**: `'./ProductList': './src/exposed/ProductList.tsx'`
+- **비인증(미로그인) 방어 규약**: `userId`가 전달되지 않거나(`undefined` / `null` / 빈 문자열) `mfe:auth-changed` 이벤트로도 수신되지 않은 상태에서는 임의 유저(`'user-1'` 등)로 절대 폴백하지 않습니다. 상품 카탈로그 조회(`GET /api/products`)는 읽기 전용으로 허용하되, 장바구니 담기(`POST /api/cart`) 버튼 비활성화 및 뮤테이션 가드로 인증 없는 쓰기 요청을 원천 차단해야 합니다.
 ```ts
 /**
  * @description 상품 카탈로그 리모트(remote-products, Port 3002)의 노출 컴포넌트 Props 계약
  */
 export interface ProductListProps {
-  /** 현재 로그인된 사용자 고유 ID (기본값: 'user-1') */
-  userId?: string;
+  /** 현재 로그인된 사용자 고유 ID (미지정·null 시 비로그인 상태 — 임의 유저 폴백 금지) */
+  userId?: string | null;
 
   /** 이 컴포넌트를 마운트한 상위 호스트 종류 (기본값: 'standalone') */
   hostType?: HostOriginType;
@@ -372,6 +373,9 @@ export interface ProductListProps {
 
   /** 1.5초 네트워크 로딩 지연(Skeleton UI 확인) 시뮬레이션 활성화 여부 (기본값: false) */
   simulateDelay?: boolean;
+
+  /** 로딩 지연 시간(ms) 오버라이드 (테스트 가속용, 기본값: 1500) */
+  delayMs?: number;
 
   /** 백엔드 API 기본 URL 오버라이드 (런타임 환경 주입용, 기본값: 'http://localhost:4000/api') */
   apiBaseUrl?: string;
@@ -383,13 +387,14 @@ export interface ProductListProps {
 
 #### § 5.4.3 `remote_cart/CartWidget` 노출 컴포넌트 `Props` 계약 (`CartWidgetProps`)
 - **노출 경로 (`exposes`)**: `'./CartWidget': './src/exposed/CartWidget.tsx'`
+- **비인증(미로그인) 방어 규약**: `userId`가 전달되지 않거나(`undefined` / `null` / 빈 문자열) `mfe:auth-changed` 이벤트로도 수신되지 않은 상태에서는 임의 유저(`'user-1'` 등)로 폴백하지 않고, 장바구니 조회/수량 변경/삭제 API 호출을 중단한 채 로그인 필요 안내 상태를 렌더링합니다.
 ```ts
 /**
  * @description 장바구니 리모트(remote-cart, Port 3003)의 노출 컴포넌트 Props 계약
  */
 export interface CartWidgetProps {
-  /** 현재 로그인된 사용자 고유 ID (기본값: 'user-1') */
-  userId?: string;
+  /** 현재 로그인된 사용자 고유 ID (미지정·null 시 비로그인 상태 — 임의 유저 폴백 금지) */
+  userId?: string | null;
 
   /** 이 컴포넌트를 마운트한 상위 호스트 종류 (기본값: 'standalone') */
   hostType?: HostOriginType;
