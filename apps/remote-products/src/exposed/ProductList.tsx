@@ -18,14 +18,7 @@ import { DEFAULT_SIMULATE_DELAY_MS } from '../features/catalog/api/catalog-api';
 import type { ProductListProps } from '../features/catalog/model/catalog-schema';
 import { ProductCatalogView } from '../features/catalog/ui/ProductCatalogView';
 
-export type {
-  CartItemView,
-  ProductCategory,
-  ProductCategoryFilter,
-  ProductEntity,
-  ProductFilterValues,
-  ProductListProps,
-} from '../features/catalog/model/catalog-schema';
+export type { ProductListProps } from '../features/catalog/model/catalog-schema';
 
 /**
  * Module Federation './ProductList' 노출 컴포넌트입니다.
