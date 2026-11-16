@@ -19,6 +19,7 @@ import {
   type ProductFilterValues,
   formatCatalogErrorReport,
   loadCatalogFilter,
+  normalizeUserId,
   resetCatalogFilter,
   saveCatalogFilter,
 } from '../model/catalog-schema';
@@ -32,8 +33,8 @@ import './catalog.css';
  * @description ProductCatalogView 컴포넌트 Props 인터페이스
  */
 export interface ProductCatalogViewProps {
-  /** 현재 로그인된 사용자 고유 ID */
-  userId: string;
+  /** 현재 로그인된 사용자 고유 ID (null이면 비로그인 읽기 전용 상태) */
+  userId: string | null;
 
   /** 상위 호스트 출처 ('vite' | 'rspack' | 'standalone') */
   hostType: HostOriginType;
@@ -78,6 +79,12 @@ export function ProductCatalogView({
   /** 최근 장바구니 담기 성공 피드백 메시지 상태 */
   const [lastAddedMessage, setLastAddedMessage] = useState<string | null>(null);
 
+  /** 공백·빈 문자열을 null로 정규화한 현재 로그인 사용자 ID */
+  const normalizedUserId = normalizeUserId(userId);
+
+  /** 장바구니 담기 등 인증이 필요한 쓰기 작업 허용 여부 */
+  const isAuthenticated = normalizedUserId !== null;
+
   /** 상품 목록 조회 TanStack Query 훅 */
   const productsQuery = useProductsQuery({
     filter,
@@ -88,7 +95,7 @@ export function ProductCatalogView({
 
   /** 장바구니 담기 TanStack Query 뮤테이션 훅 */
   const addToCartMutation = useAddToCartMutation({
-    userId,
+    userId: normalizedUserId,
     hostType,
     syncMode,
     apiBaseUrl,
@@ -126,6 +133,10 @@ export function ProductCatalogView({
    * @param product - 장바구니에 추가할 상품 엔티티
    */
   const handleAddToCart = async (product: ProductEntity) => {
+    // [분기 설명] 비로그인(미인증) 상태에서는 UI 우회 호출 시에도 장바구니 추가 API 요청을 차단합니다 (SSOT § 5.4.2).
+    if (!normalizedUserId) {
+      return;
+    }
     setLastAddedMessage(null);
     setAddingProductId(product.id);
     try {
@@ -184,8 +195,8 @@ export function ProductCatalogView({
               {syncMode === 'mode-b-query' ? 'Mode B: sharedQueryClient' : 'Mode A: CustomEvent'}
             </Badge>
           </Flex>
-          <Badge tone="neutral">
-            사용자: {userId} | 호스트: {hostType}
+          <Badge tone={isAuthenticated ? 'neutral' : 'warning'}>
+            사용자: {normalizedUserId ?? '비로그인 (읽기 전용)'} | 호스트: {hostType}
           </Badge>
         </Flex>
 
@@ -269,6 +280,7 @@ export function ProductCatalogView({
                 key={product.id}
                 product={product}
                 isAdding={addingProductId === product.id && addToCartMutation.isPending}
+                isAuthenticated={isAuthenticated}
                 onAddToCart={(target) => {
                   void handleAddToCart(target);
                 }}

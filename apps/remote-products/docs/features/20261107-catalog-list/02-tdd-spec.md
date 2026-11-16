@@ -73,6 +73,7 @@
      - `mfeEventBus.emit`이 `MFE_EVENTS.CART_UPDATED` 및 `{ action: 'add', userId: 'user-1', productId: 1, quantity: 1, sourceHost: 'vite', ... }` 페이로드로 **정확히 1회 호출**되어야 한다.
      - `sharedQueryClient.invalidateQueries`는 **호출되지 않아야 한다(`0회`)** (메모리 캐시 공유 없이 순수 이벤트 신호만 사용하는 아키텍처 입증).
   2. **`Mode B ('mode-b-query')`일 때**:
+     - 마운트 시 `createMfeQueryClient`를 호출하지 않고(`0회`) 싱글톤 `sharedQueryClient`만 사용해야 한다.
      - 뮤테이션 시작 시 `sharedQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY })`가 호출되고, 성공 시 `sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY })`가 **정확히 1회 호출**되어야 한다.
      - `mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, ...)`는 **호출되지 않아야 한다(`0회`)** (이벤트 버스 없이 싱글톤 쿼리 캐시 무효화만으로 동기화되는 아키텍처 입증).
   3. 두 모드 모두 상위 호스트 콜백인 `onCartAdded(payload)`는 정상 호출되어야 한다.
@@ -111,6 +112,15 @@
 - **기대 결과 및 폴백 동작 (`Then`)**:
   1. 빈 결과일 때는 안내 문구와 함께 **[필터 초기화]** 버튼이 제공되어 클릭 시 전체 상품 목록으로 즉시 복귀해야 한다.
   2. 조회 에러 시 인라인 에러 영역과 **[다시 시도]** 버튼이 렌더링되며, 클릭 시 재조회가 수행되어 정상 상품 목록으로 복구되어야 한다.
+
+### EC-04: 비로그인(`userId` 미전달/`null`) 상태 읽기 전용 허용, 담기 차단 및 `mfe:auth-changed` 로그인 전환 검증 (`ProductCard.test.tsx`, `ProductList.integration.test.tsx`)
+- **사전 조건 (`Given`)**: `userId`가 전달되지 않거나(`undefined`/`null`) `ProductCard`에 `isAuthenticated={false}`가 전달된 상태
+- **실행 동작 (`When`)**:
+  1. `<ProductList />` 마운트 후 비활성화된 담기 버튼을 클릭해 본다.
+  2. `mfeEventBus.emit(MFE_EVENTS.AUTH_CHANGED, { userId: 'user-1', ... })` 이벤트를 발행한 뒤 **[장바구니 담기]** 버튼을 클릭한다.
+- **기대 결과 및 폴백 동작 (`Then`)**:
+  1. 비로그인 상태에서도 `GET /api/products` 목록 조회는 정상 허용되지만, 상단 배지에 `비로그인 (읽기 전용)`이 표시되고 담기 버튼이 `"로그인 후 담기 가능"`으로 비활성화되어 `POST /api/cart` 요청이 차단(`0회`)되어야 한다.
+  2. `mfe:auth-changed` 수신 후에는 버튼이 활성화되어 `'user-1'`으로 장바구니 담기가 정상 동작해야 한다.
 
 ---
 

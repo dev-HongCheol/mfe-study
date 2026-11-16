@@ -20,6 +20,7 @@ import {
   mfeEventBus,
   sharedQueryClient,
 } from '../testing/stubs/remote-shared-utils';
+import * as remoteSharedUtils from '../testing/stubs/remote-shared-utils';
 
 describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () => {
   it('TC-05: Mode A(mode-a-event)에서는 장바구니 담기 성공 시 mfe:cart-updated 이벤트를 발행하고 sharedQueryClient.invalidateQueries는 호출하지 않는다', async () => {
@@ -191,7 +192,8 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
     expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
   });
 
-  it('TC-06: 단독 실행 쇼케이스(App.tsx)가 정상 렌더링되고 컨트롤 바(동기화 모드·지연 토글)가 동작한다', async () => {
+  it('TC-06: 단독 실행 쇼케이스(App.tsx)가 정상 렌더링되고 컨트롤 바(게스트 전환·동기화 모드·지연 토글)가 동작한다', async () => {
+    const user = userEvent.setup();
     render(
       <ThemeProvider>
         <App />
@@ -202,6 +204,10 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
       screen.getByRole('heading', { name: /상품 카탈로그 리모트 쇼케이스/ }),
     ).toBeInTheDocument();
     expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    const userSelect = screen.getByLabelText('시뮬레이션 사용자 선택');
+    await user.selectOptions(userSelect, '__guest__');
+    expect(screen.getByText(/비로그인 \(읽기 전용\)/)).toBeInTheDocument();
   });
 
   it('TC-06: 아키텍처 무결성 검증 — @ark-ui/react·clsx 직접 미설치, @mf-types 양방향 설정, PascalCase.tsx 분리, CSS 격리를 준수한다', () => {
@@ -239,5 +245,82 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
     expect(cssText).toContain('var(--mfe-');
     expect(cssText).toContain('tabular-nums');
     expect(cssText).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
+  });
+
+  it('EC-04: userId 미전달(비로그인) 마운트 시 목록 조회는 허용되나 장바구니 담기는 차단되고, mfe:auth-changed 수신 시 활성화된다', async () => {
+    const user = userEvent.setup();
+    let addCartCallCount = 0;
+    let lastAddedUserId: string | null = null;
+
+    server.use(
+      http.post('http://localhost:4000/api/cart', async ({ request }) => {
+        addCartCallCount += 1;
+        const body = (await request.json()) as {
+          userId: string;
+          productId: number;
+          quantity: number;
+          addedFromHost: string;
+        };
+        lastAddedUserId = body.userId;
+        return HttpResponse.json(
+          {
+            success: true,
+            data: {
+              id: 99,
+              userId: body.userId,
+              productId: body.productId,
+              productName: '기계식 무선 키보드 Pro',
+              price: 129000,
+              category: 'electronics',
+              quantity: body.quantity,
+              addedFromHost: body.addedFromHost,
+              createdAt: '2026-11-16T00:00:00.000Z',
+            },
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    render(<ProductList />);
+
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+    expect(screen.getByText(/비로그인 \(읽기 전용\)/)).toBeInTheDocument();
+
+    const blockedButtons = screen.getAllByRole('button', { name: '로그인 후 담기 가능' });
+    expect(blockedButtons.length).toBeGreaterThan(0);
+    expect(blockedButtons[0]).toBeDisabled();
+    await user.click(blockedButtons[0] as HTMLElement);
+    expect(addCartCallCount).toBe(0);
+
+    mfeEventBus.emit(MFE_EVENTS.AUTH_CHANGED, {
+      userId: 'user-1',
+      username: '홍길동',
+      token: 'mock-token',
+      timestamp: new Date().toISOString(),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/사용자: user-1/)).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(addButtons[0] as HTMLElement);
+
+    await waitFor(() => {
+      expect(addCartCallCount).toBe(1);
+    });
+    expect(lastAddedUserId).toBe('user-1');
+  });
+
+  it('TC-05: syncMode="mode-b-query" 마운트 시 독립 QueryClient(createMfeQueryClient)를 생성하지 않는다', async () => {
+    const createClientSpy = vi.spyOn(remoteSharedUtils, 'createMfeQueryClient');
+
+    render(<ProductList userId="user-1" syncMode="mode-b-query" />);
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    expect(createClientSpy).not.toHaveBeenCalled();
+
+    createClientSpy.mockRestore();
   });
 });

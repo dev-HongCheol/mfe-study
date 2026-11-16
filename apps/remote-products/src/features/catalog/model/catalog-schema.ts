@@ -136,8 +136,8 @@ export const CATEGORY_LABELS: Record<ProductCategoryFilter, string> = {
  * @description remote_products/ProductList 노출 컴포넌트 Props 인터페이스 (루트 SSOT § 5.4.2 계약 준수)
  */
 export interface ProductListProps {
-  /** 현재 로그인된 사용자 고유 ID (기본값: 'user-1') */
-  userId?: string;
+  /** 현재 로그인된 사용자 고유 ID (미지정·null 시 비로그인 상태 — 임의 유저 폴백 금지) */
+  userId?: string | null;
 
   /** 이 컴포넌트를 마운트한 상위 호스트 종류 (기본값: 'standalone') */
   hostType?: HostOriginType;
@@ -156,6 +156,22 @@ export interface ProductListProps {
 
   /** 장바구니 담기 완료 시 상위 호스트에 알리는 선택적 콜백 함수 */
   onCartAdded?: (payload: CartUpdatedEventPayload) => void;
+}
+
+/**
+ * 외부에서 전달받은 사용자 ID를 정규화합니다.
+ * null, undefined, 빈 문자열 또는 공백만 있는 문자열은 비로그인(null) 상태로 취급하여 임의 유저 폴백을 방지합니다.
+ *
+ * @param rawUserId - Props 또는 이벤트로 전달된 원본 사용자 ID
+ * @returns 공백이 제거된 유효 사용자 ID 문자열 또는 null(비로그인)
+ */
+export function normalizeUserId(rawUserId?: string | null): string | null {
+  // [분기 설명] 문자열이 아니거나 trim() 후 길이가 0이면 비인증 상태(null)로 반환합니다 (SSOT § 5.4.2).
+  if (typeof rawUserId !== 'string') {
+    return null;
+  }
+  const trimmed = rawUserId.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 /**

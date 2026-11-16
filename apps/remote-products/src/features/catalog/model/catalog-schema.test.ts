@@ -9,6 +9,7 @@ import {
   DEFAULT_PRODUCT_FILTER,
   formatCatalogErrorReport,
   loadCatalogFilter,
+  normalizeUserId,
   productEntityListSchema,
   productFilterSchema,
   resetCatalogFilter,
@@ -117,5 +118,13 @@ describe('catalog-schema & products 스코프 스토리지 (TC-01, EC-01)', () =
     expect(prodReport.userMessage).toBe(
       '일시적인 데이터 형식 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
     );
+  });
+
+  it('TC-01: normalizeUserId는 null, undefined, 빈·공백 문자열을 null로 정규화하고 유효 ID는 trim한다', () => {
+    expect(normalizeUserId(undefined)).toBeNull();
+    expect(normalizeUserId(null)).toBeNull();
+    expect(normalizeUserId('')).toBeNull();
+    expect(normalizeUserId('   ')).toBeNull();
+    expect(normalizeUserId(' user-1 ')).toBe('user-1');
   });
 });

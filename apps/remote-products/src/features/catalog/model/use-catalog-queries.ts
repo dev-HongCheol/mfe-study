@@ -15,7 +15,12 @@ import {
   sharedQueryClient,
 } from 'remote_shared/utils';
 import { DEFAULT_SIMULATE_DELAY_MS, fetchProducts, postAddToCart } from '../api/catalog-api';
-import type { CartItemView, ProductEntity, ProductFilterValues } from './catalog-schema';
+import {
+  type CartItemView,
+  type ProductEntity,
+  type ProductFilterValues,
+  normalizeUserId,
+} from './catalog-schema';
 
 /**
  * @description useProductsQuery 훅 입력 옵션 인터페이스
@@ -49,8 +54,8 @@ export interface AddToCartVariables {
  * @description useAddToCartMutation 훅 설정 옵션 인터페이스
  */
 export interface UseAddToCartMutationOptions {
-  /** 현재 로그인된 사용자 고유 ID */
-  userId: string;
+  /** 현재 로그인된 사용자 고유 ID (null이면 비인증 상태로 뮤테이션 실행 차단) */
+  userId: string | null;
 
   /** 상위 호스트 출처 ('vite' | 'rspack' | 'standalone') */
   hostType: HostOriginType;
@@ -110,15 +115,27 @@ export function useProductsQuery(options: UseProductsQueryOptions) {
 export function useAddToCartMutation(options: UseAddToCartMutationOptions) {
   const { userId, hostType, syncMode, apiBaseUrl = DEFAULT_API_BASE_URL, onCartAdded } = options;
 
+  const validUserId = normalizeUserId(userId);
+
   return useMutation<CartItemView, unknown, AddToCartVariables>({
-    mutationFn: ({ product, quantity = 1 }) =>
-      postAddToCart({
-        userId,
+    mutationFn: async ({ product, quantity = 1 }) => {
+      // [분기 설명] UI 비활성화를 우회해 직접 뮤테이션이 호출되더라도 비인증 상태에서는 POST /api/cart 요청을 원천 차단합니다 (SSOT § 5.4.2).
+      if (!validUserId) {
+        throw {
+          code: 'UNAUTHORIZED',
+          message: '로그인 후 장바구니에 상품을 담을 수 있습니다.',
+          status: 401,
+          originalError: null,
+        };
+      }
+      return postAddToCart({
+        userId: validUserId,
         productId: product.id,
         quantity,
         addedFromHost: hostType,
         apiBaseUrl,
-      }),
+      });
+    },
 
     onMutate: async () => {
       // [분기 설명] Mode B(싱글톤 sharedQueryClient 공유)에서는 뮤테이션 출발 직전에
@@ -129,9 +146,14 @@ export function useAddToCartMutation(options: UseAddToCartMutationOptions) {
     },
 
     onSuccess: async (addedItem, { product, quantity = 1 }) => {
+      // [분기 설명] mutationFn 가드를 통과한 유효 사용자 ID만 이벤트 페이로드에 기록합니다.
+      if (!validUserId) {
+        return;
+      }
+
       const eventPayload: CartUpdatedEventPayload = {
         action: 'add',
-        userId,
+        userId: validUserId,
         productId: product.id,
         productName: product.name,
         quantity,

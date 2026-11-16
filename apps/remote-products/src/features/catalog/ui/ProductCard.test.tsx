@@ -53,4 +53,24 @@ describe('ProductCard (TC-04)', () => {
     const soldOutBtn = screen.getByRole('button', { name: '품절된 상품' });
     expect(soldOutBtn).toBeDisabled();
   });
+
+  it('TC-04: 비로그인(isAuthenticated=false) 상태일 때는 담기 버튼을 비활성화하고 클릭해도 onAddToCart를 호출하지 않는다', async () => {
+    const user = userEvent.setup();
+    const onAddToCart = vi.fn();
+
+    render(
+      <ProductCard
+        product={normalProduct}
+        isAdding={false}
+        isAuthenticated={false}
+        onAddToCart={onAddToCart}
+      />,
+    );
+
+    const loginRequiredBtn = screen.getByRole('button', { name: '로그인 후 담기 가능' });
+    expect(loginRequiredBtn).toBeDisabled();
+
+    await user.click(loginRequiredBtn);
+    expect(onAddToCart).not.toHaveBeenCalled();
+  });
 });

@@ -18,6 +18,9 @@ export interface ProductCardProps {
   /** 현재 이 상품에 대한 장바구니 담기 요청이 진행 중인지 여부 (중복 클릭 잠금용) */
   isAdding: boolean;
 
+  /** 현재 사용자가 로그인되어 장바구니 담기가 허용된 상태인지 여부 (기본값: true) */
+  isAuthenticated?: boolean;
+
   /** 장바구니 담기 버튼 클릭 시 호출되는 핸들러 */
   onAddToCart: (product: ProductEntity) => void;
 }
@@ -25,19 +28,27 @@ export interface ProductCardProps {
 /**
  * 단일 상품 카드를 렌더링하는 컴포넌트입니다.
  *
- * @param props - 상품 엔티티, 로딩 여부 및 장바구니 담기 핸들러
+ * @param props - 상품 엔티티, 로딩/인증 여부 및 장바구니 담기 핸들러
  * @returns 상품 카드 JSX 엘리먼트
  */
-export function ProductCard({ product, isAdding, onAddToCart }: ProductCardProps) {
+export function ProductCard({
+  product,
+  isAdding,
+  isAuthenticated = true,
+  onAddToCart,
+}: ProductCardProps) {
   /** 재고 소진(품절) 여부 */
   const isSoldOut = product.stock <= 0;
+
+  /** 장바구니 담기 버튼 비활성화 여부 (품절 또는 비로그인 상태) */
+  const isDisabled = isSoldOut || !isAuthenticated;
 
   /**
    * 장바구니 담기 버튼 클릭을 처리합니다.
    */
   const handleAddClick = () => {
-    // [분기 설명] 품절 상태이거나 이미 요청이 진행 중일 때는 중복 요청을 원천 차단합니다 (Study 05 #01).
-    if (isSoldOut || isAdding) {
+    // [분기 설명] 품절 상태이거나 비로그인 상태 또는 이미 요청이 진행 중일 때는 요청을 원천 차단합니다 (Study 05 #01, SSOT § 5.4.2).
+    if (isDisabled || isAdding) {
       return;
     }
     onAddToCart(product);
@@ -76,14 +87,20 @@ export function ProductCard({ product, isAdding, onAddToCart }: ProductCardProps
         </Flex>
 
         <Button
-          variant={isSoldOut ? 'secondary' : 'primary'}
+          variant={isDisabled ? 'secondary' : 'primary'}
           size="md"
           fullWidth={true}
           isLoading={isAdding}
-          disabled={isSoldOut}
+          disabled={isDisabled}
           onClick={handleAddClick}
         >
-          {isSoldOut ? '품절된 상품' : isAdding ? '담는 중...' : '장바구니 담기'}
+          {isSoldOut
+            ? '품절된 상품'
+            : !isAuthenticated
+              ? '로그인 후 담기 가능'
+              : isAdding
+                ? '담는 중...'
+                : '장바구니 담기'}
         </Button>
       </Stack>
     </Card>

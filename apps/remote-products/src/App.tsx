@@ -26,8 +26,12 @@ import {
 } from 'remote_shared/utils';
 import { ProductList } from './exposed/ProductList';
 
-/** 단독 실행 쇼케이스용 사용자 선택 옵션 상수 */
+/** 비로그인(게스트) 선택을 나타내는 쇼케이스 드롭다운 센티널 값 상수 (Ark Select 빈 문자열 미선택 방지) */
+const GUEST_USER_OPTION_VALUE = '__guest__';
+
+/** 단독 실행 쇼케이스용 사용자 선택 옵션 상수 (게스트 비로그인 상태 포함) */
 const USER_OPTIONS: SelectOptionItem[] = [
+  { value: GUEST_USER_OPTION_VALUE, label: '게스트 (비로그인)' },
   { value: 'user-1', label: '홍길동 (user-1 / VIP)' },
   { value: 'user-2', label: '이순신 (user-2 / 일반)' },
 ];
@@ -138,7 +142,7 @@ export function App() {
 
         <main>
           <ProductList
-            userId={userId}
+            userId={userId === GUEST_USER_OPTION_VALUE ? null : userId}
             hostType="standalone"
             syncMode={syncMode}
             simulateDelay={simulateDelay}

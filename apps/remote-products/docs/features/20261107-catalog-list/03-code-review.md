@@ -19,45 +19,46 @@
 | `src/vite-env.d.ts` | Vite 환경 타입 및 `@mf-types/remote_shared` 내 `HTMLArkProps`·`Ark*.RootProps` 호환 선언 | `NEW` | `+91 / -0` | `보완 (@ark-ui/react 미설치 상태에서 @mf-types 정적 타입 검사 100% 통과 지원)` |
 | `src/main.ts` | `import('./bootstrap.js')` 비동기 동적 임포트 (`Study 04 #01`) | `NEW` | `+8 / -0` | `일치` |
 | `src/bootstrap.tsx` | `ThemeProvider` 래핑 및 `App` 마운트 | `NEW` | `+25 / -0` | `일치` |
-| `src/App.tsx` | 단독 실행(Port 3002) 쇼케이스 (유저/모드/테마/지연 전환 및 이벤트 로그 모니터) | `NEW` | `+152 / -0` | `일치` |
-| `src/exposed/ProductList.tsx` | MF 노출 진입점 (`./ProductList`) — `Mode A` vs `Mode B` `QueryClientProvider` 분기 및 `RemoteErrorBoundary` 래핑 | `NEW` | `+116 / -0` | `일치` |
-| `src/features/catalog/model/catalog-schema.ts` | Zod 스키마(`productFilterSchema`, `productEntitySchema`), 카테고리 상수, `mfe:products` 로컬 스토리지 영속화 | `NEW` | `+170 / -0` | `일치` |
-| `src/features/catalog/api/catalog-api.ts` | `createApiClient` 기반 `fetchProducts`(`AbortSignal` + 지연 시뮬레이션), `postCartItem` | `NEW` | `+149 / -0` | `일치` |
-| `src/features/catalog/model/use-catalog-queries.ts` | `useProductsQuery` 및 `useAddToCartMutation` (`Mode A` 이벤트 발행 vs `Mode B` `cancelQueries` + `invalidateQueries`) | `NEW` | `+159 / -0` | `일치` |
-| `src/features/catalog/ui/ProductFilterBar.tsx` | `remote_shared/ui` `Select`·`Button` + `React Hook Form` + `Zod` 검색/카테고리 필터 바 | `NEW` | `+152 / -0` | `일치` |
-| `src/features/catalog/ui/ProductGridSkeleton.tsx` | 실제 카드 높이(`min-height: 240px`)와 1:1 매칭된 6-카드 스켈레톤 (`Study 05 #13`) | `NEW` | `+51 / -0` | `일치` |
-| `src/features/catalog/ui/ProductCard.tsx` | 개별 상품 카드 (`formatCurrency`, 품절 배지, `isLoading` 중복 클릭 잠금) | `NEW` | `+91 / -0` | `일치` |
-| `src/features/catalog/ui/ProductCatalogView.tsx` | 필터 바 + 스켈레톤/에러/빈 상태/3열 카드 그리드 통합 뷰 | `NEW` | `+232 / -0` | `일치` |
-| `src/features/catalog/ui/catalog.css` | `.prod-*` 네임스페이스 및 시맨틱 CSS 변수 토큰 기반 스타일 (`Study 04 #05`, `Study 05 #13~#16`) | `NEW` | `+164 / -0` | `일치` |
-| `src/testing/**` & `src/**/*.test.*` | 로컬 스텁 3종, MSW 핸들러/서버, 단위 테스트 4종 + 통합 테스트 1종 (총 20케이스) | `NEW` | `+1,069 / -0` | `일치` |
+| `src/App.tsx` | 단독 실행(Port 3002) 쇼케이스 (게스트 비로그인·유저/모드/테마/지연 전환 및 이벤트 로그 모니터) | `NEW` | `+156 / -0` | `보완 (게스트 비로그인 옵션 추가)` |
+| `src/exposed/ProductList.tsx` | MF 노출 진입점 (`./ProductList`) — `Mode A` 전용 `localQueryClientRef` 조건부 지연 생성 vs `Mode B` `sharedQueryClient` 분기 및 `userId` 비인증(`null`) 방어 | `NEW` | `+99 / -0` | `보완 (SSOT § 5.4.2 개정 반영)` |
+| `src/features/catalog/model/catalog-schema.ts` | Zod 스키마(`productFilterSchema`, `productEntitySchema`), `ProductListProps.userId?: string \| null`, `normalizeUserId`, `mfe:products` 로컬 스토리지 영속화 | `NEW` | `+338 / -0` | `보완 (비인증 정규화 헬퍼 추가)` |
+| `src/features/catalog/api/catalog-api.ts` | `createApiClient` 기반 `fetchProducts`(`AbortSignal` + 지연 시뮬레이션), `postAddToCart` | `NEW` | `+165 / -0` | `일치` |
+| `src/features/catalog/model/use-catalog-queries.ts` | `useProductsQuery` 및 `useAddToCartMutation` (`Mode A` 이벤트 발행 vs `Mode B` `cancelQueries` + `invalidateQueries`, 비인증 `UNAUTHORIZED` 차단 가드) | `NEW` | `+172 / -0` | `보완 (비인증 뮤테이션 가드 추가)` |
+| `src/features/catalog/ui/ProductFilterBar.tsx` | `remote_shared/ui` `Select`·`Button` + `React Hook Form` + `Zod` 검색/카테고리 필터 바 | `NEW` | `+145 / -0` | `일치` |
+| `src/features/catalog/ui/ProductGridSkeleton.tsx` | 실제 카드 높이(`min-height: 240px`)와 1:1 매칭된 6-카드 스켈레톤 (`Study 05 #13`) | `NEW` | `+48 / -0` | `일치` |
+| `src/features/catalog/ui/ProductCard.tsx` | 개별 상품 카드 (`formatCurrency`, 품절 배지, `isLoading` 중복 클릭 잠금, 비로그인 `isAuthenticated=false` 버튼 비활성화) | `NEW` | `+105 / -0` | `보완 (비로그인 담기 차단 UI 추가)` |
+| `src/features/catalog/ui/ProductCatalogView.tsx` | 필터 바 + 스켈레톤/에러/빈 상태/3열 카드 그리드 통합 뷰, 비로그인 읽기 전용 배지 및 1차 담기 가드 | `NEW` | `+292 / -0` | `보완 (비로그인 읽기 전용 UX 반영)` |
+| `src/features/catalog/ui/catalog.css` | `.prod-*` 네임스페이스 및 시맨틱 CSS 변수 토큰 기반 스타일 (`Study 04 #05`, `Study 05 #13~#16`) | `NEW` | `+180 / -0` | `일치` |
+| `src/testing/**` & `src/**/*.test.*` | 로컬 스텁 3종, MSW 핸들러/서버, 단위 테스트 4종 + 통합 테스트 1종 (총 25케이스) | `NEW` | `총 25케이스` | `보완 (EC-04 비인증·Mode B 지연생성 검증 추가)` |
 
 ### 1.2 핵심 데이터 흐름 및 입출력 요약 (`Data Flow & Contracts`)
 - **입력 데이터 (`Props` / `Request` / `Storage`)**:
-  - 호스트(또는 단독 쇼케이스)로부터 `ProductListProps` (`userId`, `hostType`, `syncMode`, `simulateDelay`, `apiBaseUrl`, `onCartAdded`)를 수신하고 기본값을 안전하게 폴백 처리합니다.
+  - 호스트(또는 단독 쇼케이스)로부터 `ProductListProps` (`userId`, `hostType`, `syncMode`, `simulateDelay`, `delayMs`, `apiBaseUrl`, `onCartAdded`)를 수신하며, `userId`가 생략되거나 `null`·빈 문자열·공백일 때는 임의 유저(`'user-1'`)로 폴백하지 않고 `null`(비로그인 읽기 전용)로 유지합니다. (`userId` 생략 시 `mfe:auth-changed` 이벤트로 로그인 상태 전환 가능)
   - 마운트 시 `createScopedStorage('products')`를 통해 `mfe:products:catalog-filter` 키에서 저장된 필터를 읽어 `productFilterSchema.safeParse()`로 검증·복원합니다.
 - **내부 핵심 처리 로직**:
-  - `useProductsQuery`: `GET /api/products?category=...&search=...`를 호출하며 TanStack Query의 `signal`(`AbortSignal`)을 `ky`에 전달합니다. `simulateDelay: true`일 때는 취소 가능한 지연 타이머(`1500ms`)를 수행합니다.
-  - `useAddToCartMutation`: `POST /api/cart` 요청을 수행하며, **`Mode A ('mode-a-event')`**에서는 컴포넌트 스코프 독립 `localQueryClient`를 사용하고 성공 시 `mfeEventBus.emit('mfe:cart-updated', payload)`를 발행합니다. **`Mode B ('mode-b-query')`**에서는 `onMutate` 시점에 `sharedQueryClient.cancelQueries({ queryKey: ['cart'] })`로 구버전 장바구니 조회를 취소하고, `onSuccess` 시점에 `sharedQueryClient.invalidateQueries({ queryKey: ['cart'] })`를 호출합니다.
+  - `ProductList`: `effectiveSyncMode !== 'mode-b-query'`일 때만 `localQueryClientRef`에 `createMfeQueryClient()`를 최초 1회 지연 생성하여 주입하고, `Mode B` 전용 마운트 시에는 싱글톤 `sharedQueryClient`만 사용합니다.
+  - `useProductsQuery`: `GET /api/products?category=...&search=...`를 호출하며 TanStack Query의 `signal`(`AbortSignal`)을 `ky`에 전달합니다. `simulateDelay: true`일 때는 취소 가능한 지연 타이머(`delayMs`)를 수행합니다.
+  - `useAddToCartMutation`: `normalizeUserId(userId)`가 `null`이면 `UNAUTHORIZED` 예외를 던져 `POST /api/cart` 호출을 원천 차단합니다. 유효 사용자인 경우 **`Mode A ('mode-a-event')`**에서는 성공 시 `mfeEventBus.emit('mfe:cart-updated', payload)`만 발행하고, **`Mode B ('mode-b-query')`**에서는 `onMutate` 시점에 `sharedQueryClient.cancelQueries({ queryKey: ['cart'] })`로 구버전 장바구니 조회를 취소한 뒤 `onSuccess` 시점에 `sharedQueryClient.invalidateQueries({ queryKey: ['cart'] })`를 호출합니다.
 - **출력 데이터 (`Render` / `Event` / `Cache`)**:
-  - `remote_shared/ui`의 `Grid`, `Card`, `Badge`, `Button`, `Select`, `Skeleton`을 조합하여 3열 상품 카탈로그 그리드를 렌더링합니다.
+  - `remote_shared/ui`의 `Grid`, `Card`, `Badge`, `Button`, `Select`, `Skeleton`을 조합하여 3열 상품 카탈로그 그리드를 렌더링합니다(비로그인 시 상단 `비로그인 (읽기 전용)` 배지 및 카드 버튼 `"로그인 후 담기 가능"` 비활성화).
   - 장바구니 추가 완료 시 선택된 `syncMode`에 따라 `CustomEvent('mfe:cart-updated')` 발행 또는 `sharedQueryClient`의 `['cart']` 쿼리 무효화 및 `onCartAdded(payload)` 콜백을 전달합니다.
 
 ### 1.3 TDD 테스트 실행 증거 (`Test Execution Evidence`)
 - **실행 명령어**: `pnpm --filter @mfe-study/remote-products test` (및 루트 `pnpm test`)
-- **통과 현황**: `remote-products` 총 `20`건 중 `20`건 통과 (`0`건 실패, 루트 전체 31개 테스트 파일 / 66개 테스트 전원 통과)
+- **통과 현황**: `remote-products` 총 `25`건 중 `25`건 통과 (`0`건 실패, 루트 전체 32개 테스트 파일 / 81개 테스트 전원 통과)
 - **주요 검증 시나리오 요약**:
-  - `[TC-SCHEMA-01~04]` 검색어 `trim` 및 50자 초과 차단, 카테고리 enum 검증, 손상된 로컬 스토리지 데이터 기본값 폴백 검증 통과
+  - `[TC-SCHEMA-01~06]` 검색어 `trim` 및 50자 초과 차단, 카테고리 enum 검증, 손상된 로컬 스토리지 데이터 기본값 폴백, `DEV/PROD` 스키마 에러 리포트 이원화 및 `normalizeUserId` 비인증 정규화 검증 통과
   - `[TC-API-01~03]` `GET /api/products` 쿼리 파라미터 직렬화, `POST /api/cart` 201 응답 파싱, 이미 중단된 `AbortSignal` 전달 시 즉시 취소 검증 통과
   - `[TC-UI-FILTER-01~03]` 51자 초과 검색어 인라인 에러 표시, 카테고리 `Select` 변경 및 `[필터 초기화]` 동작 검증 통과
-  - `[TC-UI-CARD-01~03]` `formatCurrency` 원화 정수 포맷팅, `isAdding=true`일 때 `disabled` + `aria-busy="true"` 잠금, `stock=0` 품절 비활성화 검증 통과
-  - `[TC-INT-01~07]` 8개 상품 렌더링 및 카테고리/키워드 필터링, **`Mode A` 이벤트 발행(캐시 미접근)** vs **`Mode B` `cancelQueries` + `invalidateQueries`(이벤트 미발행)** 격리 검증, `simulateDelay` 스켈레톤 노출, 500 에러 시 `[다시 시도]` 복구 검증 통과
+  - `[TC-UI-CARD-01~04]` `formatCurrency` 원화 정수 포맷팅, `isAdding=true`일 때 `disabled` + `aria-busy="true"` 잠금, `stock=0` 품절 비활성화 및 `isAuthenticated=false` 비로그인 담기 차단 검증 통과
+  - `[TC-INT-01~09]` 8개 상품 렌더링 및 카테고리/키워드 필터링, **`Mode A` 이벤트 발행(캐시 미접근)** vs **`Mode B` `cancelQueries` + `invalidateQueries`(이벤트 미발행 및 `createMfeQueryClient` 미호출)** 격리 검증, `simulateDelay` 스켈레톤 노출, 500 에러 시 `[다시 시도]` 복구, **`EC-04` `userId` 미전달 비로그인 읽기 전용 조회·담기 차단 및 `mfe:auth-changed` 로그인 활성화**·쇼케이스 게스트 전환 검증 통과
 
 ### 1.4 정적 분석 및 하네스 게이트 통과 결과 (`Quality Gates`)
-- **포맷팅 및 린트 (`Biome`)**: `통과` (`Checked 126 files. No fixes applied.`)
+- **포맷팅 및 린트 (`Biome`)**: `통과` (`Checked 127 files. No fixes applied.`)
 - **타입 검사 (`tsc --noEmit`)**: `통과` (`pnpm --filter @mfe-study/remote-products typecheck` 에러 0건)
 - **프로덕션 빌드 (`vite build`)**: `통과` (`dist/remoteEntry.js`, `dist/mf-manifest.json`, `dist/@mf-types/` 정상 생성)
-- **작업 스코프 격리 (`verify-scope.mjs`)**: `products` (`apps/remote-products` 및 루트 `vitest.config.ts`) 범위 외 타 서비스 수정 0건 확인
-- **DB 3종 SQL 해시 동기화 (`verify-sql-sync.mjs`)**: `통과` (`3종 SQL 파일 해시 및 순차 실행 무결성 검증 통과`)
+- **작업 스코프 격리 (`verify-scope.mjs`)**: `products` (`apps/remote-products`) 범위 외 타 서비스 수정 0건 확인
+- **DB 3종 SQL 해시 동기화 (`verify-sql-sync.mjs`)**: `N/A (해당 없음 — api 스코프 SQL 미변경)`
 
 ---
 
@@ -65,7 +66,7 @@
 
 - [x] **[SEC-01] SQL 인젝션 방어 및 입력 스키마 검증**: 사용자 검색어·카테고리 입력(`productFilterSchema`), 로컬 스토리지 복원 데이터, 백엔드 응답 엔벨로프(`productEntitySchema`, `cartItemResponseSchema`), 장바구니 추가 요청(`addToCartRequestSchema`)을 모두 `zod` 스키마로 런타임 검증했습니다. (`통과`)
 - [x] **[SEC-02] XSS(스크립트 삽입) 및 DOM 보안**: `dangerouslySetInnerHTML`, `innerHTML`, `eval` 사용이 전무하며 모든 상품명·검색어·에러 메시지는 React JSX 텍스트 노드로 안전하게 이스케이프됩니다. (`통과`)
-- [x] **[SEC-03] 인증·인가 검증 및 민감 정보 노출 차단**: API 에러 발생 시 내부 스택 트레이스를 노출하지 않고 `normalizeError`를 통해 정제된 `{ code, message }`만 사용자 배너에 표시합니다. (`통과`)
+- [x] **[SEC-03] 인증·인가 검증 및 민감 정보 노출 차단**: `userId` 미지정·`null`·공백 시 임의 유저(`'user-1'`)로 폴백하지 않도록 `normalizeUserId`로 정규화하고, UI 버튼 비활성화·핸들러 가드·뮤테이션 `UNAUTHORIZED` 예외 차단의 3중 비인증 방어를 적용했습니다. 또한 API 에러 발생 시 내부 스택 트레이스를 노출하지 않고 `normalizeError`를 통해 정제된 `{ code, message }`만 사용자 배너에 표시합니다. (`통과`)
 - [x] **[SEC-04] 안전한 CORS 및 네트워크 경계**: `vite.config.ts`에 `port: 3002`, `strictPort: true`, `cors: true`를 설정하고 `createApiClient`를 통해 표준 엔벨로프 통신 및 에러 정규화를 적용했습니다. (`통과`)
 
 ---
@@ -76,7 +77,7 @@
 - [x] **초기화·경로 (#01~#04)**: `src/main.ts` + `src/bootstrap.tsx` 2단 비동기 엔트리 분리(#01), `base: 'http://localhost:3002/'` 고정(#02), 개발/프리뷰 서버 `cors: true` & `strictPort: true`(#03), Module Federation 2.0 `dts` 플러그인을 통한 `@mf-types` 생성·소비(#04)를 모두 적용했습니다.
 - [x] **DOM·스타일 격리 (#05~#06)**: `catalog.css`에서 전역 태그 선택자(`body`, `button`, `*`)를 일절 사용하지 않고 `.prod-*` 클래스 프리픽스만 사용했으며(#05), 드롭다운 포털은 `remote_shared/ui`의 `Select`(`--z-dropdown` 토큰 내장)를 소비하여 `z-index` 충돌을 원천 차단했습니다(#06).
 - [x] **상태·라우팅·메모리·스토리지 (#07~#10)**: `remote_shared/theme`의 단일 `ThemeProvider`/`useTheme` Context를 공유하고(#07), `App.tsx`의 이벤트 모니터는 `useMfeEvent`로 언마운트 시 리스너를 자동 해제하며(#09), 필터 영속화는 `createScopedStorage('products')`(`mfe:products:catalog-filter`)로 격리했습니다(#10).
-- [x] **단독 테스트·장애 복구 (#11~#14)**: `vitest.config.ts`의 로컬 스텁 Alias로 타 서버 기동 없이 20개 테스트가 단독 통과하며(#11), `ProductList.tsx` 최외곽을 `RemoteErrorBoundary`로 감싸고 API 실패 시 `[다시 시도]` 인라인 복구를 지원합니다(#13).
+- [x] **단독 테스트·장애 복구 (#11~#14)**: `vitest.config.ts`의 로컬 스텁 Alias로 타 서버 기동 없이 25개 테스트가 단독 통과하며(#11), `ProductCatalogView` 내부에서 API 실패 시 전체 앱 크래시 없이 인라인 에러 배너와 `[다시 시도]` 복구 버튼을 제공합니다(#13, 상위 호스트 결합 시 `RemoteErrorBoundary` 추가 격리 호환).
 
 ---
 
@@ -112,12 +113,19 @@
    - 또한 `vite.config.ts`의 `dts` 설정에 `dev: { disableDynamicRemoteTypeHints: true }`를 추가하여 `@mf-types` 타입 동기화는 유지하면서 죽은 로컬 포트로 접속을 시도하던 WebSocket 에러를 제거했습니다. (해결 완료)
 5. **`RESPONSE_SCHEMA_INVALID` 등 API·스키마 에러의 환경별(`DEV` vs `PROD`) 표시·로깅 이원화 (`formatCatalogErrorReport`)**:
    - 개발 환경(`DEV`)에서는 `ZodError.issues`에서 실패한 필드 좌표(예: `[0].price`)와 상세 사유를 자동 추출하여 에러 배너 하단(`[DEV 상세 진단]`)과 브라우저 F12 콘솔에 즉시 표시하고, 운영 환경(`PROD`)에서는 내부 스키마 필드명을 숨기고 안전한 안내 문구만 표시하도록 이원화했습니다. (해결 완료)
+6. **`ProductList.tsx`의 `Mode A` 전용 `localQueryClientRef` 조건부 지연 생성 리팩토링**:
+   - 기존에는 `syncMode="mode-b-query"`일 때도 렌더링 시점에 `createMfeQueryClient()`를 무조건 생성했으나, `effectiveSyncMode !== 'mode-b-query'`일 때만 최초 1회 생성하도록 개선해 `Mode B` 전용 마운트 시 불필요한 `QueryClient` 인스턴스 생성(0개)을 제거했습니다. (해결 완료)
+7. **`userId` 기본값 `'user-1'` 폴백 제거, 비인증 3중 방어 구현 및 `ArkSelect` 빈 문자열 센티널 보완 (`SSOT § 5.4.2`)**:
+   - `ProductListProps.userId` 타입을 `string | null`로 개정하고 `eventUserId` 초기값을 `null`로 변경해 비로그인 상태가 임의 유저(`'user-1'`)로 자동 폴백되는 문제를 제거했습니다.
+   - 비로그인 시 목록 조회는 읽기 전용으로 허용하되, 상단 배지 `비로그인 (읽기 전용)` 표시, `ProductCard` 버튼 비활성화(`로그인 후 담기 가능`), `handleAddToCart` 및 `useAddToCartMutation` 이중 차단을 적용했습니다.
+   - 아울러 `remote_shared/ui`의 `Select`가 `value ? [value] : []`로 빈 문자열(`''`)을 미선택 처리하는 구현 특성을 확인해, `App.tsx` 쇼케이스의 게스트 옵션 값을 `'__guest__'` 센티널로 설정하고 `<ProductList userId={userId === '__guest__' ? null : userId} />`로 변환해 UI 선택 표시와 `null` 전달이 모두 정상 동작하도록 조치했습니다. (해결 완료)
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
-1. **`Mode A` vs `Mode B` 상태 동기화 실험 설계 (`src/exposed/ProductList.tsx` & `src/features/catalog/model/use-catalog-queries.ts`)**:
-   - `syncMode === 'mode-a-event'`일 때는 컴포넌트 내부 `localQueryClient`를 주입하고 `mfeEventBus.emit('mfe:cart-updated', payload)`만 발행하며, `syncMode === 'mode-b-query'`일 때는 `remote_shared/utils`의 싱글톤 `sharedQueryClient`를 주입하고 `cancelQueries` + `invalidateQueries({ queryKey: ['cart'] })`만 호출하도록 엄격히 분리했습니다.
-2. **5단계-B (PR 생성 및 커밋) 진행 승인 요청**:
-   - 코드 리뷰 문서(`03-code-review.md`)와 아래 PR 초안 및 커밋 메시지를 확인해 주시고, **커밋·PR 생성 및 머지 진행 여부**를 승인해 주시면 감사하겠습니다.
+1. **`Mode A` vs `Mode B` 상태 동기화 실험 설계 및 비인증 방어 (`src/exposed/ProductList.tsx` & `src/features/catalog/model/use-catalog-queries.ts`)**:
+   - `syncMode === 'mode-a-event'`일 때는 조건부 지연 생성된 `localQueryClient`를 주입하고 `mfeEventBus.emit('mfe:cart-updated', payload)`만 발행하며, `syncMode === 'mode-b-query'`일 때는 싱글톤 `sharedQueryClient`를 주입하고 `cancelQueries` + `invalidateQueries({ queryKey: ['cart'] })`만 호출하도록 엄격히 분리했습니다.
+   - `userId` 미전달/`null` 상태에서는 읽기 전용 조회만 허용하고 담기 요청을 차단하며 `mfe:auth-changed` 수신 시 즉시 활성화됩니다.
+2. **5단계-A PR 초안 보고 및 PR 생성 승인 요청**:
+   - 코드 리뷰 문서(`03-code-review.md`)와 PR 초안 및 커밋 메시지를 확인해 주시고, **커밋·푸시 및 PR 생성(`gh pr create`) 진행 여부**를 승인해 주시면 PR 생성까지만 완료한 뒤 멈추어 별도 머지 결정을 대기하겠습니다.
 
 ---
 

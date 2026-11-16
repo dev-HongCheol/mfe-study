@@ -245,6 +245,11 @@ export declare function formatCatalogErrorReport(
   error: NormalizedError,
   isDev?: boolean,
 ): CatalogErrorReport;
+
+/**
+ * @description Props 또는 이벤트로 전달받은 사용자 ID를 정규화하여 비로그인(null/빈 문자열/공백) 시 임의 유저 폴백을 차단하는 함수 (SSOT § 5.4.2)
+ */
+export declare function normalizeUserId(rawUserId?: string | null): string | null;
 ```
 
 ---
@@ -258,8 +263,8 @@ export declare function formatCatalogErrorReport(
   - **공유 의존성 (`shared` & `singleton`)**: `react` (`^19.1.0`), `react-dom` (`^19.1.0`), `@tanstack/react-query` (`^5.74.4`) 모두 `singleton: true`
   - **원격 타입 양방향 동기화 (`dts` & `dev`)**: `generateTypes: { tsConfigPath: './tsconfig.json', abortOnError: false }`, `consumeTypes: { typesOnBuild: true, abortOnError: false }`, `dev: { disableDynamicRemoteTypeHints: true }`
 - **단독 실행(Standalone) 및 호스트 결합 마운트 처리**:
-  - **단독 실행 (`src/main.ts` → `src/bootstrap.tsx` → `src/App.tsx`)**: `ThemeProvider`로 감싸고 상단에 유저·동기화모드·테마·1.5초 지연 컨트롤 바와 실시간 `mfe:cart-updated` 이벤트 수신 모니터를 배치하여 `Port 3002` 단독으로도 모든 기능을 검증할 수 있게 합니다.
-  - **호스트 결합 (`src/exposed/ProductList.tsx`)**: `<BrowserRouter>`나 전역 CSS Reset을 절대 포함하지 않으며, 상위 호스트가 내려준 `Props`(`userId`, `hostType`, `syncMode`, `simulateDelay`, `apiBaseUrl`, `onCartAdded`)를 기준으로 동작합니다. 또한 `Props`가 생략된 경우 `useMfeEvent`로 `mfe:auth-changed` 및 `mfe:sync-mode-changed` 이벤트를 보조 수신하여 유연하게 동기화합니다.
+  - **단독 실행 (`src/main.ts` → `src/bootstrap.tsx` → `src/App.tsx`)**: `ThemeProvider`로 감싸고 상단에 유저(`게스트 (비로그인)` · `user-1` · `user-2`)·동기화모드·테마·1.5초 지연 컨트롤 바와 실시간 `mfe:cart-updated` 이벤트 수신 모니터를 배치하여 `Port 3002` 단독으로도 비인증 차단과 로그인 담기를 모두 검증할 수 있게 합니다.
+  - **호스트 결합 (`src/exposed/ProductList.tsx`)**: `<BrowserRouter>`나 전역 CSS Reset을 절대 포함하지 않으며, 상위 호스트가 내려준 `Props`(`userId`, `hostType`, `syncMode`, `simulateDelay`, `delayMs`, `apiBaseUrl`, `onCartAdded`)를 기준으로 동작합니다. 또한 `Props`가 생략된 경우 `useMfeEvent`로 `mfe:auth-changed` 및 `mfe:sync-mode-changed` 이벤트를 보조 수신하며, `userId`가 전달되지 않거나 `null`/공백인 비로그인 상태에서는 임의 유저(`'user-1'`)로 폴백하지 않고 읽기 전용 카탈로그 조회만 허용한 채 장바구니 담기 버튼 및 뮤테이션을 원천 차단합니다(`SSOT § 5.4.2`).
 - **마이크로 앱 간 통신 및 상태 공유 (`Mode A` vs `Mode B` 순수 비교 아키텍처)**:
   ```mermaid
   flowchart LR
@@ -274,7 +279,7 @@ export declare function formatCatalogErrorReport(
       Branch -->|"mode-a-event"| ModeA --> CartA
       Branch -->|"mode-b-query"| ModeB --> CartB
   ```
-  1. **`Mode A ('mode-a-event')`**: `ProductList` 내부 `useRef`로 생성한 독립 `localQueryClient`(`createMfeQueryClient()`)를 `QueryClientProvider`에 주입합니다. 담기 성공 시 `sharedQueryClient`는 건드리지 않고 오직 `mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, payload)`만 발송합니다.
+  1. **`Mode A ('mode-a-event')`**: `ProductList` 내부 `localQueryClientRef`는 `effectiveSyncMode !== 'mode-b-query'`일 때만 `createMfeQueryClient()`로 최초 1회 조건부 지연 생성하여 `QueryClientProvider`에 주입합니다(`Mode B` 전용 마운트 시 불필요한 `QueryClient` 인스턴스 생성 0개). 담기 성공 시 `sharedQueryClient`는 건드리지 않고 오직 `mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, payload)`만 발송합니다.
   2. **`Mode B ('mode-b-query')`**: `remote_shared/utils`의 싱글톤 `sharedQueryClient`를 `QueryClientProvider`에 주입합니다. 뮤테이션 시작 시(`onMutate`) `await sharedQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY })`로 진행 중인 구버전 장바구니 조회 응답 역전을 차단하고, 성공 시 `await sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY })`로 직접 무효화합니다 (`CustomEvent`에 의존하지 않음을 증명하기 위해 `Mode B`에서는 `mfe:cart-updated` 버스 발송을 생략하고 선택적 `onCartAdded` 콜백만 호출합니다).
 - **공통 UI 컴포넌트 (`Ark UI`) 및 스타일 격리 (CSS 변수 / 프리픽스)**:
   - 모든 버튼·제목·셀렉트·배지·스켈레톤·그리드·카드 레이아웃은 `remote_shared/ui` 컴포넌트로 조립합니다.
