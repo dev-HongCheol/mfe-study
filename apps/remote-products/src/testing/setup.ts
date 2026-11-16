@@ -7,8 +7,8 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
-import { server } from './msw/server.js';
-import { sharedQueryClient } from './stubs/remote-shared-utils.js';
+import { server } from './msw/server';
+import { sharedQueryClient } from './stubs/remote-shared-utils';
 
 /**
  * [분기 설명] jsdom v26의 window.AbortSignal과 Node 22(undici) 내장 Request/fetch 간

@@ -10,16 +10,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
-import { App } from '../App.js';
-import { ProductList } from '../exposed/ProductList.js';
-import { server } from '../testing/msw/server.js';
-import { ThemeProvider } from '../testing/stubs/remote-shared-theme.js';
+import { App } from '../App';
+import { ProductList } from '../exposed/ProductList';
+import { server } from '../testing/msw/server';
+import { ThemeProvider } from '../testing/stubs/remote-shared-theme';
 import {
   CART_QUERY_KEY,
   MFE_EVENTS,
   mfeEventBus,
   sharedQueryClient,
-} from '../testing/stubs/remote-shared-utils.js';
+} from '../testing/stubs/remote-shared-utils';
 
 describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () => {
   it('TC-05: Mode A(mode-a-event)에서는 장바구니 담기 성공 시 mfe:cart-updated 이벤트를 발행하고 sharedQueryClient.invalidateQueries는 호출하지 않는다', async () => {

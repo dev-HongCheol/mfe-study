@@ -7,8 +7,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { MOCK_PRODUCTS_SEED } from '../../../testing/msw/handlers.js';
-import { ProductCard } from './ProductCard.js';
+import { MOCK_PRODUCTS_SEED } from '../../../testing/msw/handlers';
+import { ProductCard } from './ProductCard';
 
 describe('ProductCard (TC-04)', () => {
   const normalProduct = MOCK_PRODUCTS_SEED[0] as (typeof MOCK_PRODUCTS_SEED)[number];

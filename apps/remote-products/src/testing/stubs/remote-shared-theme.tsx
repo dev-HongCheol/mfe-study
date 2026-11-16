@@ -5,7 +5,7 @@
  * @description Vitest 단독 TDD 실행 시 remote_shared/theme 모듈을 대체하는 로컬 테스트 스텁입니다 ([Study 04 #11]).
  */
 import { type ReactNode, createContext, useContext, useState } from 'react';
-import type { ThemeMode } from './remote-shared-utils.js';
+import type { ThemeMode } from './remote-shared-utils';
 
 /**
  * @description 테마 옵션 메타데이터 인터페이스

@@ -5,7 +5,7 @@
  * @description [TC-02] fetchProducts, postAddToCart API 호출 및 AbortSignal 지연 취소 단위 테스트입니다.
  */
 import { describe, expect, it } from 'vitest';
-import { delayWithSignal, fetchProducts, postAddToCart } from './catalog-api.js';
+import { delayWithSignal, fetchProducts, postAddToCart } from './catalog-api';
 
 describe('catalog-api (TC-02)', () => {
   it('TC-02: fetchProducts는 카테고리 및 검색어 쿼리로 상품을 필터링하고 표준 응답 봉투를 언래핑한다', async () => {

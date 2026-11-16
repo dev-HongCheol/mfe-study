@@ -13,7 +13,7 @@ import {
   productFilterSchema,
   resetCatalogFilter,
   saveCatalogFilter,
-} from './catalog-schema.js';
+} from './catalog-schema';
 
 describe('catalog-schema & products 스코프 스토리지 (TC-01, EC-01)', () => {
   it('TC-01: 유효한 필터 입력 시 검색어 공백을 자동 trim하고 mfe:products:catalog-filter 키에 격리 저장·복원한다', () => {

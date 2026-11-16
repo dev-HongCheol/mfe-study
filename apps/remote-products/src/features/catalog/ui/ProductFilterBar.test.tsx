@@ -7,7 +7,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ProductFilterBar } from './ProductFilterBar.js';
+import { ProductFilterBar } from './ProductFilterBar';
 
 describe('ProductFilterBar (TC-03, EC-01)', () => {
   it('TC-03: 카테고리 Select 변경 시 즉시 onFilterChange가 호출된다', async () => {
