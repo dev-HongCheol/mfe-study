@@ -25,7 +25,7 @@
      - 현재 `remote-products` 본 코드, `ProductEntity` 스키마 정합성(`createdAt` 제거), 원격 초기화 경합 방어(`DeferredRemoteProxy` 3중 방어), `DEV/PROD` 스키마 에러 이원화, `.js` 확장자 제거 및 `Vitest` 21건·`typecheck`·`vite build` 검증까지 모두 완료됨.
      - **즉시 진행할 작업**: `03-code-review.md` 수치 현행화 확인 및 PR 초안 보고 → 사용자 머지 승인 시 `todo.md` · [`apps/remote-products/docs/todo.md`](./apps/remote-products/docs/todo.md) · [`docs/service-registry.md`](./docs/service-registry.md) 완료 갱신 후 `main`에 머지.
   2. **[다음 대기 | `Scope: cart` | `Branch: cart/feat/cart-widget-sync`] [Phase 1 - Step 1.4] 장바구니 원격 앱(`apps/remote-cart`, `Port 3003`, `Rspack`) 구축**
-  3. **[후속 정리 대기 | `Scope: shared` | `Branch: shared/chore/strip-js-import-extensions`] [Step 1.2 후속 정리] `apps/remote-shared/src/**` 내부 상대 경로 `.js` 확장자 일괄 제거**
+  3. **[후속 정리 대기 | `Scope: shared` | `Branch: shared/chore/strip-js-import-extensions`] [Step 1.2 후속 정리] `apps/remote-shared/vite.config.ts` `dev.disableDynamicRemoteTypeHints: true` 추가(WebSocket 타입 힌트 에러 제거) · `.vite` 캐시 정리 및 `src/**` 내부 상대 경로 `.js` 확장자 일괄 제거**
 
 ---
 
@@ -71,7 +71,9 @@
 - [x] **Step 1.2: 원격 공통 디자인 시스템 & 유틸리티 구축** (`Scope: shared` | `Branch: shared/feat/ark-ui-and-utils`, `shared/feat/enable-mf-types`)
   - 문서 경로: `apps/remote-shared/docs/todo.md`, `apps/remote-shared/docs/features/20261102-ark-ui-and-utils/` 및 `apps/remote-shared/docs/features/20261106-enable-mf-types/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - `Ark UI (@ark-ui/react)` 캡슐화 컴포넌트(`Button`, `Heading(H1~H5)`, `Select`, `Skeleton`, `Badge`), 공통 레이아웃(`Container`, `Grid`, `Flex`, `Stack`, `Card`, `Splitter`, `Tabs`, `Collapsible`), 실시간 테마(`Indigo`/`Emerald`/`Rose`/`Dark`), 공통 유틸리티(`mfeEventBus`, `useMfeEvent`, `createScopedStorage`, `formatCurrency`, `formatDate`, `httpClient`, `sharedQueryClient`) 및 Module Federation 2.0 정식 원격 타입 아카이브(`@mf-types.zip`, `dts.generateTypes: true`) TDD 구현·노출 완료 (`Port 3004` / Vite, `docs/service-registry.md` 반영)
-- [ ] **Step 1.2 후속 정리 (`Scope: shared` | `Branch: shared/chore/strip-js-import-extensions`)**: 프론트엔드 번들러 표준(`Study 04 #01`)에 맞춰 `apps/remote-shared/src/**` 내부 상대 경로 import의 `.js` 확장자 일괄 제거 (하위 레이어가 타 원격을 소비하지 않아 즉시 장애는 없으나, 코드 일관성 및 MF 정적 스캐너 호환성을 위해 추후 `shared` 스코프 작업 시 반영)
+- [ ] **Step 1.2 후속 정리 (`Scope: shared` | `Branch: shared/chore/strip-js-import-extensions`)**:
+  - `apps/remote-shared/vite.config.ts`의 `federation({ ... })` 옵션에 `dev: { disableDynamicRemoteTypeHints: true }` 추가 및 `apps/remote-shared/node_modules/.vite` 캐시 정리를 통해 소비자 앱(`remote-products` 등) `pnpm dev` 실행 시 발생하는 `dynamic-remote-type-hints-plugin` `ws://127.0.0.1:16322` WebSocket 연결 에러 제거
+  - 프론트엔드 번들러 표준(`Study 04 #01`)에 맞춰 `apps/remote-shared/src/**` 내부 상대 경로 import의 `.js` 확장자 일괄 제거 (하위 레이어가 타 원격을 소비하지 않아 즉시 장애는 없으나, 코드 일관성 및 MF 정적 스캐너 호환성을 위해 추후 `shared` 스코프 작업 시 함께 반영)
 - [-] **Step 1.3: 상품 목록 원격 앱 구축** (`Scope: products` | `Branch: products/feat/catalog-list`)
   - 문서 경로: `apps/remote-products/docs/todo.md` 및 `apps/remote-products/docs/features/20261107-catalog-list/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - `./ProductList` 컴포넌트, 장바구니 담기 **비교 학습 모드(`Mode A: 리모트별 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)** 지원, 단독 실행(Standalone) 화면 및 방어 아키텍처 TDD 구현·검증 완료 (`Port 3002` / Vite, 테스트 21건·`typecheck`·`vite build` 통과) — *5단계-B PR 및 `service-registry.md` 갱신 후 머지 대기 중*
