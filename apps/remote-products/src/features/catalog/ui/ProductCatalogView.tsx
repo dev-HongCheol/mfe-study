@@ -198,7 +198,9 @@ export function ProductCatalogView({
       <Stack gap="md">
         <Flex justify="between" align="center" gap="sm" wrap="wrap">
           <Flex align="center" gap="sm" wrap="wrap">
-            <Heading level={2}>상품 카탈로그</Heading>
+            <Heading level={2} className="prod-catalog-title">
+              상품 카탈로그
+            </Heading>
             <Badge tone="brand">Remote: 3002 (Vite)</Badge>
             <Badge tone={syncMode === 'mode-b-query' ? 'warning' : 'success'}>
               {syncMode === 'mode-b-query' ? 'Mode B: sharedQueryClient' : 'Mode A: CustomEvent'}

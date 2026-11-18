@@ -25,6 +25,7 @@ import {
   useMfeEvent,
 } from 'remote_shared/utils';
 import { ProductList } from './exposed/ProductList';
+import './features/catalog/ui/catalog.css';
 
 /** 비로그인(게스트) 선택을 나타내는 쇼케이스 드롭다운 센티널 값 상수 (Ark Select 빈 문자열 미선택 방지) */
 const GUEST_USER_OPTION_VALUE = '__guest__';
@@ -80,7 +81,9 @@ export function App() {
           <Stack gap="md">
             <Flex justify="between" align="center" gap="md" wrap="wrap">
               <Flex align="center" gap="sm" wrap="wrap">
-                <Heading level={1}>상품 카탈로그 리모트 쇼케이스</Heading>
+                <Heading level={1} className="prod-showcase-title">
+                  상품 카탈로그 리모트 쇼케이스
+                </Heading>
                 <Badge tone="brand">Standalone (:3002)</Badge>
               </Flex>
               <Badge tone="neutral">Consumes: remote_shared (:3004)</Badge>
