@@ -50,8 +50,8 @@ const SYNC_MODE_OPTIONS: SelectOptionItem[] = [
 export function App() {
   const { theme, setTheme } = useTheme();
 
-  /** 현재 선택된 시뮬레이션 사용자 ID 상태 */
-  const [userId, setUserId] = useState<string>('user-1');
+  /** 현재 선택된 시뮬레이션 사용자 ID 상태 (비로그인 게스트를 기본값으로 시작해 임의 유저 폴백 방지) */
+  const [userId, setUserId] = useState<string>(GUEST_USER_OPTION_VALUE);
 
   /** 현재 선택된 상태 동기화 모드 상태 */
   const [syncMode, setSyncMode] = useState<SyncMode>('mode-a-event');

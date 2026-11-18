@@ -205,7 +205,14 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
     ).toBeInTheDocument();
     expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
 
+    // 초기 진입 시 임의 유저 폴백 없이 게스트(비로그인) 읽기 전용 상태로 시작하는지 확인
+    expect(screen.getByText(/비로그인 \(읽기 전용\)/)).toBeInTheDocument();
+
+    // 드롭다운에서 user-1 선택 시 로그인 상태로 전환되고, 다시 게스트 선택 시 비로그인으로 복귀하는지 확인
     const userSelect = screen.getByLabelText('시뮬레이션 사용자 선택');
+    await user.selectOptions(userSelect, 'user-1');
+    expect(screen.getByText(/사용자: user-1/)).toBeInTheDocument();
+
     await user.selectOptions(userSelect, '__guest__');
     expect(screen.getByText(/비로그인 \(읽기 전용\)/)).toBeInTheDocument();
   });
