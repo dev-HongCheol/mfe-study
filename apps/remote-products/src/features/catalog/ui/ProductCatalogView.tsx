@@ -4,7 +4,7 @@
  * @exposed false
  * @description 필터 바, 로딩 스켈레톤, 에러/빈 결과 복구 뷰 및 상품 카드 그리드를 조합하는 카탈로그 메인 뷰 컴포넌트입니다.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Flex, Grid, Heading, Stack } from 'remote_shared/ui';
 import {
   type CartUpdatedEventPayload,
@@ -151,38 +151,47 @@ export function ProductCatalogView({
   /** 조회된 상품 배열 (로딩 중이거나 에러 시 빈 배열 폴백) */
   const products = productsQuery.data ?? [];
 
-  /** 장바구니 추가 실패 시 환경별(DEV vs PROD)로 이원화된 에러 리포트 */
-  const mutationError = addToCartMutation.error
-    ? formatCatalogErrorReport(normalizeError(addToCartMutation.error))
-    : null;
+  /** 장바구니 추가 실패 시 환경별(DEV vs PROD)로 이원화된 에러 리포트 (원본 에러 변경 시에만 재생성) */
+  const mutationError = useMemo(
+    () =>
+      addToCartMutation.error
+        ? formatCatalogErrorReport(normalizeError(addToCartMutation.error))
+        : null,
+    [addToCartMutation.error],
+  );
 
-  /** 상품 목록 조회 실패 시 환경별(DEV vs PROD)로 이원화된 에러 리포트 */
-  const queryError = productsQuery.error
-    ? formatCatalogErrorReport(normalizeError(productsQuery.error))
-    : null;
+  /** 상품 목록 조회 실패 시 환경별(DEV vs PROD)로 이원화된 에러 리포트 (원본 에러 변경 시에만 재생성) */
+  const queryError = useMemo(
+    () =>
+      productsQuery.error ? formatCatalogErrorReport(normalizeError(productsQuery.error)) : null,
+    [productsQuery.error],
+  );
 
-  // [분기 설명] 개발 환경(DEV)에서 쿼리 또는 뮤테이션 에러 발생 시 F12 콘솔에 원본 에러와 실패 필드 좌표를 자동 출력합니다 (Study 05 #10).
+  // [분기 설명] 개발 환경(DEV)에서 상품 목록 조회 에러 발생 시 F12 콘솔에 상세 진단을 1회만 출력합니다 (Study 05 #10).
   useEffect(() => {
-    if (!import.meta.env.DEV || import.meta.env.MODE === 'test') {
+    if (!import.meta.env.DEV || import.meta.env.MODE === 'test' || !queryError) {
       return;
     }
-    if (productsQuery.error && queryError) {
-      console.error('[remote-products] 상품 목록 조회 에러 상세 진단:', {
-        code: queryError.code,
-        message: queryError.userMessage,
-        schemaIssues: queryError.devDetails,
-        rawError: productsQuery.error,
-      });
+    console.error('[remote-products] 상품 목록 조회 에러 상세 진단:', {
+      code: queryError.code,
+      message: queryError.userMessage,
+      schemaIssues: queryError.devDetails,
+      rawError: productsQuery.error,
+    });
+  }, [productsQuery.error, queryError]);
+
+  // [분기 설명] 개발 환경(DEV)에서 장바구니 담기 에러 발생 시 F12 콘솔에 상세 진단을 1회만 출력합니다 (Study 05 #10).
+  useEffect(() => {
+    if (!import.meta.env.DEV || import.meta.env.MODE === 'test' || !mutationError) {
+      return;
     }
-    if (addToCartMutation.error && mutationError) {
-      console.error('[remote-products] 장바구니 담기 에러 상세 진단:', {
-        code: mutationError.code,
-        message: mutationError.userMessage,
-        schemaIssues: mutationError.devDetails,
-        rawError: addToCartMutation.error,
-      });
-    }
-  }, [addToCartMutation.error, mutationError, productsQuery.error, queryError]);
+    console.error('[remote-products] 장바구니 담기 에러 상세 진단:', {
+      code: mutationError.code,
+      message: mutationError.userMessage,
+      schemaIssues: mutationError.devDetails,
+      rawError: addToCartMutation.error,
+    });
+  }, [addToCartMutation.error, mutationError]);
 
   return (
     <section className="prod-catalog-root" aria-label="상품 카탈로그">
