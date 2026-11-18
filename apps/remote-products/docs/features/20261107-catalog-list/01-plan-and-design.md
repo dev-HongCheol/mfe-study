@@ -89,8 +89,10 @@
 | `NEW` | `src/features/catalog/ui/catalog.css` | `.prod-*` 프리픽스 격리 스타일, `var(--mfe-*)` 시맨틱 변수, `min-width: 0` 말줄임, `tabular-nums` 숫자 정렬 및 `DEV` 스키마 진단 배너 스타일 |
 | `NEW` | `src/features/catalog/ui/ProductFilterBar.tsx` | 카테고리 `Select` + `React Hook Form` 키워드 검색 바 + 결과 요약 배지 컴포넌트 (`PascalCase`, `+ ProductFilterBar.test.tsx`) |
 | `NEW` | `src/features/catalog/ui/ProductGridSkeleton.tsx` | 1.5초 로딩 지연 시 실제 카드 높이와 1:1 매칭되어 CLS를 방지하는 6-카드 그리드 스켈레톤 컴포넌트 (`PascalCase`) |
-| `NEW` | `src/features/catalog/ui/ProductCard.tsx` | 개별 상품 정보, 카테고리·재고 `Badge`, 중복 클릭 방지(`isPending`) 담기 버튼 및 인라인 에러 알림 카드 컴포넌트 (`PascalCase`, `+ ProductCard.test.tsx`) |
-| `NEW` | `src/features/catalog/ui/ProductCatalogView.tsx` | 필터 상태(`getProductsScopedStorage()`), 목록/스켈레톤/빈 결과/조회 에러 복구 뷰 및 환경별(`DEV`/`PROD`) 에러 진단 배너를 조합하는 카탈로그 본문 컴포넌트 (`PascalCase`) |
+| `NEW` | `src/features/catalog/ui/ProductCard.tsx` | 개별 상품 정보, 카테고리·재고 `Badge`, 중복 클릭 방지(`isPending`) 담기 버튼 및 비로그인 차단 상태를 표시하는 카드 컴포넌트 (`PascalCase`, `+ ProductCard.test.tsx`) |
+| `NEW` | `src/features/catalog/ui/CatalogErrorBanner.tsx` | 장바구니 담기 실패 및 상품 목록 조회 실패 시 공통 사용하는 `role="alert"` 인라인 에러 배너(선택적 `[다시 시도]` 복구 버튼 및 `DEV` 스키마 불일치 진단 블록 포함) 컴포넌트 (`PascalCase`, `+ CatalogErrorBanner.test.tsx`) |
+| `NEW` | `src/features/catalog/ui/ProductCatalogContent.tsx` | 카탈로그 본문 4가지 상태(로딩 스켈레톤 / 조회 에러 복구 / 빈 결과 안내 / 3열 상품 카드 그리드)를 Early Return 패턴으로 분기 렌더링하는 컴포넌트 (`PascalCase`, `+ ProductCatalogContent.test.tsx`) |
+| `NEW` | `src/features/catalog/ui/ProductCatalogView.tsx` | 필터 상태(`getProductsScopedStorage()`), 담기 피드백, `DEV` 콘솔 에러 진단 및 하위 카탈로그 UI(`ProductFilterBar`, `CatalogErrorBanner`, `ProductCatalogContent`)를 조합하는 카탈로그 메인 뷰 컴포넌트 (`PascalCase`) |
 | `NEW` | `src/testing/setup.ts` | `@testing-library/jest-dom/vitest`, `jsdom` + Node `undici` 간 `AbortSignal` 호환 어댑터(`JsdomCompatibleRequest`) 및 `MSW` 서버 생명주기 설정 |
 | `NEW` | `src/testing/stubs/remote-shared-ui.tsx` | `Vitest` 단독 실행용 `remote_shared/ui` 경량 로컬 스텁 |
 | `NEW` | `src/testing/stubs/remote-shared-theme.tsx` | `Vitest` 단독 실행용 `remote_shared/theme` 경량 로컬 스텁 |

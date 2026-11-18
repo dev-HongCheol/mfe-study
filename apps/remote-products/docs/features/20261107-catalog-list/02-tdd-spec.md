@@ -12,7 +12,7 @@
 | :--- | :--- |
 | **서비스 스코프 (`Scope ID`)** | `products` (`apps/remote-products`, `Port 3002`) |
 | **테스트 러너 및 모킹 도구** | `Vitest` (`jsdom` 환경) + `@testing-library/react` + `@testing-library/user-event` + `@testing-library/jest-dom` + `MSW` (`msw/node`) |
-| **단위 테스트 경로 (`Co-location`)** | `src/features/catalog/model/catalog-schema.test.ts`, `src/features/catalog/api/catalog-api.test.ts`, `src/features/catalog/ui/ProductFilterBar.test.tsx`, `src/features/catalog/ui/ProductCard.test.tsx` |
+| **단위 테스트 경로 (`Co-location`)** | `src/features/catalog/model/catalog-schema.test.ts`, `src/features/catalog/api/catalog-api.test.ts`, `src/features/catalog/ui/ProductFilterBar.test.tsx`, `src/features/catalog/ui/ProductCard.test.tsx`, `src/features/catalog/ui/CatalogErrorBanner.test.tsx`, `src/features/catalog/ui/ProductCatalogContent.test.tsx` |
 | **통합 테스트 경로 (`Integration`)** | `src/__tests__/ProductList.integration.test.tsx` |
 | **테스트 실행 명령어** | `pnpm --filter @mfe-study/remote-products test` (루트 통합: `pnpm test`) |
 

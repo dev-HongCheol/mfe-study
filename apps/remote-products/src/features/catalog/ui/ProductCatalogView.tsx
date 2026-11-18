@@ -5,7 +5,7 @@
  * @description 필터 바, 로딩 스켈레톤, 에러/빈 결과 복구 뷰 및 상품 카드 그리드를 조합하는 카탈로그 메인 뷰 컴포넌트입니다.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Button, Flex, Grid, Heading, Stack } from 'remote_shared/ui';
+import { Badge, Flex, Heading, Stack } from 'remote_shared/ui';
 import {
   type CartUpdatedEventPayload,
   DEFAULT_API_BASE_URL,
@@ -24,9 +24,9 @@ import {
   saveCatalogFilter,
 } from '../model/catalog-schema';
 import { useAddToCartMutation, useProductsQuery } from '../model/use-catalog-queries';
-import { ProductCard } from './ProductCard';
+import { CatalogErrorBanner } from './CatalogErrorBanner';
+import { ProductCatalogContent } from './ProductCatalogContent';
 import { ProductFilterBar } from './ProductFilterBar';
-import { ProductGridSkeleton } from './ProductGridSkeleton';
 import './catalog.css';
 
 /**
@@ -219,86 +219,28 @@ export function ProductCatalogView({
         />
 
         {mutationError ? (
-          <div role="alert" className="prod-alert-banner">
-            <div>
-              장바구니 담기 실패 ({mutationError.code}): {mutationError.userMessage}
-            </div>
-            {mutationError.devDetails.length > 0 ? (
-              <div className="prod-alert-dev-details" data-testid="dev-error-details">
-                <strong>[DEV 상세 진단 - 스키마 불일치 필드]</strong>
-                {mutationError.devDetails.map((issue) => (
-                  <div key={`${issue.path}-${issue.code}`} className="prod-alert-dev-item">
-                    • {issue.path} ({issue.code}): {issue.message}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          <CatalogErrorBanner titlePrefix="장바구니 담기 실패" report={mutationError} />
         ) : null}
 
         {lastAddedMessage && !mutationError ? (
           <output className="prod-feedback-banner">{lastAddedMessage}</output>
         ) : null}
 
-        {/* [분기 설명 1] 초기 로딩 중일 때는 실제 카드 높이와 1:1 매칭된 6-카드 스켈레톤을 렌더링하여 CLS를 방지합니다. */}
-        {productsQuery.isLoading ? (
-          <ProductGridSkeleton count={6} />
-        ) : queryError ? (
-          /* [분기 설명 2] 백엔드 조회 에러 발생 시 전체 앱 크래시 대신 인라인 에러 안내와 [다시 시도] 복구 버튼을 제공합니다. */
-          <div role="alert" className="prod-alert-banner">
-            <Flex justify="between" align="center" gap="md" wrap="wrap">
-              <span>
-                상품 목록 조회 실패 ({queryError.code}): {queryError.userMessage}
-              </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  void productsQuery.refetch();
-                }}
-              >
-                다시 시도
-              </Button>
-            </Flex>
-            {queryError.devDetails.length > 0 ? (
-              <div className="prod-alert-dev-details" data-testid="dev-error-details">
-                <strong>[DEV 상세 진단 - 스키마 불일치 필드]</strong>
-                {queryError.devDetails.map((issue) => (
-                  <div key={`${issue.path}-${issue.code}`} className="prod-alert-dev-item">
-                    • {issue.path} ({issue.code}): {issue.message}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : products.length === 0 ? (
-          /* [분기 설명 3] 필터링 결과가 0건일 때 빈 상태 안내와 즉시 초기화 버튼을 제공합니다. */
-          <div className="prod-empty-state">
-            <Stack gap="sm">
-              <p>조건에 일치하는 상품이 없습니다.</p>
-              <div>
-                <Button variant="secondary" size="sm" onClick={handleFilterReset}>
-                  전체 상품 다시 보기
-                </Button>
-              </div>
-            </Stack>
-          </div>
-        ) : (
-          /* [분기 설명 4] 정상 조회 완료 시 DB 고유 ID(product.id)를 key로 부여하여 3열 그리드를 렌더링합니다 (Study 05 #03). */
-          <Grid columns={3} gap="md">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                isAdding={addingProductId === product.id && addToCartMutation.isPending}
-                isAuthenticated={isAuthenticated}
-                onAddToCart={(target) => {
-                  void handleAddToCart(target);
-                }}
-              />
-            ))}
-          </Grid>
-        )}
+        <ProductCatalogContent
+          isLoading={productsQuery.isLoading}
+          queryError={queryError}
+          products={products}
+          addingProductId={addingProductId}
+          isMutationPending={addToCartMutation.isPending}
+          isAuthenticated={isAuthenticated}
+          onRetry={() => {
+            void productsQuery.refetch();
+          }}
+          onResetFilter={handleFilterReset}
+          onAddToCart={(target) => {
+            void handleAddToCart(target);
+          }}
+        />
       </Stack>
     </section>
   );

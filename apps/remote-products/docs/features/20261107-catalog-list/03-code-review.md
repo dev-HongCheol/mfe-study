@@ -26,10 +26,12 @@
 | `src/features/catalog/model/use-catalog-queries.ts` | `useProductsQuery` 및 `useAddToCartMutation` (`Mode A` 이벤트 발행 vs `Mode B` `cancelQueries` + `invalidateQueries`, 비인증 `UNAUTHORIZED` 차단 가드) | `NEW` | `+172 / -0` | `보완 (비인증 뮤테이션 가드 추가)` |
 | `src/features/catalog/ui/ProductFilterBar.tsx` | `remote_shared/ui` `Select`·`Button` + `React Hook Form` + `Zod` 검색/카테고리 필터 바 | `NEW` | `+145 / -0` | `일치` |
 | `src/features/catalog/ui/ProductGridSkeleton.tsx` | 실제 카드 높이(`min-height: 240px`)와 1:1 매칭된 6-카드 스켈레톤 (`Study 05 #13`) | `NEW` | `+48 / -0` | `일치` |
-| `src/features/catalog/ui/ProductCard.tsx` | 개별 상품 카드 (`formatCurrency`, 품절 배지, `isLoading` 중복 클릭 잠금, 비로그인 `isAuthenticated=false` 버튼 비활성화) | `NEW` | `+105 / -0` | `보완 (비로그인 담기 차단 UI 추가)` |
-| `src/features/catalog/ui/ProductCatalogView.tsx` | 필터 바 + 스켈레톤/에러/빈 상태/3열 카드 그리드 통합 뷰, 비로그인 읽기 전용 배지 및 1차 담기 가드 | `NEW` | `+292 / -0` | `보완 (비로그인 읽기 전용 UX 반영)` |
-| `src/features/catalog/ui/catalog.css` | `.prod-*` 네임스페이스 및 시맨틱 CSS 변수 토큰 기반 스타일 (`Study 04 #05`, `Study 05 #13~#16`) | `NEW` | `+180 / -0` | `일치` |
-| `src/testing/**` & `src/**/*.test.*` | 로컬 스텁 3종, MSW 핸들러/서버, 단위 테스트 4종 + 통합 테스트 1종 (총 25케이스) | `NEW` | `총 25케이스` | `보완 (EC-04 비인증·Mode B 지연생성 검증 추가)` |
+| `src/features/catalog/ui/ProductCard.tsx` | 개별 상품 카드 (`formatCurrency`, 품절 배지, `isLoading` 중복 클릭 잠금, 비로그인 `isAuthenticated=false` 버튼 비활성화) | `NEW` | `+108 / -0` | `보완 (비로그인 담기 차단 UI 추가)` |
+| `src/features/catalog/ui/CatalogErrorBanner.tsx` | 장바구니 담기·목록 조회 공통 `role="alert"` 에러 배너, 선택적 `[다시 시도]` 복구 버튼 및 `DEV` 스키마 불일치 진단 블록 렌더링 | `NEW` | `+62 / -0` | `보완 (중복 에러 배너 UI 단일 컴포넌트 추출)` |
+| `src/features/catalog/ui/ProductCatalogContent.tsx` | 로딩 스켈레톤 / 조회 에러 / 빈 결과 / 3열 상품 카드 그리드의 4단 본문 상태를 Early Return으로 분기 렌더링 | `NEW` | `+102 / -0` | `보완 (4단 중첩 삼항 연산자 평탄화 분리)` |
+| `src/features/catalog/ui/ProductCatalogView.tsx` | 필터 바 + 에러 배너 + 카탈로그 본문 통합 뷰, 비로그인 읽기 전용 배지, `useMemo` 에러 리포트 및 분리된 `DEV` 콘솔 진단 `useEffect` | `NEW` | `+245 / -0` | `보완 (하위 UI 분리 및 비로그인 읽기 전용 UX 반영)` |
+| `src/features/catalog/ui/catalog.css` | `.prod-*` 네임스페이스 및 시맨틱 CSS 변수 토큰 기반 스타일 (`Study 04 #05`, `Study 05 #13~#16`) | `NEW` | `+189 / -0` | `일치` |
+| `src/testing/**` & `src/**/*.test.*` | 로컬 스텁 3종, MSW 핸들러/서버, 단위 테스트 6종 + 통합 테스트 1종 (총 32케이스) | `NEW` | `총 32케이스` | `보완 (EC-04 비인증·Mode B 지연생성 및 분리 UI 단위 테스트 추가)` |
 
 ### 1.2 핵심 데이터 흐름 및 입출력 요약 (`Data Flow & Contracts`)
 - **입력 데이터 (`Props` / `Request` / `Storage`)**:
@@ -45,12 +47,14 @@
 
 ### 1.3 TDD 테스트 실행 증거 (`Test Execution Evidence`)
 - **실행 명령어**: `pnpm --filter @mfe-study/remote-products test` (및 루트 `pnpm test`)
-- **통과 현황**: `remote-products` 총 `25`건 중 `25`건 통과 (`0`건 실패, 루트 전체 32개 테스트 파일 / 81개 테스트 전원 통과)
+- **통과 현황**: `remote-products` 총 `32`건(`7`개 파일) 중 `32`건 통과 (`0`건 실패)
 - **주요 검증 시나리오 요약**:
   - `[TC-SCHEMA-01~06]` 검색어 `trim` 및 50자 초과 차단, 카테고리 enum 검증, 손상된 로컬 스토리지 데이터 기본값 폴백, `DEV/PROD` 스키마 에러 리포트 이원화 및 `normalizeUserId` 비인증 정규화 검증 통과
   - `[TC-API-01~03]` `GET /api/products` 쿼리 파라미터 직렬화, `POST /api/cart` 201 응답 파싱, 이미 중단된 `AbortSignal` 전달 시 즉시 취소 검증 통과
   - `[TC-UI-FILTER-01~03]` 51자 초과 검색어 인라인 에러 표시, 카테고리 `Select` 변경 및 `[필터 초기화]` 동작 검증 통과
   - `[TC-UI-CARD-01~04]` `formatCurrency` 원화 정수 포맷팅, `isAdding=true`일 때 `disabled` + `aria-busy="true"` 잠금, `stock=0` 품절 비활성화 및 `isAuthenticated=false` 비로그인 담기 차단 검증 통과
+  - `[TC-UI-BANNER-01~03]` `CatalogErrorBanner` 에러 메시지 렌더링, `onRetry` 전달 시 `[다시 시도]` 버튼 동작 및 `devDetails` 존재 시 `DEV` 스키마 상세 진단 블록 렌더링 검증 통과
+  - `[TC-UI-CONTENT-01~04]` `ProductCatalogContent` 4단 본문 상태(초기 로딩 스켈레톤 / 조회 에러 복구 / 빈 결과 안내 / 상품 카드 그리드) Early Return 분기 렌더링 검증 통과
   - `[TC-INT-01~09]` 8개 상품 렌더링 및 카테고리/키워드 필터링, **`Mode A` 이벤트 발행(캐시 미접근)** vs **`Mode B` `cancelQueries` + `invalidateQueries`(이벤트 미발행 및 `createMfeQueryClient` 미호출)** 격리 검증, `simulateDelay` 스켈레톤 노출, 500 에러 시 `[다시 시도]` 복구, **`EC-04` `userId` 미전달 비로그인 읽기 전용 조회·담기 차단 및 `mfe:auth-changed` 로그인 활성화**·쇼케이스 게스트 전환 검증 통과
 
 ### 1.4 정적 분석 및 하네스 게이트 통과 결과 (`Quality Gates`)
@@ -77,7 +81,7 @@
 - [x] **초기화·경로 (#01~#04)**: `src/main.ts` + `src/bootstrap.tsx` 2단 비동기 엔트리 분리(#01), `base: 'http://localhost:3002/'` 고정(#02), 개발/프리뷰 서버 `cors: true` & `strictPort: true`(#03), Module Federation 2.0 `dts` 플러그인을 통한 `@mf-types` 생성·소비(#04)를 모두 적용했습니다.
 - [x] **DOM·스타일 격리 (#05~#06)**: `catalog.css`에서 전역 태그 선택자(`body`, `button`, `*`)를 일절 사용하지 않고 `.prod-*` 클래스 프리픽스만 사용했으며(#05), 드롭다운 포털은 `remote_shared/ui`의 `Select`(`--z-dropdown` 토큰 내장)를 소비하여 `z-index` 충돌을 원천 차단했습니다(#06).
 - [x] **상태·라우팅·메모리·스토리지 (#07~#10)**: `remote_shared/theme`의 단일 `ThemeProvider`/`useTheme` Context를 공유하고(#07), `App.tsx`의 이벤트 모니터는 `useMfeEvent`로 언마운트 시 리스너를 자동 해제하며(#09), 필터 영속화는 `createScopedStorage('products')`(`mfe:products:catalog-filter`)로 격리했습니다(#10).
-- [x] **단독 테스트·장애 복구 (#11~#14)**: `vitest.config.ts`의 로컬 스텁 Alias로 타 서버 기동 없이 25개 테스트가 단독 통과하며(#11), `ProductCatalogView` 내부에서 API 실패 시 전체 앱 크래시 없이 인라인 에러 배너와 `[다시 시도]` 복구 버튼을 제공합니다(#13, 상위 호스트 결합 시 `RemoteErrorBoundary` 추가 격리 호환).
+- [x] **단독 테스트·장애 복구 (#11~#14)**: `vitest.config.ts`의 로컬 스텁 Alias로 타 서버 기동 없이 32개 테스트가 단독 통과하며(#11), `CatalogErrorBanner`와 `ProductCatalogContent`를 통해 API 실패 시 전체 앱 크래시 없이 인라인 에러 배너와 `[다시 시도]` 복구 버튼을 제공합니다(#13, 상위 호스트 결합 시 `RemoteErrorBoundary` 추가 격리 호환).
 
 ---
 
@@ -119,6 +123,10 @@
    - `ProductListProps.userId` 타입을 `string | null`로 개정하고 `eventUserId` 초기값을 `null`로 변경해 비로그인 상태가 임의 유저(`'user-1'`)로 자동 폴백되는 문제를 제거했습니다.
    - 비로그인 시 목록 조회는 읽기 전용으로 허용하되, 상단 배지 `비로그인 (읽기 전용)` 표시, `ProductCard` 버튼 비활성화(`로그인 후 담기 가능`), `handleAddToCart` 및 `useAddToCartMutation` 이중 차단을 적용했습니다.
    - 아울러 `remote_shared/ui`의 `Select`가 `value ? [value] : []`로 빈 문자열(`''`)을 미선택 처리하는 구현 특성을 확인해, `App.tsx` 쇼케이스의 게스트 옵션 값을 `'__guest__'` 센티널로 설정하고 `<ProductList userId={userId === '__guest__' ? null : userId} />`로 변환해 UI 선택 표시와 `null` 전달이 모두 정상 동작하도록 조치했습니다. (해결 완료)
+8. **`ProductCatalogView.tsx` 에러 리포트 메모이제이션, `DEV` 콘솔 진단 `useEffect` 분리, 다크 테마 가독성 보강 및 하위 UI 컴포넌트(`CatalogErrorBanner`, `ProductCatalogContent`) 분리**:
+   - `mutationError`와 `queryError`에 `useMemo`를 적용해 리렌더링 시 불필요한 객체 재생성을 방지하고, 조회 에러와 장바구니 담기 에러의 `DEV` 콘솔 진단 `useEffect`를 각각 독립 의존성으로 분리해 상호 중복 출력을 제거했습니다.
+   - 다크 테마 전환 시 텍스트 가독성을 보장하도록 `index.html`, `App.tsx`, `ProductCatalogView.tsx`, `catalog.css`에 `var(--mfe-text-primary)` 시맨틱 토큰을 보강했습니다.
+   - `ProductCatalogView.tsx` 내부에 2중으로 중복되어 있던 에러 배너(`role="alert"` + `DEV` 스키마 불일치 진단)를 `CatalogErrorBanner.tsx`로 추출하고, 하단 4단 중첩 삼항 연산자(로딩 스켈레톤 / 조회 에러 / 빈 결과 / 3열 상품 그리드)를 Early Return 구조의 `ProductCatalogContent.tsx`로 분리한 뒤 Co-location 단위 테스트 2종(`7`개 케이스)을 추가해 총 `32`건 테스트 통과를 검증했습니다. (해결 완료)
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
 1. **`Mode A` vs `Mode B` 상태 동기화 실험 설계 및 비인증 방어 (`src/exposed/ProductList.tsx` & `src/features/catalog/model/use-catalog-queries.ts`)**:
