@@ -2,16 +2,17 @@
  * @file Button.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed true (via ./ui)
- * @description Ark UI의 HTMLArkProps<'button'>을 기본 상속하고 로딩 잠금(disabled + aria-busy) 및 시각 변형을 제공하는 공통 버튼 컴포넌트입니다.
+ * @description 표준 button 속성을 경계 캡슐화하여 상속하고 로딩 잠금(disabled + aria-busy) 및 시각 변형을 제공하는 공통 버튼 컴포넌트입니다 ([Study 09]).
  */
-import { type HTMLArkProps, ark } from '@ark-ui/react/factory';
+import { ark } from '@ark-ui/react/factory';
 import { clsx } from 'clsx';
+import type { ComponentPropsWithoutRef } from 'react';
 import '../ui-styles.css';
 
 /**
- * @description [Button.tsx] ark.button(HTMLArkProps<'button'>)을 기본 상속하고 로딩 잠금 및 시각 변형을 제공하는 버튼 Props
+ * @description [Button.tsx] 표준 button 속성을 상속하고 로딩 잠금 및 시각 변형을 제공하는 버튼 Props
  */
-export interface ButtonProps extends HTMLArkProps<'button'> {
+export interface ButtonProps extends ComponentPropsWithoutRef<'button'> {
   /** 버튼의 시각적 강조 스타일 변형 (기본값: 'primary') */
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
 
@@ -28,7 +29,7 @@ export interface ButtonProps extends HTMLArkProps<'button'> {
 /**
  * 도메인 지식 0%를 유지하며 모든 마이크로 앱에서 공통으로 사용하는 버튼 컴포넌트입니다.
  *
- * @param props - HTMLArkProps<'button'> 및 시각적 변형·로딩 속성
+ * @param props - 표준 button 속성 및 시각적 변형·로딩 속성
  * @returns ark.button 엘리먼트
  */
 export function Button({
@@ -40,7 +41,7 @@ export function Button({
   type = 'button',
   className,
   children,
-  ...restArkProps
+  ...restButtonProps
 }: ButtonProps) {
   /** 로딩 중이거나 명시적으로 비활성화된 경우 버튼 클릭을 물리적으로 차단합니다 */
   const isButtonDisabled = Boolean(disabled || isLoading);
@@ -58,7 +59,7 @@ export function Button({
         fullWidth && 'mfe-ui-button--full',
         className,
       )}
-      {...restArkProps}
+      {...restButtonProps}
     >
       {children}
     </ark.button>

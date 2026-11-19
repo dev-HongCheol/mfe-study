@@ -2,17 +2,17 @@
  * @file Flex.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed true (via ./ui)
- * @description Ark UI의 HTMLArkProps<'div'>를 기본 상속하고 min-width: 0 말줄임 방어가 기본 적용된 Flexbox 레이아웃입니다 ([Study 05 #16]).
+ * @description 표준 div 속성을 경계 캡슐화하여 상속하고 min-width: 0 말줄임 방어가 기본 적용된 Flexbox 레이아웃입니다 ([Study 05 #16, Study 09]).
  */
-import { type HTMLArkProps, ark } from '@ark-ui/react/factory';
+import { ark } from '@ark-ui/react/factory';
 import { clsx } from 'clsx';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ComponentPropsWithoutRef } from 'react';
 import '../ui-styles.css';
 
 /**
- * @description [Flex.tsx] HTMLArkProps<'div'>를 기본 상속하는 플렉스 레이아웃 Props
+ * @description [Flex.tsx] 표준 div 속성을 상속하는 플렉스 레이아웃 Props
  */
-export interface FlexProps extends HTMLArkProps<'div'> {
+export interface FlexProps extends ComponentPropsWithoutRef<'div'> {
   /** 플렉스 주축 방향 (기본값: 'row') */
   direction?: 'row' | 'column' | 'row-reverse' | 'column-reverse';
 
@@ -57,7 +57,7 @@ const GAP_TOKEN_MAP: Record<string, string> = {
 /**
  * 긴 텍스트로 인해 플렉스박스가 터지는 현상(min-width: 0)을 기본 방어하는 Flex 레이아웃입니다.
  *
- * @param props - direction, align, justify, gap, wrap 및 HTMLArkProps<'div'>
+ * @param props - direction, align, justify, gap, wrap 및 표준 div 속성
  * @returns ark.div 엘리먼트
  */
 export function Flex({
@@ -69,7 +69,7 @@ export function Flex({
   style,
   className,
   children,
-  ...restArkProps
+  ...restDivProps
 }: FlexProps) {
   const mergedStyle: CSSProperties = {
     flexDirection: direction,
@@ -81,7 +81,7 @@ export function Flex({
   };
 
   return (
-    <ark.div style={mergedStyle} className={clsx('mfe-ui-flex', className)} {...restArkProps}>
+    <ark.div style={mergedStyle} className={clsx('mfe-ui-flex', className)} {...restDivProps}>
       {children}
     </ark.div>
   );

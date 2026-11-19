@@ -6,10 +6,10 @@
  */
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Card, Container, Flex, Grid, Stack, clsx } from '../../../exposed/ui.js';
+import { Card, Container, Flex, Grid, Stack, clsx } from '../../../exposed/ui';
 
-describe('StaticLayouts & clsx (TC-07)', () => {
-  it('Container, Stack, Grid, Card, Flex 5종이 HTMLArkProps 속성을 투과하며 정상 합성되고 clsx가 재노출된다', () => {
+describe('StaticLayouts & clsx (TC-01, TC-07)', () => {
+  it('Container, Stack, Grid, Card, Flex 5종이 표준 div 속성을 투과하며 정상 합성되고 clsx가 재노출된다', () => {
     expect(clsx('mfe-a', false && 'mfe-b', 'mfe-c')).toBe('mfe-a mfe-c');
 
     render(

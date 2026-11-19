@@ -6,7 +6,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Skeleton } from './Skeleton.js';
+import { Skeleton } from './Skeleton';
 
 describe('Skeleton (TC-06)', () => {
   it('count 숫자만큼 스켈레톤 블록을 반복 렌더링하고 aria-hidden="true" 속성을 부여한다', () => {

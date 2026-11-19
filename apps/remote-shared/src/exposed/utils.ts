@@ -9,13 +9,13 @@ export {
   createApiClient,
   httpClient,
   unwrapApiResponse,
-} from '../features/utils/api/http-client.js';
+} from '../features/utils/api/http-client';
 export {
   CART_QUERY_KEY,
   PRODUCTS_QUERY_KEY,
   createMfeQueryClient,
   sharedQueryClient,
-} from '../features/utils/api/query-client.js';
+} from '../features/utils/api/query-client';
 export {
   type ApiErrorPayload,
   type ApiResponse,
@@ -39,12 +39,12 @@ export {
   syncModeSchema,
   themeChangedEventSchema,
   themeModeSchema,
-} from '../features/utils/model/contracts.js';
-export { type NormalizedError, normalizeError } from '../features/utils/model/error.js';
-export { type MfeEventBus, mfeEventBus, useMfeEvent } from '../features/utils/model/event-bus.js';
+} from '../features/utils/model/contracts';
+export { type NormalizedError, normalizeError } from '../features/utils/model/error';
+export { type MfeEventBus, mfeEventBus, useMfeEvent } from '../features/utils/model/event-bus';
 export {
   formatCurrency,
   formatDate,
   formatRelativeTime,
-} from '../features/utils/model/formatters.js';
-export { type ScopedStorage, createScopedStorage } from '../features/utils/model/storage.js';
+} from '../features/utils/model/formatters';
+export { type ScopedStorage, createScopedStorage } from '../features/utils/model/storage';

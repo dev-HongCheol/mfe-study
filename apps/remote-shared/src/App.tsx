@@ -5,7 +5,7 @@
  * @description http://localhost:3004 단독 실행 시 ./ui(13종 컴포넌트), ./theme(4종 실시간 테마), ./utils 동작을 검증하는 인터랙티브 쇼케이스입니다.
  */
 import { useState } from 'react';
-import { type ThemeMode, useTheme } from './exposed/theme.js';
+import { type ThemeMode, useTheme } from './exposed/theme';
 import {
   Badge,
   Button,
@@ -20,14 +20,8 @@ import {
   Splitter,
   Stack,
   Tabs,
-} from './exposed/ui.js';
-import {
-  MFE_EVENTS,
-  formatCurrency,
-  formatDate,
-  mfeEventBus,
-  useMfeEvent,
-} from './exposed/utils.js';
+} from './exposed/ui';
+import { MFE_EVENTS, formatCurrency, formatDate, mfeEventBus, useMfeEvent } from './exposed/utils';
 
 /**
  * remote-shared 단독 실행(Standalone Port 3004) 카탈로그 쇼케이스 컴포넌트입니다.

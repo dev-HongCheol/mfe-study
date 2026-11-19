@@ -9,12 +9,12 @@ export {
   type ThemeOptionMeta,
   Z_INDEX_TOKENS,
   applyThemeTokensToDocument,
-} from '../features/theme/model/tokens.js';
+} from '../features/theme/model/tokens';
 export {
   ThemeContext,
   type ThemeContextValue,
   ThemeProvider,
   type ThemeProviderProps,
   useTheme,
-} from '../features/theme/ui/ThemeProvider.js';
-export type { ThemeMode } from '../features/utils/model/contracts.js';
+} from '../features/theme/ui/ThemeProvider';
+export type { ThemeMode } from '../features/utils/model/contracts';

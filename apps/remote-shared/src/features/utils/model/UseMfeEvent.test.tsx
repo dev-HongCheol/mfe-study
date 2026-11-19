@@ -6,8 +6,8 @@
  */
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { CartUpdatedEventPayload } from './contracts.js';
-import { MFE_EVENTS, mfeEventBus, useMfeEvent } from './event-bus.js';
+import type { CartUpdatedEventPayload } from './contracts';
+import { MFE_EVENTS, mfeEventBus, useMfeEvent } from './event-bus';
 
 /**
  * useMfeEvent 훅을 구독하는 테스트용 리스너 컴포넌트

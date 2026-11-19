@@ -7,9 +7,9 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MFE_EVENTS, mfeEventBus } from '../../utils/model/event-bus.js';
-import { Z_INDEX_TOKENS } from '../model/tokens.js';
-import { ThemeProvider, useTheme } from './ThemeProvider.js';
+import { MFE_EVENTS, mfeEventBus } from '../../utils/model/event-bus';
+import { Z_INDEX_TOKENS } from '../model/tokens';
+import { ThemeProvider, useTheme } from './ThemeProvider';
 
 /**
  * ThemeProvider 상태를 읽고 변경하는 테스트용 소비자 컴포넌트

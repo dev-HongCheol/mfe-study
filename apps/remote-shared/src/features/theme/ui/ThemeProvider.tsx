@@ -13,14 +13,14 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { MFE_EVENTS, type ThemeMode, themeModeSchema } from '../../utils/model/contracts.js';
-import { mfeEventBus, useMfeEvent } from '../../utils/model/event-bus.js';
-import { createScopedStorage } from '../../utils/model/storage.js';
+import { MFE_EVENTS, type ThemeMode, themeModeSchema } from '../../utils/model/contracts';
+import { mfeEventBus, useMfeEvent } from '../../utils/model/event-bus';
+import { createScopedStorage } from '../../utils/model/storage';
 import {
   AVAILABLE_THEMES,
   type ThemeOptionMeta,
   applyThemeTokensToDocument,
-} from '../model/tokens.js';
+} from '../model/tokens';
 import './theme.css';
 
 /**

@@ -2,17 +2,17 @@
  * @file Skeleton.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed true (via ./ui)
- * @description Ark UI의 HTMLArkProps<'div'>를 기본 상속하고 지연 로딩 시 CLS(레이아웃 덜컥거림)를 방지하는 스켈레톤 컴포넌트입니다 ([Study 05 #13]).
+ * @description 표준 div 속성을 경계 캡슐화하여 상속하고 지연 로딩 시 CLS(레이아웃 덜컥거림)를 방지하는 스켈레톤 컴포넌트입니다 ([Study 05 #13, Study 09]).
  */
-import { type HTMLArkProps, ark } from '@ark-ui/react/factory';
+import { ark } from '@ark-ui/react/factory';
 import { clsx } from 'clsx';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ComponentPropsWithoutRef } from 'react';
 import '../ui-styles.css';
 
 /**
- * @description [Skeleton.tsx] ark.div(HTMLArkProps<'div'>)를 기본 상속하고 CLS 방지 프리셋 및 반복 렌더링(count)을 지원하는 Props
+ * @description [Skeleton.tsx] 표준 div 속성을 상속하고 CLS 방지 프리셋 및 반복 렌더링(count)을 지원하는 Props
  */
-export interface SkeletonProps extends HTMLArkProps<'div'> {
+export interface SkeletonProps extends ComponentPropsWithoutRef<'div'> {
   /** 스켈레톤 형태 프리셋 ('card'는 실제 카드 min-height와 1:1 매칭) */
   variant?: 'card' | 'text' | 'rect';
 
@@ -42,7 +42,7 @@ function toCssDimension(size?: string | number): string | undefined {
 /**
  * 1.5초 로딩 지연 시뮬레이션 등에서 실제 카드 높이와 1:1 매칭되어 CLS를 방어하는 스켈레톤 컴포넌트입니다.
  *
- * @param props - 형태(variant), 크기(width/height), 반복 개수(count) 및 HTMLArkProps<'div'>
+ * @param props - 형태(variant), 크기(width/height), 반복 개수(count) 및 표준 div 속성
  * @returns 스켈레톤 블록 엘리먼트
  */
 export function Skeleton({
@@ -52,7 +52,7 @@ export function Skeleton({
   count = 1,
   style,
   className,
-  ...restArkProps
+  ...restDivProps
 }: SkeletonProps) {
   /** 최소 1개 이상의 스켈레톤이 렌더링되도록 보정한 반복 횟수 */
   const safeCount = Math.max(1, Math.floor(count));
@@ -75,7 +75,7 @@ export function Skeleton({
       aria-hidden="true"
       style={mergedStyle}
       className={clsx('mfe-ui-skeleton', `mfe-ui-skeleton--${variant}`, className)}
-      {...restArkProps}
+      {...restDivProps}
     />
   ));
 
