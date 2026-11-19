@@ -137,10 +137,10 @@
 
 ## 5. [조건부 A] 프론트엔드 및 MFE 통합 검증 (`products` 전용)
 - **적용 여부**: `적용`
-- [ ] **단독 실행(Standalone) 렌더링 검증**: 호스트 없이 단독 엔트리(`App.tsx` / `bootstrap.tsx`) 마운트 시 컨트롤 바와 카탈로그가 정상 동작하는가?
-- [ ] **리모트 장애 격리 및 인라인 에러 복구**: API 에러 발생 시 인라인 에러 배너와 `[다시 시도]` 버튼으로 자체 복구되는가?
-- [ ] **`Mode A` vs `Mode B` 상태 동기화 검증**: `Mode A`에서는 `mfe:cart-updated` 이벤트 발행만, `Mode B`에서는 `sharedQueryClient.invalidateQueries(['cart'])`만 정확히 수행되는가?
-- [ ] **접근성(A11y) 및 스타일 격리 검증**: `aria-busy`, `role="alert"`, `.prod-*` 클래스 프리픽스, `var(--mfe-*)` 변수, `tabular-nums`가 정상 적용되었는가?
+- [x] **단독 실행(Standalone) 렌더링 검증**: 호스트 없이 단독 엔트리(`App.tsx` / `bootstrap.tsx`) 마운트 시 컨트롤 바와 카탈로그가 정상 동작하는가?
+- [x] **리모트 장애 격리 및 인라인 에러 복구**: API 에러 발생 시 인라인 에러 배너와 `[다시 시도]` 버튼으로 자체 복구되는가?
+- [x] **`Mode A` vs `Mode B` 상태 동기화 검증**: `Mode A`에서는 `mfe:cart-updated` 이벤트 발행만, `Mode B`에서는 `sharedQueryClient.invalidateQueries(['cart'])`만 정확히 수행되는가?
+- [x] **접근성(A11y) 및 스타일 격리 검증**: `aria-busy`, `role="alert"`, `.prod-*` 클래스 프리픽스, `var(--mfe-*)` 변수, `tabular-nums`가 정상 적용되었는가?
 
 ---
 
@@ -150,7 +150,7 @@
 ---
 
 ## 7. 최종 완료 및 머지 전 체크리스트 — `[공통 필수]`
-- [ ] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가?
-- [ ] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
-- [ ] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
-- [ ] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-products/docs/todo.md`, 그리고 [`docs/service-registry.md`](../../../../../docs/service-registry.md)를 최신 상태로 업데이트했는가?
+- [x] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가?
+- [x] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
+- [x] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
+- [x] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-products/docs/todo.md`, 그리고 [`docs/service-registry.md`](../../../../../docs/service-registry.md)를 최신 상태로 업데이트했는가?

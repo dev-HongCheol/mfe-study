@@ -11,7 +11,7 @@
 - **스코프 ID (`Scope ID`)**: `products`
 - **대상 경로**: `apps/remote-products` (루트 작업은 루트 [`todo.md`](../../../todo.md)에서 통합 관리)
 - **기술 스택**: `Vite 7 + React 19 + TypeScript 5.7 + @module-federation/vite + TanStack Query v5 + React Hook Form + Zod + ky + es-toolkit + MSW + Vitest`
-- **최종 업데이트**: `2026-11-16`
+- **최종 업데이트**: `2026-11-19`
 - **핵심 역할**: 상품 카탈로그 조회·카테고리/검색어 필터링 및 장바구니 담기(`POST /api/cart`) 기능을 담당하는 도메인 원격 마이크로 앱입니다 (`Port 3002`). `remote_shared`(`Port 3004`)의 디자인 시스템·테마·유틸리티를 런타임 소비하는 동시에 호스트(`host-vite:3000`, `host-rspack:3001`)에 `./ProductList` 컴포넌트를 노출하며, **상태 동기화 아키텍처 비교 학습 모드(`Mode A: 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)**를 지원합니다.
 - **노출 모듈 (`exposes`)**:
   - `./ProductList` (`./src/exposed/ProductList.tsx`): 상품 카탈로그 그리드, 카테고리/키워드 필터 바, 1.5초 로딩 지연 시뮬레이션 스켈레톤 및 장바구니 담기 통합 컴포넌트 (`@mf-types.zip` 원격 타입 생성 포함)
@@ -24,20 +24,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- [-] **[`20261107-catalog-list`](./features/20261107-catalog-list/01-plan-and-design.md)**: [Phase 1 - Step 1.3] 상품 목록 원격 앱(`./ProductList`), `Mode A vs Mode B` 상태 동기화 및 단독 실행 쇼케이스 구축 (`Port 3002`)
-  - **작업 브랜치**: `products/feat/catalog-list` (`Scope: products`)
-  - **설계 문서**: [01-plan-and-design.md](./features/20261107-catalog-list/01-plan-and-design.md)
-  - **TDD 명세**: [02-tdd-spec.md](./features/20261107-catalog-list/02-tdd-spec.md)
-  - **코드 리뷰**: [03-code-review.md](./features/20261107-catalog-list/03-code-review.md)
-  - **📍 현재 작업 현황 및 남은 마무리 단계 (`Scope: products`)**:
-    1. **[완료된 패치 및 방어 구현]**:
-       - [x] `ProductEntity` 스키마 정합성 패치: [`src/features/catalog/model/catalog-schema.ts`](../src/features/catalog/model/catalog-schema.ts), [`src/testing/msw/handlers.ts`](../src/testing/msw/handlers.ts), [`src/features/catalog/model/catalog-schema.test.ts`](../src/features/catalog/model/catalog-schema.test.ts), [`src/__tests__/ProductList.integration.test.tsx`](../src/__tests__/ProductList.integration.test.tsx)에서 루트 계약(`§ 5.1.2`)에 없는 `createdAt` 제거 완료 (`CartItemView`의 `createdAt`은 유지)
-       - [x] 초기 접속 원격 모듈 경합 방어 및 환경별(`DEV`/`PROD`) 스키마 에러 이원화: `src/main.ts` `Promise.all` 선행 프리로드, `getProductsScopedStorage()` 지연 초기화, `disableDynamicRemoteTypeHints: true`, `formatCatalogErrorReport` 구현 및 `01-plan-and-design.md` 반영 완료
-       - [x] 프론트엔드 번들러 표준(.js 확장자 생략) 통일: `src/**` 본 코드 및 테스트·스텁 8개 파일에서 상대 경로 `.js` 확장자 전수 제거 완료
-       - [x] 검증 통과: `pnpm --filter @mfe-study/remote-products test` (`5개 파일 / 21개 테스트` 통과), `typecheck` (`tsc --noEmit` 에러 0건), `vite build` (`@mf-types` 추출·생성 포함), `Biome` 린트·포맷 통과
-    2. **[남은 진행 단계 — 5단계-B PR 및 머지]**:
-       - [ ] `03-code-review.md` 수치 현행화(테스트 `20건` → `21건` 및 후속 조치 반영) 확인 및 PR 초안 보고
-       - [ ] 머지 승인 직후 [`todo.md`](../../../todo.md), 본 문서([`apps/remote-products/docs/todo.md`](./todo.md)), [`docs/service-registry.md`](../../../docs/service-registry.md)(`§ 1`, `§ 5`에 `remote-products` 명령어 및 `./ProductList` 노출 시그니처 등록) 완료 상태 갱신 후 `main` 브랜치 머지
+- *현재 진행 중인 작업이 없습니다.*
 
 ---
 
@@ -53,4 +40,7 @@
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
 
-- *아직 완료된 작업이 없습니다.*
+- [x] **[`20261107-catalog-list`](./features/20261107-catalog-list/01-plan-and-design.md)**: [Phase 1 - Step 1.3] 상품 목록 원격 앱(`./ProductList`), `Mode A vs Mode B` 상태 동기화, 비인증 3중 방어, UI 책임 분리 및 단독 실행 쇼케이스 구축 (`Port 3002`) — **완료일: `2026-11-19`** (PR #7)
+  - **작업 브랜치**: `products/feat/catalog-list` (`Scope: products`)
+  - **관련 문서**: [01-plan-and-design.md](./features/20261107-catalog-list/01-plan-and-design.md) | [02-tdd-spec.md](./features/20261107-catalog-list/02-tdd-spec.md) | [03-code-review.md](./features/20261107-catalog-list/03-code-review.md)
+  - **핵심 성과**: 양방향 MF 2.0(`remote_shared` 소비 + `./ProductList` 노출·`@mf-types.zip` 양방향 동기화), `DeferredRemoteProxy` 3중 방어, `Mode A`(지연 생성 독립 `QueryClient` + `mfe:cart-updated`) vs `Mode B`(싱글톤 `sharedQueryClient` + `cancelQueries`/`invalidateQueries`), 비인증 3중 방어(`SSOT § 5.4.2`), `DEV`/`PROD` 스키마 에러 이원화 및 `CatalogErrorBanner`·`ProductCatalogContent` 분리, `Vitest 7개 파일 / 32건`·`typecheck`·`vite build`·`Biome` 전원 통과 (`docs/service-registry.md` 등록 완료)
