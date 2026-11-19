@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[Step 1.2/1.3 후속 정리] `remote-products`의 `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(80줄) 완전 제거 및 최신 `@mf-types` 기반 무-Shim 소비 검증 완료** (`apps/remote-products`, `docs/service-registry.md`, `Vitest 7개 파일 / 33건`·루트 전체 `98건` 통과, PR #11 — `Study 09` 로드맵 완결)
   - **[Step 1.2/1.3 후속 정리 및 개선] `remote-shared/ui` 노출 Props 13종 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환으로 `@ark-ui/react` 타입 누출 `0건` 달성), `dev.disableDynamicRemoteTypeHints: true` 적용 및 `src/**` `.js` 확장자 일괄 제거 완료** (`apps/remote-shared`, `GEMINI.md`, `docs/service-registry.md`, `Vitest 18개 파일 / 35건`·루트 전체 `97건` 통과, PR #10)
   - **[Phase 1 - Step 1.3] 상품 목록 원격 앱(`./ProductList`), `Mode A vs Mode B` 상태 동기화, 비인증 3중 방어, UI 책임 분리 및 단독 실행 쇼케이스 구축 완료** (`apps/remote-products`, `docs/service-registry.md`, `Vitest 7개 파일 / 32건` 통과, PR #7)
   - **[학습 가이드 확장] `docs/study/` 3종 신규 작성 완료** (`Study 07` 클로저·`useRef` 패턴, `Study 08` `AbortSignal` 비동기 취소, `Study 09` MFE 원격 타입 경계 캡슐화)
@@ -24,8 +25,8 @@
   - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료
   - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 승인 완료
 - **다음 진행 예정 작업 (Next Up)**:
-  1. **[다음 대기 | `Scope: products` | `Branch: products/chore/remove-ark-type-shim`] [Step 1.2/1.3 후속 정리] `remote-products/src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(10~89행) 제거 및 갱신된 `@mf-types` 기반 무-Shim 소비 검증**
-  2. **[다음 대기 | `Scope: cart` | `Branch: cart/feat/cart-widget-sync`] [Phase 1 - Step 1.4] 장바구니 원격 앱(`apps/remote-cart`, `Port 3003`, `Rspack`) 구축**
+  1. **[다음 대기 | `Scope: cart` | `Branch: cart/feat/cart-widget-sync`] [Phase 1 - Step 1.4] 장바구니 원격 앱(`apps/remote-cart`, `Port 3003`, `Rspack`) 구축**
+  2. **[다음 대기 | `Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`] [Phase 1 - Step 1.5] 공통 껍데기 호스트 2종(`apps/host-vite:3000`, `apps/host-rspack:3001`) 구축**
 
 ---
 
@@ -74,9 +75,9 @@
 - [x] **Step 1.2 후속 정리 (`Scope: shared` | `Branch: shared/refactor/ui-prop-encapsulation`, PR #10 통합 완료)**:
   - `apps/remote-shared/vite.config.ts`의 `federation({ ... })` 옵션에 `dev: { disableDynamicRemoteTypeHints: true }` 추가 및 `apps/remote-shared/node_modules/.vite` 캐시 정리를 통해 소비자 앱(`remote-products` 등) `pnpm dev` 실행 시 발생하는 `dynamic-remote-type-hints-plugin` `ws://127.0.0.1:16322` WebSocket 연결 에러 제거 완료
   - 프론트엔드 번들러 표준(`Study 04 #01`)에 맞춰 `apps/remote-shared/src/**` 내부 상대 경로 import의 `.js` 확장자 일괄 제거 완료 (`0건` 정적 검증 포함)
-- [-] **Step 1.2/1.3 후속 개선 (`Scope: shared` 완료 → `products` 대기)**:
+- [x] **Step 1.2/1.3 후속 개선 (`Scope: shared` PR #10 · `Scope: products` PR #11 최종 완료)**:
   - [x] (`Scope: shared` | `Branch: shared/refactor/ui-prop-encapsulation`, PR #10) `remote-shared/ui` 노출 컴포넌트 Props 13종(`Button`, `Select`, `Splitter`, `Tabs`, `Collapsible` 등)이 `@ark-ui/react` 타입을 직접 상속하지 않고 `React.ComponentPropsWithoutRef` + 허용 속성만 노출하도록 경계 캡슐화 완료 (`dist/@mf-types/**/*.d.ts` 내 `@ark-ui/react` 참조 `0건` 실증, `GEMINI.md` 3조 3항 현행화 및 [`Study 09`](./docs/study/09-mfe-shared-types-and-design-system-encapsulation.md) 반영)
-  - [ ] (`Scope: products` | `Branch: products/chore/remove-ark-type-shim`) `remote-products`의 `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(10~89행) 제거 및 갱신된 `@mf-types` 기반 무-Shim 소비 검증
+  - [x] (`Scope: products` | `Branch: products/chore/remove-ark-type-shim`, PR #11) `remote-products`의 `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(10~89행) 제거, 정적 회귀 차단 테스트(`TC-01 / EC-01`) 추가 및 갱신된 `@mf-types` 기반 무-Shim 소비 검증 완료 (`vite build` · `tsc --noEmit` · `Vitest 33건` 통과)
 - [x] **Step 1.3: 상품 목록 원격 앱 구축** (`Scope: products` | `Branch: products/feat/catalog-list`)
   - 문서 경로: `apps/remote-products/docs/todo.md` 및 `apps/remote-products/docs/features/20261107-catalog-list/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - `./ProductList` 컴포넌트, 장바구니 담기 **비교 학습 모드(`Mode A: 리모트별 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)**, 비인증(`userId` 미전달/`null`) 3중 읽기 전용 방어, `DeferredRemoteProxy` 3중 방어, `DEV`/`PROD` 스키마 에러 이원화 및 단독 실행(Standalone) 쇼케이스 TDD 구현·머지 완료 (`Port 3002` / Vite 7, `Vitest 7개 파일 / 32건`·`typecheck`·`vite build`·`Biome` 통과, `docs/service-registry.md` 반영)

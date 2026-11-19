@@ -1,8 +1,8 @@
 {
-  "scope": "shared",
-  "path": "apps/remote-shared",
-  "branch": "shared/refactor/ui-prop-encapsulation",
-  "featureDir": "apps/remote-shared/docs/features/20261119-ui-prop-encapsulation",
+  "scope": "products",
+  "path": "apps/remote-products",
+  "branch": "products/chore/remove-ark-type-shim",
+  "featureDir": "apps/remote-products/docs/features/20261119-remove-ark-type-shim",
   "currentStep": 5,
   "isDocsOnly": false
 }

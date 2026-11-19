@@ -2,10 +2,10 @@
  * @file ProductList.integration.test.tsx
  * @app remote-products (Scope: products | Port: 3002)
  * @exposed false
- * @description [TC-05, TC-06, EC-02, EC-03] ProductList 통합 플로우(Mode A vs Mode B, 1.5초 지연 스켈레톤, 에러 복구, 아키텍처 무결성) 테스트입니다.
+ * @description [TC-01, TC-05, TC-06, EC-01, EC-02, EC-03] ProductList 통합 플로우(Mode A vs Mode B, 1.5초 지연 스켈레톤, 에러 복구, 무-Shim 아키텍처 무결성) 테스트입니다.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -21,6 +21,26 @@ import {
   sharedQueryClient,
 } from '../testing/stubs/remote-shared-utils';
 import * as remoteSharedUtils from '../testing/stubs/remote-shared-utils';
+
+/**
+ * 지정된 디렉터리 하위에서 모든 TypeScript 선언 파일(.d.ts) 경로를 재귀 수집합니다.
+ *
+ * @param dirPath - 탐색을 시작할 루트 디렉터리 절대 경로
+ * @returns 수집된 .d.ts 파일 절대 경로 배열
+ */
+function collectDtsFiles(dirPath: string): string[] {
+  const results: string[] = [];
+  for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
+    const fullPath = join(dirPath, entry.name);
+    // [분기 설명] 중첩된 compiled-types 하위 경로까지 누락 없이 검사하기 위해 디렉터리는 재귀 탐색하고 .d.ts 파일만 수집합니다.
+    if (entry.isDirectory()) {
+      results.push(...collectDtsFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.d.ts')) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
 
 describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () => {
   it('TC-05: Mode A(mode-a-event)에서는 장바구니 담기 성공 시 mfe:cart-updated 이벤트를 발행하고 sharedQueryClient.invalidateQueries는 호출하지 않는다', async () => {
@@ -329,5 +349,27 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
     expect(createClientSpy).not.toHaveBeenCalled();
 
     createClientSpy.mockRestore();
+  });
+
+  it('TC-01 / EC-01: src/vite-env.d.ts에 @ark-ui/react 임시 타입 Shim이 없고 로컬 @mf-types 내 전이 타입 누출이 0건이다', () => {
+    const appRoot = resolve(import.meta.dirname, '../..');
+    const viteEnvText = readFileSync(resolve(appRoot, 'src/vite-env.d.ts'), 'utf-8');
+
+    // 1. 표준 Vite 클라이언트 전역 타입 지시어는 반드시 유지되어야 합니다.
+    expect(viteEnvText).toContain('/// <reference types="vite/client" />');
+
+    // 2. 공급자 경계 캡슐화 완료 이후 소비자 임시 Shim(declare module '@ark-ui/react...') 및 HTMLArkProps가 0건인지 확인합니다.
+    expect(viteEnvText).not.toMatch(/declare\s+module\s+['"]@ark-ui\/react/);
+    expect(viteEnvText).not.toContain('HTMLArkProps');
+
+    // 3. 로컬 @mf-types 캐시가 존재하는 환경에서는 구버전 전이 타입 누출(@ark-ui/react)이 0건인지 검증합니다.
+    const mfTypesDir = resolve(appRoot, '@mf-types');
+    // [분기 설명] CI 등 클린 체크아웃 환경에서는 @mf-types가 Git 미추적이므로 디렉터리가 존재할 때만 누출 검사를 수행합니다.
+    if (existsSync(mfTypesDir)) {
+      const leakedFiles = collectDtsFiles(mfTypesDir).filter((filePath) =>
+        readFileSync(filePath, 'utf-8').includes('@ark-ui/react'),
+      );
+      expect(leakedFiles).toEqual([]);
+    }
   });
 });
