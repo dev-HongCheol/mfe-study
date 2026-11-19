@@ -14,7 +14,7 @@
 | **`root`** | `mfe-study-root` | `.` | - | `Turborepo`, `Biome`, `Vitest`, `Node.js 22` | ✅ 완료 (`Phase 0`) |
 | **`api`** | `@mfe-study/api-server` | `apps/api-server` | `4000` | `Express 5`, `node:sqlite`, `Zod`, `Supertest` | ✅ 구현 완료 (`Step 1.1`) |
 | **`shared`** | `@mfe-study/remote-shared` | `apps/remote-shared` | `3004` | `Vite 7`, `React 19`, `@ark-ui/react v5`, `clsx` | ✅ 구현 완료 (`Step 1.2` · UI Props 캡슐화 완료) |
-| **`products`** | `@mfe-study/remote-products` | `apps/remote-products` | `3002` | `Vite 7`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.3`) |
+| **`products`** | `@mfe-study/remote-products` | `apps/remote-products` | `3002` | `Vite 7`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.3` · 무-Shim 검증 완료) |
 | **`cart`** | `@mfe-study/remote-cart` | `apps/remote-cart` | `3003` | `Rspack (Rsbuild)`, `React 19`, `TanStack Query` | ⏳ 대기 (`Step 1.4`) |
 | **`host-vite`** | `@mfe-study/host-vite` | `apps/host-vite` | `3000` | `Vite`, `React 19`, `@module-federation/vite` | ⏳ 대기 (`Step 1.5`) |
 | **`host-rspack`** | `@mfe-study/host-rspack` | `apps/host-rspack` | `3001` | `Rspack (Rsbuild)`, `React 19`, `@module-federation/rsbuild-plugin` | ⏳ 대기 (`Step 1.5`) |
@@ -115,7 +115,7 @@
 | 목적 | 실행 명령어 (루트에서 실행 기준) | 동작 설명 |
 | :--- | :--- | :--- |
 | **개발 서버 기동** | `pnpm --filter @mfe-study/remote-products dev` | `vite --port 3002 --strictPort`로 `http://localhost:3002` 단독 쇼케이스, MF 컨테이너 및 `@mf-types.zip` 실시간 서빙 기동 *(사전에 `api-server:4000` 및 `remote-shared:3004` 기동 권장 — 루트 `pnpm dev:products`로 일괄 기동 가능)* |
-| **단독 TDD 테스트** | `pnpm --filter @mfe-study/remote-products test` | `Vitest` (`jsdom` + `MSW` + 로컬 `remote_shared/*` 스텁) 기반 단위·통합 테스트 `7`개 파일 / `32`건 실행 |
+| **단독 TDD 테스트** | `pnpm --filter @mfe-study/remote-products test` | `Vitest` (`jsdom` + `MSW` + 로컬 `remote_shared/*` 스텁) 기반 단위·통합 테스트 `7`개 파일 / `33`건 실행 (무-Shim 및 `@mf-types` 누출 `0건` 정적 검증 포함) |
 | **타입 검사 / 빌드** | `pnpm --filter @mfe-study/remote-products typecheck`<br>`pnpm --filter @mfe-study/remote-products build` | `tsc --noEmit` 검사 및 `dist/remoteEntry.js` · `dist/mf-manifest.json` · `dist/@mf-types.zip` (`dist/@mf-types/index.d.ts`) 프로덕션 번들링 |
 | **프로덕션 프리뷰** | `pnpm --filter @mfe-study/remote-products preview` | 빌드된 `dist/` 산출물을 `Port 3002`에서 서빙 |
 
@@ -125,7 +125,7 @@
 | 구분 | 경로 / 매니페스트 | 핵심 시그니처 및 동작 요약 |
 | :--- | :--- | :--- |
 | **노출 (`exposes`)** | **`remote_products/ProductList`**<br>(`src/exposed/ProductList.tsx`) | - **Export**: `ProductList` (named + default), `type ProductListProps`<br>- **`ProductListProps`**:<br>  - `userId?: string \| null` — 현재 로그인 사용자 ID (미지정·`null`·빈 문자열·공백 시 임의 유저 폴백 없이 비로그인 읽기 전용 모드 적용, 생략 시 `mfe:auth-changed` 이벤트 구독으로 전환 가능)<br>  - `hostType?: 'vite' \| 'rspack' \| 'standalone'` (기본값: `'standalone'`)<br>  - `syncMode?: 'mode-a-event' \| 'mode-b-query'` (미지정 시 `mfe:sync-mode-changed` 구독, 초기값 `'mode-a-event'`)<br>  - `simulateDelay?: boolean` (기본값: `false`), `delayMs?: number` (기본값: `1500`)<br>  - `apiBaseUrl?: string` (기본값: `http://localhost:4000/api`)<br>  - `onCartAdded?: (payload: CartUpdatedEventPayload) => void` |
-| **소비 (`remotes`)** | `remote_shared`<br>(`http://localhost:3004/mf-manifest.json`) | `remote_shared/ui`, `remote_shared/theme`, `remote_shared/utils` 런타임 소비 (`@ark-ui/react`, `clsx` 직접 설치 0%, `src/main.ts` `Promise.all` 선행 프리로드 및 `dts.consumeTypes` + `dev.disableDynamicRemoteTypeHints: true` 적용) |
+| **소비 (`remotes`)** | `remote_shared`<br>(`http://localhost:3004/mf-manifest.json`) | `remote_shared/ui`, `remote_shared/theme`, `remote_shared/utils` 런타임 소비 (`@ark-ui/react`, `clsx` 직접 설치 0%, `src/vite-env.d.ts` `@ark-ui/react` 임시 Shim `0줄` 무-Shim 소비 실증, `src/main.ts` `Promise.all` 선행 프리로드 및 `dts.consumeTypes` + `dev.disableDynamicRemoteTypeHints: true` 적용) |
 | **API 소비** | `api-server`<br>(`http://localhost:4000/api`) | `GET /api/products` (카테고리·검색어 쿼리 + `AbortSignal` 연동), `POST /api/cart` (비인증 3중 차단 가드 적용) |
 
 ### 5.3 상위 호스트(`host-vite`, `host-rspack`) 필수 소비 규칙

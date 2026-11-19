@@ -24,11 +24,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- [-] **[`20261119-remove-ark-type-shim`](./features/20261119-remove-ark-type-shim/01-plan-and-design.md)**: [Step 1.2/1.3 후속 정리] `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(10~89행) 제거 및 갱신된 `@mf-types` 기반 무-Shim 소비 검증 (`Port 3002`)
-  - **작업 브랜치**: `products/chore/remove-ark-type-shim` (`Scope: products`)
-  - **설계 문서**: [01-plan-and-design.md](./features/20261119-remove-ark-type-shim/01-plan-and-design.md)
-  - **TDD 명세**: [02-tdd-spec.md](./features/20261119-remove-ark-type-shim/02-tdd-spec.md)
-  - **코드 리뷰**: [03-code-review.md](./features/20261119-remove-ark-type-shim/03-code-review.md)
+- *현재 진행 중인 작업이 없습니다.*
 
 ---
 
@@ -42,6 +38,11 @@
 
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
+
+- [x] **[`20261119-remove-ark-type-shim`](./features/20261119-remove-ark-type-shim/01-plan-and-design.md)**: [Step 1.2/1.3 후속 정리] `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(10~89행) 제거 및 갱신된 `@mf-types` 기반 무-Shim 소비 검증 (`Port 3002`) — **완료일: `2026-11-19`** (PR #11)
+  - **작업 브랜치**: `products/chore/remove-ark-type-shim` (`Scope: products`)
+  - **관련 문서**: [01-plan-and-design.md](./features/20261119-remove-ark-type-shim/01-plan-and-design.md) | [02-tdd-spec.md](./features/20261119-remove-ark-type-shim/02-tdd-spec.md) | [03-code-review.md](./features/20261119-remove-ark-type-shim/03-code-review.md)
+  - **핵심 성과**: `@ark-ui/react/*` 임시 `declare module` Shim 5개 블록(80줄) 완전 제거, `TC-01 / EC-01` 무-Shim 및 `@mf-types` 전이 누출 `0건` 정적 회귀 테스트 추가, 최신 `remote-shared(3004)` `@mf-types.zip` 재수신 기반 무-Shim `vite build`·`tsc --noEmit`·`Vitest 7개 파일 / 33건`(전체 `98건`)·`Biome` 전원 통과 (`Study 09` 로드맵 완결)
 
 - [x] **[`20261107-catalog-list`](./features/20261107-catalog-list/01-plan-and-design.md)**: [Phase 1 - Step 1.3] 상품 목록 원격 앱(`./ProductList`), `Mode A vs Mode B` 상태 동기화, 비인증 3중 방어, UI 책임 분리 및 단독 실행 쇼케이스 구축 (`Port 3002`) — **완료일: `2026-11-19`** (PR #7)
   - **작업 브랜치**: `products/feat/catalog-list` (`Scope: products`)

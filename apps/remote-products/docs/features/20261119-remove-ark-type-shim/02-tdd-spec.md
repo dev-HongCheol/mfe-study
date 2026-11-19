@@ -84,4 +84,4 @@
 - [x] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가?
 - [x] 6대 주석 원칙(파일 최상단 `@file`/`@app`/`@exposed`/`@description` 헤더 동기화 및 분기문 의도 주석)을 준수했는가?
 - [x] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함), `typecheck`, `vite build`를 모두 통과했는가?
-- [ ] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-products/docs/todo.md`, 그리고 [`docs/service-registry.md`](../../../../../docs/service-registry.md)를 최신 상태로 업데이트했는가?
+- [x] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-products/docs/todo.md`, 그리고 [`docs/service-registry.md`](../../../../../docs/service-registry.md)를 최신 상태로 업데이트했는가?
