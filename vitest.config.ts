@@ -19,6 +19,7 @@ export default defineConfig({
       },
       'apps/api-server/vitest.config.ts',
       'apps/remote-shared/vitest.config.ts',
+      'apps/remote-products/vitest.config.ts',
     ],
   },
 });

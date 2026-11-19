@@ -14,7 +14,7 @@
 | **`root`** | `mfe-study-root` | `.` | - | `Turborepo`, `Biome`, `Vitest`, `Node.js 22` | ✅ 완료 (`Phase 0`) |
 | **`api`** | `@mfe-study/api-server` | `apps/api-server` | `4000` | `Express 5`, `node:sqlite`, `Zod`, `Supertest` | ✅ 구현 완료 (`Step 1.1`) |
 | **`shared`** | `@mfe-study/remote-shared` | `apps/remote-shared` | `3004` | `Vite 7`, `React 19`, `@ark-ui/react v5`, `clsx` | ✅ 구현 완료 (`Step 1.2`) |
-| **`products`** | `@mfe-study/remote-products` | `apps/remote-products` | `3002` | `Vite`, `React 19`, `TanStack Query`, `ky` | ⏳ 대기 (`Step 1.3`) |
+| **`products`** | `@mfe-study/remote-products` | `apps/remote-products` | `3002` | `Vite 7`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.3`) |
 | **`cart`** | `@mfe-study/remote-cart` | `apps/remote-cart` | `3003` | `Rspack (Rsbuild)`, `React 19`, `TanStack Query` | ⏳ 대기 (`Step 1.4`) |
 | **`host-vite`** | `@mfe-study/host-vite` | `apps/host-vite` | `3000` | `Vite`, `React 19`, `@module-federation/vite` | ⏳ 대기 (`Step 1.5`) |
 | **`host-rspack`** | `@mfe-study/host-rspack` | `apps/host-rspack` | `3001` | `Rspack (Rsbuild)`, `React 19`, `@module-federation/rsbuild-plugin` | ⏳ 대기 (`Step 1.5`) |
@@ -25,7 +25,10 @@
 
 | 목적 | 실행 명령어 | 동작 설명 |
 | :--- | :--- | :--- |
-| **전체 개발 서버 기동** | `pnpm dev` | `turbo run dev`로 모든 마이크로 앱 및 백엔드 서버 동시 기동 |
+| **대화형 개발 서버 기동** | `pnpm dev` (또는 `pnpm dev:menu`) | `scripts/dev-menu.mjs` 대화형 메뉴로 번호 선택 후 `turbo run dev --filter`를 TUI 모드로 기동 (탭 전환 지원) |
+| **상품 리모트 개발 세트 기동** | `pnpm dev:products` | `api-server(4000)` + `remote-shared(3004)` + `remote-products(3002)`를 즉시 TUI 모드로 동시 기동 |
+| **장바구니 리모트 개발 세트 기동** | `pnpm dev:cart` | `api-server(4000)` + `remote-shared(3004)` + `remote-cart(3003)`를 즉시 TUI 모드로 동시 기동 |
+| **전체 개발 서버 일괄 기동** | `pnpm dev:all` | `turbo run dev`로 모든 마이크로 앱 및 백엔드 서버 동시 기동 |
 | **전체 TDD 테스트** | `pnpm test` | 루트 하네스 테스트(`scripts/__tests__`) 및 모든 앱 단위·통합 테스트 일괄 실행 |
 | **포맷팅·린트 검사** | `pnpm check` | `Biome` 포맷팅·린트·`LF` 줄바꿈 검사 (자동 수정: `pnpm check:write`) |
 | **3종 SQL 해시 갱신** | `pnpm sql:update` | `apps/api-server/sql/` 내 3종 SQL의 SHA-256 해시를 `.sql-hashes.json`에 기록 |
@@ -106,8 +109,33 @@
 
 ---
 
-## 5. 도메인 리모트(`products`, `cart`) 및 호스트(`host-*`) 현황 *(Step 1.3 ~ 1.5 진행 시 누적 기록)*
+## 5. 상품 목록 원격 앱 정본 (`Scope: products` | `Port 3002` | `name: 'remote_products'`)
 
-- **`remote-products` (`Scope: products` | `Port 3002`)**: *Step 1.3에서 `./ProductList` 노출 시그니처 및 명령어 등록 예정* ([계약 정본 `§ 5.4.2`](./features/20261027-phase1-service-contracts/01-plan-and-design.md))
+### 5.1 `remote-products` 전용 실행·테스트·빌드 명령어
+| 목적 | 실행 명령어 (루트에서 실행 기준) | 동작 설명 |
+| :--- | :--- | :--- |
+| **개발 서버 기동** | `pnpm --filter @mfe-study/remote-products dev` | `vite --port 3002 --strictPort`로 `http://localhost:3002` 단독 쇼케이스, MF 컨테이너 및 `@mf-types.zip` 실시간 서빙 기동 *(사전에 `api-server:4000` 및 `remote-shared:3004` 기동 권장 — 루트 `pnpm dev:products`로 일괄 기동 가능)* |
+| **단독 TDD 테스트** | `pnpm --filter @mfe-study/remote-products test` | `Vitest` (`jsdom` + `MSW` + 로컬 `remote_shared/*` 스텁) 기반 단위·통합 테스트 `7`개 파일 / `32`건 실행 |
+| **타입 검사 / 빌드** | `pnpm --filter @mfe-study/remote-products typecheck`<br>`pnpm --filter @mfe-study/remote-products build` | `tsc --noEmit` 검사 및 `dist/remoteEntry.js` · `dist/mf-manifest.json` · `dist/@mf-types.zip` (`dist/@mf-types/index.d.ts`) 프로덕션 번들링 |
+| **프로덕션 프리뷰** | `pnpm --filter @mfe-study/remote-products preview` | 빌드된 `dist/` 산출물을 `Port 3002`에서 서빙 |
+
+### 5.2 Module Federation 노출(`exposes`) 및 소비(`remotes`) 시그니처 요약
+> 상세 계약은 [루트 계약 정본 `§ 5.4.2`](./features/20261027-phase1-service-contracts/01-plan-and-design.md) 및 [`apps/remote-products` 설계서 `§ 5 ~ § 6`](../apps/remote-products/docs/features/20261107-catalog-list/01-plan-and-design.md)를 참조합니다.
+
+| 구분 | 경로 / 매니페스트 | 핵심 시그니처 및 동작 요약 |
+| :--- | :--- | :--- |
+| **노출 (`exposes`)** | **`remote_products/ProductList`**<br>(`src/exposed/ProductList.tsx`) | - **Export**: `ProductList` (named + default), `type ProductListProps`<br>- **`ProductListProps`**:<br>  - `userId?: string \| null` — 현재 로그인 사용자 ID (미지정·`null`·빈 문자열·공백 시 임의 유저 폴백 없이 비로그인 읽기 전용 모드 적용, 생략 시 `mfe:auth-changed` 이벤트 구독으로 전환 가능)<br>  - `hostType?: 'vite' \| 'rspack' \| 'standalone'` (기본값: `'standalone'`)<br>  - `syncMode?: 'mode-a-event' \| 'mode-b-query'` (미지정 시 `mfe:sync-mode-changed` 구독, 초기값 `'mode-a-event'`)<br>  - `simulateDelay?: boolean` (기본값: `false`), `delayMs?: number` (기본값: `1500`)<br>  - `apiBaseUrl?: string` (기본값: `http://localhost:4000/api`)<br>  - `onCartAdded?: (payload: CartUpdatedEventPayload) => void` |
+| **소비 (`remotes`)** | `remote_shared`<br>(`http://localhost:3004/mf-manifest.json`) | `remote_shared/ui`, `remote_shared/theme`, `remote_shared/utils` 런타임 소비 (`@ark-ui/react`, `clsx` 직접 설치 0%, `src/main.ts` `Promise.all` 선행 프리로드 및 `dts.consumeTypes` + `dev.disableDynamicRemoteTypeHints: true` 적용) |
+| **API 소비** | `api-server`<br>(`http://localhost:4000/api`) | `GET /api/products` (카테고리·검색어 쿼리 + `AbortSignal` 연동), `POST /api/cart` (비인증 3중 차단 가드 적용) |
+
+### 5.3 상위 호스트(`host-vite`, `host-rspack`) 필수 소비 규칙
+1. **원격 타입 자동 동기화 소비**: 호스트의 MF 설정에서 `remote_products` 엔트리로 `http://localhost:3002/mf-manifest.json`을 등록하고 `dts: { consumeTypes: true }`를 사용해 `remote_products/ProductList` 타입을 자동 수신합니다.
+2. **비인증(`userId: null`) 및 상태 동기화 모드 전달**: 로그인 전에는 `userId={null}`(또는 미전달)로 마운트하면 읽기 전용 조회만 허용되고 담기 요청이 3중 차단됩니다. `syncMode="mode-a-event"`에서는 `mfe:cart-updated` 이벤트만 발행하며, `syncMode="mode-b-query"`에서는 독립 `QueryClient`를 생성하지 않고 싱글톤 `sharedQueryClient`의 `['cart']` 캐시만 `cancelQueries` + `invalidateQueries` 처리합니다.
+3. **장애 격리 래핑**: 호스트 마운트 시 반드시 `<RemoteErrorBoundary>`와 `<Suspense>`로 감싸 `remote-products(3002)` 서버 장애가 전체 대시보드로 전파되지 않도록 격리합니다.
+
+---
+
+## 6. 장바구니 원격 앱(`cart`) 및 호스트(`host-*`) 현황 *(Step 1.4 ~ 1.5 진행 시 누적 기록)*
+
 - **`remote-cart` (`Scope: cart` | `Port 3003`)**: *Step 1.4에서 `./CartWidget` 노출 시그니처 및 명령어 등록 예정* ([계약 정본 `§ 5.4.3`](./features/20261027-phase1-service-contracts/01-plan-and-design.md))
 - **`host-vite` (`Port 3000`) & `host-rspack` (`Port 3001`)**: *Step 1.5에서 대시보드 및 `MfeInspector` 명령어 등록 예정*

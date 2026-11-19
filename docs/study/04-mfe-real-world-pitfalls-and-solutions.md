@@ -67,6 +67,69 @@
      });
      ```
   - 결론적으로 메인은 시작점으로서 싱글톤 준비를 발동시키고, 실제 화면 렌더링 코드는 비동기로 분리해 둠으로써 **이벤트 루프를 통해 싱글톤 React 적재가 100% 완료된 직후에만 화면이 그려지도록 완벽히 보장**됩니다.
+* **🔥 [실전 심화] 서버 최초 기동 후 첫 접속에서만 발생하는 `TypeError: createScopedStorage is not a function` (모듈 Top-Level 원격 함수 호출 경합)**:
+  - **당황스러운 증상**:
+    - `main.ts` + `bootstrap.tsx` 분리를 적용했는데도, `pnpm dev`로 서버들을 처음 띄운 직후 브라우저로 첫 접속을 하면 콘솔에 `Uncaught (in promise) TypeError: createScopedStorage is not a function (at catalog-schema.ts:156)` 에러가 터지며 화면이 멈춥니다.
+    - 그런데 **신기하게도 브라우저를 한 번 새로고침(F5)하면 그때부터는 아무 문제 없이 정상 작동**합니다!
+  - **근본 원인 (`@module-federation/vite`의 `DeferredRemoteProxy`와 Vite `optimizeDeps` 초회 워밍업 지연)**:
+    1. `@module-federation/vite`는 `import { createScopedStorage } from 'remote_shared/utils'` 같은 정적 원격 import를 만났을 때, 원격 컨테이너(`http://localhost:3004/mf-manifest.json`) 다운로드가 완료되기 전까지 임시로 **`DeferredRemoteProxy`(원격 컴포넌트·함수 등이 다운로드 및 초기화되기 전까지 빈 대기 상태(`undefined`)로 두었다가, 로드 완료 시 실제 원격 값으로 치환하는 지연 프록시)** 바인딩을 걸어둡니다.
+    2. 개발 서버(`pnpm dev`)를 처음 켜고 최초 접속을 하면, 공급자 서버인 `remote-shared(3004)`의 Vite가 최초 의존성 사전 번들링(`optimizeDeps`)을 수행하느라 원격 모듈 응답이 수백 ms 지연됩니다.
+    3. 이때 소비자 앱(`remote-products`)의 모듈 파일 최상단(Top-Level)에 아래와 같이 **파일이 import되는 즉시 원격 함수를 동기 호출하는 코드**가 있으면, React 컴포넌트가 마운트되기도 전(원격 모듈 초기화 완료 전)에 함수가 실행되어 `is not a function` 에러가 터집니다:
+       ```ts
+       // ❌ 나쁜 예: 모듈 Top-Level(파일 로드 즉시)에서 원격 함수를 동기 호출!
+       // 첫 접속 시 remote_shared/utils 초기화보다 먼저 실행되어 TypeError 발생
+       export const productsScopedStorage = createScopedStorage('products');
+       ```
+    4. 두 번째 접속(새로고침)부터는 `remote-shared`의 Vite `.vite/deps` 캐시와 브라우저 캐시가 이미 생성되어 있어 타이밍 경합을 우연히 통과하기 때문에 재현되지 않았던 것입니다.
+  - **실무 정석 해결책 (원격 유틸리티·팩토리 함수의 Lazy Initialization 패턴)**:
+    - 원격 모듈(`remote_shared/*`)에서 가져온 함수는 **절대 모듈 최상단(Top-Level)에서 즉시 호출하지 않고, 실제 함수가 실행되는 시점(컴포넌트 마운트 이후)에 지연 생성(Lazy Singleton Getter)**하도록 작성해야 합니다:
+      ```ts
+      // ✅ 좋은 예: 모듈 로드 시점에는 선언만 하고, 실제 호출 시점에 지연 초기화(Lazy Init)
+      let cachedProductsStorage: ScopedStorage | null = null;
+
+      export function getProductsScopedStorage(): ScopedStorage {
+        if (!cachedProductsStorage) {
+          cachedProductsStorage = createScopedStorage('products');
+        }
+        return cachedProductsStorage;
+      }
+      ```
+    - **② `@module-federation/vite`의 `registerEntryImports` 스캐너 함정(`.js` 확장자 표기 금지) 및 `main.ts` 명시적 리모트 프리로드**:
+      - **증상**: 모듈 Top-Level 호출을 제거했음에도 첫 접속 시 `Uncaught Error: Element type is invalid: expected a string ... but got: undefined`가 발생하며 `<ThemeProvider>`나 `<Container>` 등 `remote_shared` 컴포넌트가 `undefined`로 평가되는 현상.
+      - **내부 동작 해부 (`DeferredRemoteProxy` 변환과 `registerEntryImports` 스캐너)**:
+        1. `@module-federation/vite`는 `import { ThemeProvider } from 'remote_shared/theme'` 같은 정적 Named Import를 내부적으로 아래와 같이 변환합니다:
+           ```js
+           import { __moduleExports as __mf_ns_0, __mf_remote_pending as __mf_ns_0_pending } from "remote_shared/theme";
+           let ThemeProvider;
+           if ("ThemeProvider" in __mf_ns_0) { ThemeProvider = __mf_ns_0["ThemeProvider"]; }
+           __mf_ns_0_pending.then(() => { ThemeProvider = __mf_ns_0["ThemeProvider"]; });
+           ```
+           즉, 네트워크를 통해 `http://localhost:3004/remoteEntry.js` 로딩(`__mf_ns_0_pending`)이 끝나기 전까지는 `ThemeProvider`, `Container`, `Button` 등이 모두 `undefined`입니다.
+        2. 원래 `@module-federation/vite`는 서버 기동 시 `registerEntryImports`라는 정적 파일 스캐너로 `index.html` → `src/main.ts` → `src/bootstrap.tsx` → `src/App.tsx`를 따라가며 원격 모듈 목록(`preloadRemotes`)을 수집한 뒤, `import('./bootstrap')`이 실행되기 전에 해당 리모트들의 `__mf_remote_pending`을 먼저 기다려 줍니다.
+        3. 그런데 로컬 상대 경로를 `import('./bootstrap.js')`처럼 **`.js` 확장자로 작성하면 스캐너(`isFile`)가 디스크에서 `bootstrap.js`만 찾고 실제 파일인 `bootstrap.tsx`를 찾지 못해 하위 트리 스캔을 즉시 중단**합니다! 그 결과 `preloadRemotes`가 빈 배열(`[]`)이 되어 첫 접속 시 리모트 로딩을 기다리지 않고 `bootstrap.tsx`가 곧바로 실행되면서 `undefined` 에러가 터진 것입니다.
+      - **실무 정석 해결책 및 엔터프라이즈 표준 패턴 구분**:
+        | 구분 | 적용 패턴 | 현업 표준 여부 및 도입 목적 |
+        | :--- | :--- | :--- |
+        | **1. Lazy Singleton Getter** (`getProductsScopedStorage`) | 모듈 Top-Level에서 원격 팩토리 함수를 즉시 호출하지 않고 함수 호출 시점에 지연 생성 | **100% 엔터프라이즈 표준 정석** (MFE·SSR/CSR·트리셰이킹·단위 테스트 격리 공통 원칙) |
+        | **2. 상대 경로 `.js` 확장자 생략** (`import './App'`) | 프론트엔드 번들러(`moduleResolution: "bundler"`)에서 로컬 TS/TSX import 시 `.js` 확장자 생략 | **100% 프론트엔드 번들러 표준** (`NodeNext` 백엔드 전용 규칙과 분리하여 Vite/Webpack 플러그인 정적 분석기 호환성 보장) |
+        | **3. `main.ts`의 `Promise.all` 리모트 선행 프리로드** | `bootstrap` 동적 import 전에 필수 원격 서브패스들을 `Promise.all`로 병렬 프리로드 | **`@module-federation/vite` ESM 개발 서버 방어 + 초기 렌더링 Waterfall 단축(Preload) 기법** (Webpack/Rspack에서는 `import('./bootstrap')` 단독 사용만으로도 동작하나, Vite Dev 안정성 및 병렬 네트워크 로딩 최적화를 위해 현업에서도 자주 활용) |
+        ```ts
+        // src/main.ts — 리모트 병렬 선행 프리로드 후 bootstrap 마운트
+        void Promise.all([
+          import('remote_shared/utils'),
+          import('remote_shared/theme'),
+          import('remote_shared/ui'),
+        ]).then(() => import('./bootstrap'));
+        ```
+      - **💡 [기초 개념] 정적 AST 스캐너와 `AST vs React Virtual DOM` 차이**:
+        - **정적 AST 스캐너란?**: 코드를 실제로 실행(Run)하지 않고, 소스 코드 문법(`import ... from '...'` 등)을 구문 트리(AST)로 읽어내어 필요한 원격 모듈 목록을 미리 수집하는 빌드/개발 도구의 정적 분석기입니다.
+        - **AST vs Virtual DOM 비교**:
+
+          | 구분 | **AST (추상 구문 트리)** | **Virtual DOM (버츄얼 돔)** |
+          | :--- | :--- | :--- |
+          | **표현 대상** | 소스 코드 문법 글자 (`import`, `const`, `if`) | 화면에 그릴 UI 엘리먼트 (`<div>`, `<Button>`) |
+          | **동작 시점 & 주체** | 코드 실행 전 **빌드·컴파일 타임** (Vite, TypeScript, Biome) | 코드 실행 중 **브라우저 런타임** (React) |
+          | **핵심 목적** | 코드 미실행 상태에서 의존성 분석·TS→JS 변환·문법 검사 | 상태 변경 시 변경된 부분만 Diff해 실제 DOM 최소 갱신 |
 
 ---
 
@@ -110,6 +173,41 @@
      - **③ 공급자 서버 실행 시점과 로컬 디스크 캐시 유지 원리**:
        - 최초에 `@mf-types.zip`을 내려받거나 공급자의 타입이 변경되어 새로 갱신할 때는 공급자 서버(`remote-shared:3004`)가 떠 있어야(또는 빌드 산출물이 서빙 중이어야) 합니다.
        - 하지만 **일단 한 번 다운로드되어 `./@mf-types/` 폴더에 `.d.ts` 파일들이 풀리고 나면 해당 파일들은 내 디스크에 그대로 남아있기 때문에**, 이후 공급자 서버(`3004`)를 꺼놓아도 소비자 앱 단독으로 `tsc --noEmit` 타입 검사와 에디터 자동 완성이 100% 정상 동작합니다.
+     - **④ [트러블슈팅] 브라우저 콘솔의 `ws://127.0.0.1:16322 (dynamic-remote-type-hints-plugin)` WebSocket 연결 실패 오류 해결**:
+       - **증상**: `@module-federation/vite`에서 `dts` 옵션을 켜고 개발 서버를 실행하면 브라우저 콘솔에 `WebSocket connection to 'ws://127.0.0.1:16322/?WEB_SOCKET_CONNECT_MAGIC_ID=...' failed (dynamic-remote-type-hints-plugin.mjs)` 에러가 반복 출력되는 현상이 발생합니다.
+       - **원인**: `@module-federation/dts-plugin`은 런타임 코드에서 설정에 없는 리모트를 `loadRemote()` 등으로 동적 호출할 때 타입 획득 신호를 보내기 위해, 고정 포트(`DEFAULT_WEB_SOCKET_PORT = 16322`)로 WebSocket 접속을 시도하는 `dynamic-remote-type-hints-plugin.js`를 기본 주입합니다. 그러나 실제 `remote-shared(3004)`·`remote-products(3002)` 동시 기동 환경에서 `netstat`으로 확인한 결과 `16322` 포트에 `LISTENING` 중인 브로커 서버가 떠 있지 않은 상태에서 연결 대기(`SYN_SENT`)만 발생해 WebSocket 접속 실패로 이어집니다(Module Federation 이슈 #2840 등에서도 동일 현상 보고).
+       - **해결책 및 검증 결과 (`disableDynamicRemoteTypeHints` vs `disableHotTypesReload`)**:
+         - `vite.config.ts`의 `federation({ ... })` 옵션에 `dev: { disableDynamicRemoteTypeHints: true }`를 지정하면, 정적 `remotes` 구조에서는 불필요한 **브라우저 동적 리모트 힌트 WebSocket 플러그인 주입만 비활성화**됩니다.
+         - **실시간 타입 갱신(`Hot Types Reload`) 유지 실증 완료**: `disableHotTypesReload`는 기본값(`false`) 그대로 유지되므로, `disableDynamicRemoteTypeHints: true` 상태에서도 `remote-shared(3004)`와 `remote-products(3002)`를 동시 실행한 뒤 공급자 인터페이스(`contracts.ts`)를 수정하면 **약 2.5~3초 내에 `remote-products/@mf-types/remote_shared/`에 서버 재시작 없이 자동 반영·제거됨을 실증 확인**했습니다. *(단, 향후 `registerRemotes()`나 설정에 없는 리모트를 대상으로 `loadRemote()`를 도입할 때는 동적 타입 힌트 필요 여부를 재검토해야 합니다.)*
+         - 또한 로컬 진단 캐시 폴더인 `.mf/`는 `.gitignore`에 등록하여 머신별 절대 경로 로그(`.mf/diagnostics/latest.json`)가 Git에 추적되지 않게 격리합니다.
+
+     - **⑤ `@mf-types` 폴더 구조, 다중 앱 비충돌 원리 및 소비 별칭(`remotes` Alias) 커스터마이징**:
+       - **`@mf-types`는 플러그인 기본 규약**: `@mf-types` 및 `@mf-types.zip`은 개발자가 임의로 지은 이름이 아니라 `@module-federation/dts-plugin`의 기본 규약(`typesFolder: "@mf-types"`, `remoteTypesFolder: "@mf-types"`)입니다. (`dts` 설정의 `typesFolder` 옵션으로 변경할 수도 있으나, 특별한 이유가 없다면 기본값을 유지하고 `tsconfig.json`의 `"paths": { "*": ["./@mf-types/*"] }`로 연결하는 것이 표준입니다.)
+       - **여러 앱이 동일한 이름을 써도 충돌하지 않는 2중 격리**:
+         1. **서빙(공급) 포트 격리**: `remote-shared`는 `http://localhost:3004/@mf-types.zip`, `remote-products`는 `http://localhost:3002/@mf-types.zip`처럼 각자 독립 포트·도메인에서 서빙되므로 URL이 겹치지 않습니다.
+         2. **수신(소비) 하위 폴더 격리**: 소비자 앱은 내려받은 아카이브를 `./@mf-types/` 바로 아래에 풀지 않고 **`./@mf-types/<소비자 remotes 키>/`** 하위 폴더로 분리해 저장합니다. 따라서 `host-vite(3000)`에서 여러 리모트를 동시에 소비해도 `./@mf-types/remote_shared/`와 `./@mf-types/remote_products/`로 나뉘어 절대 덮어쓰지 않습니다. 양방향 앱(`remote-products`) 역시 자신이 서빙할 아카이브(`dist/@mf-types.zip`)와 자신이 소비할 타입(`./@mf-types/remote_shared/`)의 위치가 완전히 분리되어 있습니다.
+       - **하위 폴더명(`remote_shared`)의 결정 원리와 별칭(Alias) 커스터마이징**:
+         - `./@mf-types/` 아래에 생성되는 폴더 이름은 공급자의 컨테이너 `name` 자체가 아니라 **소비자 앱의 `vite.config.ts` 내 `remotes` 객체에 선언한 키(`remoteAlias`)**입니다. 플러그인이 타입을 내려받을 때 `apis.d.ts` 내부 플레이스홀더(`REMOTE_ALIAS_IDENTIFIER`)도 이 별칭으로 자동 치환합니다.
+         - 따라서 공급자(`remote-shared`)를 수정하지 않고도 소비자 쪽 `remotes` 키만 바꾸면 원하는 별칭으로 소비할 수 있습니다:
+           ```ts
+           // apps/remote-products/vite.config.ts
+           remotes: {
+             // 소비 별칭(Alias)을 'design_kit'으로 바꾸면 './@mf-types/design_kit/'에 저장됨
+             design_kit: {
+               type: 'module',
+               name: 'remote_shared', // 실제 공급자(3004) 컨테이너의 이름 (그대로 유지)
+               entry: 'http://localhost:3004/mf-manifest.json',
+               entryGlobalName: 'remote_shared', // 공급자 전역 엔트리 이름 (그대로 유지)
+               shareScope: 'default',
+             },
+           }
+           ```
+         - 단, 별칭을 변경했다면 코드 내 `import` 경로(`'design_kit/ui'`)와 단위 테스트용 `vitest.config.ts`의 `resolve.alias` 스텁 매핑도 같은 별칭으로 일치시켜야 합니다.
+         - 참고로 공급자 `name`과 `entryGlobalName`에 하이픈(`remote-shared`) 대신 언더스코어(`remote_shared`)를 사용하는 이유는, Module Federation 런타임이 이 값을 브라우저 `window` 전역 변수명 및 JS 식별자로 사용하기 때문입니다(JS 식별자에는 `-` 사용 불가).
+     - **⑥ Vite + Rspack 혼합 환경 및 CI/CD 운영 팁**:
+       - **공통 계약 우선**: `Vite`(`remote-shared`, `remote-products`, `host-vite`)와 `Rspack`(`remote-cart`, `host-rspack`)이 공존할 때도 별도 타입 복사 스크립트를 만들지 않고 공식 `mf-manifest.json` + `@mf-types.zip` 규약을 그대로 사용합니다.
+       - **Rspack 무한 재컴파일 루프 방어 (`watchOptions.ignored`)**: Rspack 기반 앱에서 `@mf-types` 폴더가 실시간 갱신될 때 파일 워처가 이를 소스 변경으로 감지해 반복 재컴파일을 유발한다면, Rspack 설정의 `watchOptions.ignored`에 `@mf-types` 경로를 제외 등록합니다.
+       - **개발 vs CI 에러 정책 분리**: 로컬 개발 중에는 `abortOnError: false`로 원격 앱 중단 시에도 독립 작업을 보호하되, 정식 타입 무결성을 검증해야 하는 CI 파이프라인에서는 `typesOnBuild: true`와 `abortOnError: true` 조합을 별도 검토할 수 있습니다.
 
 ---
 
@@ -151,14 +249,73 @@
 
 ---
 
-### #08. 호스트 라우터와 리모트 라우터의 `window.history` 충돌 문제
-* **왜 안 해본 사람은 모르나요?**
-  - 브라우저에는 주소창(`window.location` / `window.history`)이 단 하나뿐입니다.
-* **어떤 증상이 나타나나요?**
-  - 호스트도 최상위에서 `<BrowserRouter>`를 쓰고, 리모트(`products`)도 자기 내부에서 `<BrowserRouter>`를 중복으로 생성하면, 리모트 안에서 상품 상세(`/products/1`)를 클릭했을 때 호스트 라우터가 이를 인식하지 못하거나 브라우저 뒤로가기를 눌렀을 때 두 라우터가 동시에 반응해 히스토리가 꼬입니다.
-* **실무 해결책 (Phase 2 라우팅 학습 핵심)**:
-  - 앞서 Q8에서 배운 **진입점 분리 원리**를 그대로 적용합니다!
-  - 단독 실행 파일(`App.tsx`)에서만 `<BrowserRouter>`로 감싸고, 호스트로 노출되는 알맹이 컴포넌트(`ProductList.tsx`)는 `<BrowserRouter>`를 직접 생성하지 않고 호스트의 라우터 컨텍스트를 이어받거나 상대 경로/메모리 라우터를 사용합니다.
+### #08. 호스트 라우터와 리모트 라우터의 `window.history` 충돌 (BrowserHistory vs MemoryHistory 심층 해부)
+* **왜 안 해본 사람은 모르나요? (Next.js / TanStack Router 시대에도 MFE에서 이 문제가 터지는 이유)**
+  - 최신 웹 개발에서는 `Next.js`의 파일 기반 라우팅이나 `TanStack Router` 같은 완전한 타입 세이프 라우터를 쓰는 것이 일반적입니다.
+  - 하지만 엔터프라이즈 MFE(마이크로 프론트엔드) 실무에서는 독립 배포와 번들 런타임 제어권을 위해 **`Vite` 또는 `Rspack` 기반의 순수 CSR(Client-Side Rendering)**을 주로 채택합니다 (`Next.js`는 SSR 하이드레이션 타이밍과 프레임워크 런타임이 너무 무거워 런타임 원격 조립 시 심각한 결합 문제가 발생하기 때문).
+  - 그리고 라우팅 라이브러리가 무엇이든 간에(React Router든 최신 TanStack Router든 자체 라우터든), **브라우저 탭 전체에서 실제 주소창과 세션 히스토리(`window.history`, `window.location`, `popstate` 이벤트)는 물리적으로 단 1개뿐**이라는 하드웨어적 제약은 절대 변하지 않습니다.
+
+* **🔬 `BrowserHistory` vs `MemoryHistory` 내부 구조와 동작 메커니즘 심층 해부**:
+
+  | 비교 항목 | `BrowserHistory` (브라우저 주소창 바인딩) | `MemoryHistory` (순수 JS 메모리 격리) |
+  | :--- | :--- | :--- |
+  | **데이터 저장 위치** | **브라우저(C++) 내부의 탭 네비게이션 세션 스택** | **순수 자바스크립트 힙(Heap) 메모리의 배열 객체** |
+  | **내부 자료구조** | 브라우저 엔진 비공개 네이티브 스택 | `{ entries: ['/step1', '/step2'], index: 1 }` |
+  | **경로 이동 API** | `window.history.pushState(state, '', url)` 호출 | `entries.push(url); index++;` 단순 배열 연산 |
+  | **주소창(URL) 영향** | **실제 주소창 텍스트가 바뀜 (`localhost:3000/orders`)** | **주소창이 단 1글자도 바뀌지 않음 (`localhost:3000` 유지)** |
+  | **브라우저 뒤로가기 버튼** | 브라우저 툴바의 [←] 버튼 활성화 및 클릭 시 감지 | 브라우저 [←] 버튼은 반응 안 함 (컴포넌트 내부 버튼으로만 제어) |
+  | **전역 이벤트 발생** | **`window.addEventListener('popstate')` 전역 브로드캐스팅** | **전역 이벤트 0% (내부 Pub/Sub 이벤트만 조용히 발생)** |
+  | **새로고침(F5) 시 동작** | 변경된 URL로 웹 서버(Nginx)에 실제 HTTP GET 요청<br>*(SPA Rewrite `try_files $uri /index.html` 필수)* | 메모리가 초기화되어 처음 지정한 `initialEntries`('/')로 리셋 |
+  | **MFE에서의 역할** | **호스트(Host) 앱이 전체 화면을 조율할 때 독점 사용** | **리모트(Remote) 앱이 호스트 내부에서 위젯/모달/탭 렌더 시 사용** |
+
+* **어떤 증상이 나타나나요? (주소창 쟁탈전과 404 참사 메커니즘)**
+  1. **더블 팝스택(Double Popstate) 레이스 컨디션**:
+     - 호스트와 리모트가 둘 다 브라우저 주소창을 감시하는 라우터(`createBrowserHistory` / `BrowserRouter`)를 켜두면, 사용자가 브라우저 [뒤로가기]를 누를 때 전역 `popstate` 이벤트를 두 라우터가 동시에 수신합니다.
+     - 두 라우터가 각자의 히스토리 스택을 기준으로 동시에 주소를 되돌리면서 **뒤로가기가 2번 연속 실행되어 엉뚱한 페이지로 튕기거나 무한 루프**에 빠집니다.
+  2. **호스트 `basename` 무시와 404 Not Found 화면 덮어쓰기 참사**:
+     - 리모트 앱(상품 카탈로그) 내부에서 상세 페이지로 이동하려고 `navigate('/products/123')`를 호출해 실제 주소창을 변경합니다.
+     - 주소창 변경을 감지한 호스트 라우터는 자기 라우트 테이블에 `/products/123`이 등록되어 있지 않으므로 **"정의되지 않은 경로"로 판단하여 화면 전체를 404 에러 페이지로 덮어써 버립니다.**
+
+* **🏗️ MFE 공존 아키텍처 다이어그램**:
+  ```mermaid
+  flowchart TD
+      subgraph Browser["브라우저 전역 공간 (단 1개만 존재)"]
+          AddressBar["🌐 실제 주소창 URL: /dashboard<br/>(window.location / window.history)"]
+          PopstateEvt["⚡ window popstate 이벤트"]
+      end
+
+      subgraph HostApp["호스트 앱 (Host Dashboard)"]
+          HostRouter["🧭 호스트 라우터 (BrowserHistory)<br/>주소창을 독점 제어함"]
+      end
+
+      subgraph RemoteApp["리모트 앱 (Remote Products Widget)"]
+          RemoteMemory["📦 리모트 가상 라우터 (MemoryHistory)<br/>entries: ['/tab-info', '/tab-reviews']<br/>주소창을 전혀 건드리지 않고 메모리 안에서만 작동!"]
+      end
+
+      AddressBar <-->|양방향 동기화| HostRouter
+      PopstateEvt -->|호스트만 단독 수신| HostRouter
+      HostRouter -.->|Props / Event로 상태 전달| RemoteApp
+      RemoteMemory -.->|주소창과 완전 격리 (간섭 0%)| AddressBar
+  ```
+
+* **실무 해결책: 엔터프라이즈 MFE 라우팅 3대 아키텍처 패턴**:
+  1. **패턴 1. Props 주도형 (No-Router 패턴 — 실무 80% 권장)**:
+     - 리모트 앱 알맹이(`ProductList.tsx`)는 내부에 라우터를 일절 두지 않고 **순수 프레젠테이션 컴포넌트**로 유지합니다.
+     - 호스트가 주소창 URL 파싱(`/:productId`)을 전담하고, 리모트에는 `productId`를 단순 Props로 전달하며, 리모트의 상세 이동 클릭은 콜백 함수(`onSelectProduct`)로 호스트에 위임합니다.
+  2. **패턴 2. 메모리 히스토리 격리 (`createMemoryHistory` / `MemoryRouter` 패턴)**:
+     - 리모트가 내부에 복잡한 다단계 폼(1단계 배송지 -> 2단계 결제)이나 상세 탭 이동을 품어야 할 때, 리모트 내부 라우터에는 브라우저 주소창을 전혀 건드리지 않는 **`MemoryHistory`**를 주입합니다.
+     - 실제 브라우저 주소창은 변경되지 않고 자바스크립트 메모리 배열(`['/step1', '/step2']`) 안에서만 가상으로 경로가 전환되므로 호스트와의 충돌이 100% 원천 차단됩니다.
+     ```tsx
+     // 리모트 진입점 분기 패턴 (Standalone vs Hosted)
+     export function ProductWidget({ isStandalone }: { isStandalone?: boolean }) {
+       // 단독 실행(3002)일 때만 BrowserHistory 사용, 호스트에 들어갈 땐 MemoryHistory 강제!
+       const history = isStandalone ? createBrowserHistory() : createMemoryHistory();
+       return <Router history={history}><ProductRoutes /></Router>;
+     }
+     ```
+  3. **패턴 3. 양방향 히스토리 동기화 어댑터 (`Bidirectional History Sync` 패턴)**:
+     - 리모트가 단독 실행(`Standalone`, Port 3002)될 때는 `BrowserHistory`로 주소창을 직접 움직이고,
+     - 호스트에 결합될 때는 `MemoryHistory`로 띄운 뒤, 호스트의 `history.listen` 이벤트와 리모트의 메모리 히스토리를 브릿지 어댑터로 연결하여 필요한 하위 서브패스만 선별적으로 주소창과 맞추는 고급 패턴입니다.
 
 ---
 
@@ -185,16 +342,20 @@
 
 ## 영역 D. 테스트 · 환경 변수 · 무중단 배포 · 개발 경험 이슈 (#11 ~ #14)
 
-### #11. `Vitest` 단독 TDD 실행 시 리모트 네트워크 모듈(`remote_shared/*`) 로딩 실패
+### #11. `Vitest` 단독 TDD 실행 vs 브라우저 단독 실행(`#RUNTIME-003`)의 구조적 차이와 MSW 이원화
 * **왜 안 해본 사람은 모르나요?**
-  - 물리적 멀티레포에서는 다른 앱 서버(`3004`)를 켜지 않고 내 앱(`3002`) 폴더 안에서만 `pnpm test`를 돌려야 합니다.
+  - 물리적 멀티레포에서는 다른 앱 서버(`3004`, `4000`)를 켜지 않고 내 앱(`3002`) 폴더 안에서만 `pnpm test`를 돌려야 합니다.
+  - 반대로 브라우저에서 `http://localhost:3002`만 단독으로 열었을 때는 왜 `Vitest`처럼 혼자 동작하지 않고 `[Federation Runtime] #RUNTIME-003: Failed to get manifest (http://localhost:3004/mf-manifest.json)` 에러가 발생하는지 혼동하기 쉽습니다.
 * **어떤 증상이 나타나나요?**
-  - `Vitest`는 브라우저 런타임이 아니므로 `import { Button } from 'remote_shared/ui'`를 만나는 순간 `Cannot find module 'remote_shared/ui'` 에러를 내며 테스트가 즉시 중단됩니다.
-* **실무 해결책 (`vitest.config.ts` 로컬 스텁 Alias 매핑 + Phase 1 런타임 MF 스모크 테스트)**:
-  1. **단위·통합 TDD용 로컬 스텁 매핑**: 각 마이크로 앱의 `vitest.config.ts`에 `remote_shared/*`, `remote_products/*` 등의 경로를 해당 앱 내부의 테스트용 경량 스텁(`src/testing/stubs/`)으로 연결하는 `alias` 설정을 기본 탑재합니다.
+  1. **`Vitest` 환경**: 브라우저 런타임이 아니므로 `import { Button } from 'remote_shared/ui'`를 만나는 순간 `Cannot find module 'remote_shared/ui'` 에러를 내며 테스트가 중단됩니다.
+  2. **브라우저(`localhost:3002`) 단독 접속 환경**: 일반 `npm`이나 `workspace:*` 패키지는 빌드 타임에 코드가 물리적으로 합쳐지지만, **Module Federation은 런타임(페이지 진입·새로고침 시점)마다 브라우저가 `http://localhost:3004/mf-manifest.json`으로 실시간 HTTP 네트워크 요청을 보내 JS 청크를 다운로드**합니다. 따라서 `3004(remote-shared)` 서버가 꺼져 있으면 브라우저가 공통 UI/테마 청크를 가져오지 못해 `#RUNTIME-003 (TypeError: Failed to fetch)` 에러가 발생합니다. (만약 `shared` 빌드 산출물을 각 앱의 `public/`에 복사해 정적 번들링하면 MFE의 최대 목적인 **'리모트 단독 배포 시 전사 즉시 반영(독립 배포)'**이 무너지게 됩니다.)
+* **실무 해결책 (`vitest.config.ts` 로컬 스텁 + MSW Node/Browser 역할 분리 + 런타임 스모크 테스트)**:
+  1. **`Vitest` 단위·통합 TDD 격리 (`msw/node` + 로컬 스텁 Alias)**:
+     - 각 마이크로 앱의 `vitest.config.ts`에 `remote_shared/*` 경로를 앱 내부의 테스트용 경량 스텁(`src/testing/stubs/`)으로 연결하는 `alias`를 설정합니다.
+     - API 모킹은 Node.js의 `fetch`/`http` 계층을 가로채는 **`msw/node`(`setupServer`)**를 `src/testing/setup.ts`에서 실행합니다. (브라우저 Service Worker 기반인 `msw/browser`(`setupWorker`)와 달리 Node 테스트 런타임 전용으로 동작하므로 `3004`, `4000` 서버 없이도 100% 독립 테스트가 통과합니다.)
   2. **스텁 모킹의 맹점을 보완하는 '런타임 Module Federation 스모크 테스트 (`Step 1.6`)'**:
-     - `Vitest`는 리모트를 로컬 스텁으로 대체하므로, 만약 실제 번들러 설정(`vite.config.ts` / `rsbuild.config.ts`)에서 `remoteEntry.js` 경로 오타, `CORS` 누락, 싱글톤 협상 에러가 발생하더라도 `Vitest`는 통과(`Green`)해버릴 수 있습니다.
-     - 따라서 Phase 3의 본격적인 `Playwright` 멀티 시나리오 E2E 이전이라도, **Phase 1 끝에 실제 6개 서버를 띄워 `Host → remoteEntry.js → Remote → remote-shared → 실제 렌더링` 연결이 깨지지 않았는지 확인하는 얇은 런타임 스모크 테스트(`scripts/verify-mfe-smoke.mjs`)를 필수로 실행**하여 스텁과 실제 런타임 사이의 간극을 완벽히 메웁니다.
+     - `Vitest`는 리모트를 로컬 스텁으로 대체하므로, 실제 번들러 설정(`vite.config.ts` / `rsbuild.config.ts`)에서 `remoteEntry.js` 경로 오타, `CORS` 누락, 싱글톤 협상 에러가 발생하더라도 `Vitest`는 통과(`Green`)해버릴 수 있습니다.
+     - 따라서 Phase 3의 본격적인 `Playwright` 멀티 시나리오 E2E 이전이라도, **Phase 1 끝에 실제 6개 서버를 띄워 `Host → remoteEntry.js → Remote → remote-shared → 실제 렌더링` 연결이 깨지지 않았는지 확인하는 런타임 스모크 테스트(`scripts/verify-mfe-smoke.mjs`)를 필수로 실행**하여 스텁과 실제 런타임 사이의 간극을 완벽히 메웁니다.
 
 ---
 
@@ -220,9 +381,18 @@
 
 ---
 
-### #14. 호스트↔리모트 경계에서의 `HMR`(코드 수정 실시간 반영) 메커니즘 이해
+### #14. 호스트↔리모트 경계에서의 `HMR` 메커니즘과 실무 로컬 개발·디버깅 (`Module Federation DevTools`)
 * **왜 안 해본 사람은 모르나요?**
-  - 단일 앱에서는 코드를 고치면 0.1초 만에 화면이 바뀌지만, MFE에서는 `3002`번(Vite 리모트)이나 `3003`번(Rspack 리모트)의 코드를 고쳤을 때 내가 보고 있는 `3000`번(호스트) 브라우저 화면이 어떻게 그걸 알아채고 갱신하는지 궁금해집니다.
-* **동작 원리 및 해결책**:
-  - 과거 Module Federation 1.0에서는 리모트 코드를 고치면 호스트 브라우저를 수동으로 새로고침해야 하는 불편함이 있었습니다.
-  - 우리가 사용하는 **Module Federation 2.0 (`@module-federation/vite` & `@module-federation/rsbuild-plugin`)**은 `mf-manifest.json`과 개발 서버 간 웹소켓 신호를 통해 리모트 코드가 수정되면 호스트 화면에서도 자동으로 변경을 감지해 리로드해 주며, 단독 개발 시에는 각 리모트 포트(`3002`, `3003`, `3004`)에서 초고속 자체 HMR을 그대로 활용할 수 있습니다.
+  - 단일 앱에서는 코드를 고치면 0.1초 만에 화면이 바뀌지만, MFE에서는 ① 리모트 코드 수정이 호스트 화면에 어떻게 반영되는지, ② 마이크로 앱이 10~20개로 늘어났을 때 내 로컬 PC에서 모든 서버를 다 띄우지 않고 어떻게 개발·디버깅하는지 실무 워크플로우를 알기 어렵습니다.
+* **동작 원리 및 실무 해결책**:
+  1. **Module Federation 2.0 `mf-manifest.json` 기반 HMR**:
+     - 과거 Module Federation 1.0에서는 리모트 코드를 고치면 호스트 브라우저를 수동으로 새로고침해야 하는 불편함이 있었습니다.
+     - 우리가 사용하는 **Module Federation 2.0 (`@module-federation/vite` & `@module-federation/rsbuild-plugin`)**은 `mf-manifest.json`과 개발 서버 간 웹소켓 신호를 통해 리모트 코드가 수정되면 호스트 화면에서도 자동으로 변경을 감지해 리로드해 주며, 단독 개발 시에는 각 리모트 포트(`3002`, `3003`, `3004`)에서 초고속 자체 HMR을 그대로 활용할 수 있습니다.
+  2. **공식 [Module Federation DevTools (Chrome 확장 프로그램)](https://chromewebstore.google.com/detail/module-federation/aeoilchhomapofiopejjlecddfldpeom)을 활용한 실시간 프록시 및 디버깅**:
+     - 우리 프로젝트는 `@module-federation/vite`를 통해 `mf-manifest.json`을 생성하므로, 공식 Chrome 확장 프로그램과 즉시 연동됩니다.
+     - **① Live Module Proxying (실시간 URL 오버라이드)**: 실무에서 수십 개의 리모트 앱이 사내 개발 서버(Dev CDN)에 배포되어 있을 때, 내 PC에는 작업 중인 `remote-products(3002)` 딱 1개만 띄우고 Chrome DevTools의 **[Module Federation]** 패널에서 `remote_products`의 매니페스트 주소만 `http://localhost:3002/mf-manifest.json`으로 클릭해 오버라이드(바꿔치기)합니다. 코드 한 줄 바꾸지 않고도 배포된 호스트 화면 위에서 내 로컬 모듈을 실시간으로 조합해 테스트할 수 있습니다.
+     - **② Shared Scope 싱글톤 감사**: `react`, `react-dom`, `@tanstack/react-query`가 호스트와 리모트 사이에서 정확히 단 1개의 싱글톤으로 협상되었는지, 버전 불일치로 중복 로드(Dual Instance)가 발생했는지 시각적으로 검증합니다.
+     - **③ Hierarchy Graph & Loading Trace**: 호스트-리모트 간 의존성 트리와 매니페스트/청크 네트워크 로딩 타이밍을 추적합니다.
+  3. **대규모 엔터프라이즈 MFE 오케스트레이션 생태계 참고 도구**:
+     - **Turborepo TUI (`pnpm dev`)**: 로컬에서 4~6개 내외의 서비스를 동시에 띄울 때는 `turbo.json`의 `"ui": "tui"` 모드를 사용해 터미널에서 키보드 방향키(`↑`/`↓`)로 앱별 로그를 섞이지 않게 분리 확인하고 특정 앱만 재시작(`r`)합니다.
+     - **Zephyr Cloud / 로컬 미니 CDN 프록시**: 앱이 수십 개 이상인 대규모 조직에서는 Module Federation 전용 엣지 배포·버전 관리 플랫폼인 `Zephyr Cloud`(`zephyr-rspack-plugin`)를 사용하거나, 로컬 Nginx/Node 정적 서버에 빌드 산출물을 모아 서빙하는 로컬 미니 CDN 프록시 패턴, 또는 `Requestly`(브라우저 네트워크 리다이렉트), `import-map-overrides`(Single-SPA 진영) 등을 조합해 로컬 리소스 소모를 최소화합니다.

@@ -1,8 +1,8 @@
 {
-  "scope": "root",
-  "path": ".",
-  "branch": "root/chore/refine-workflow-gates",
-  "featureDir": "docs/features/20261107-refine-workflow-gates",
+  "scope": "products",
+  "path": "apps/remote-products",
+  "branch": "products/feat/catalog-list",
+  "featureDir": "apps/remote-products/docs/features/20261107-catalog-list",
   "currentStep": 5,
   "isDocsOnly": false
 }

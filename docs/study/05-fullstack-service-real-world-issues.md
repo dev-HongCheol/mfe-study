@@ -32,10 +32,35 @@
 ### #01. 버튼 연타(Double-Click) 중복 요청과 조회·수정 응답 역전 (`Race Condition`)
 * **왜 문제가 되나요?**
   - 사용자가 [장바구니 담기] 버튼을 빠르게 2~3번 연타하면 `POST /api/cart` 요청이 중복 전송됩니다.
-  - 더 까다로운 문제는 **응답 역전(Out-of-Order Response)**입니다: 이미 진행 중이던 옛날 장바구니 조회(`GET #1`) 응답이 네트워크 지연으로 인해 방금 성공한 상품 추가(`POST #2`)보다 **0.1초 늦게 도착하면, 화면이 방금 담은 상품이 없는 옛날 데이터로 덮어써집니다.**
+  - 더 까다로운 문제는 **응답 역전(Out-of-Order Response)**입니다. 네트워크에서는 먼저 보낸 요청이 나중에 도착할 수 있어, 아래 타임라인처럼 **방금 성공한 최신 데이터가 구버전 조회 응답으로 되돌려지는 참사**가 발생합니다:
+    1. **`0.0초` (구버전 조회 출발)**: 장바구니 위젯(`remote-cart`)이 창 포커스 복귀 등으로 `GET /api/cart`(**요청 #1**)를 보냅니다. *(네트워크 지연으로 2초 소요 가정)*
+    2. **`0.5초` (장바구니 담기 클릭)**: `요청 #1`이 진행 중인 상태에서 사용자가 상품 앱(`remote-products`)에서 `[장바구니 담기]`를 눌러 `POST /api/cart`(**요청 #2**)를 보냅니다.
+    3. **`0.8초` (담기 성공 & 최신 반영)**: `요청 #2(POST)`가 먼저 성공해 DB에 **상품 1개**가 저장되고, 화면에도 **상품 1개**가 정상 표시됩니다.
+    4. **`2.0초` (💥 구버전 응답 뒤늦게 도착)**: `0.0초`에 출발했던 `요청 #1(GET)`이 당시 상태인 **`상품 0개`** 데이터를 들고 2초 만에 도착합니다.
+    5. **결과 (역전 참사)**: TanStack Query가 시간순이 아닌 **방금 도착한 응답**을 최신 상태로 인식해 캐시(`['cart']`)에 덮어쓰면서, **방금 담은 상품이 화면에서 갑자기 사라지는 버그**가 터집니다.
 * **실무 해결 아키텍처**:
   1. `useMutation`의 `isPending` 상태를 버튼의 `disabled` 및 `aria-busy`에 즉시 바인딩하여 물리적 중복 클릭을 막습니다.
-  2. `TanStack Query`의 `queryFn: ({ signal }) => httpClient.get('cart', { signal }).json()`에 **`ky`의 `signal`(`AbortSignal`)**을 연결하고, 뮤테이션 시작 시(`onMutate`) `await queryClient.cancelQueries({ queryKey: ['cart'] })`를 호출하여 진행 중이던 구버전 `GET` 요청을 네트워크 레벨에서 즉시 취소합니다.
+  2. `TanStack Query`의 `queryFn: ({ signal }) => httpClient.get('cart', { signal }).json()`에 **`ky`의 `signal`(`AbortSignal`)**을 연결하고, 뮤테이션 시작 직전(`onMutate`)에 `await queryClient.cancelQueries({ queryKey: ['cart'] })`를 호출합니다.
+     - **`cancelQueries`의 2중 방어**: ① 진행 중이던 구버전 `GET` 요청을 `AbortSignal`로 네트워크 레벨에서 즉시 중단시키고, ② 설령 이미 응답이 돌아오더라도 TanStack Query 캐시에 반영하지 않고 폐기합니다.
+     - **MFE `Mode B` (`sharedQueryClient`) 필수성**: `remote-products(3002)`와 `remote-cart(3003)`가 단일 `sharedQueryClient` 캐시를 함께 쓰는 `Mode B`에서는 두 앱이 동시에 같은 `['cart']` 캐시에 접근하므로, 수정(`POST`) 출발 전 `cancelQueries` 호출이 필수입니다.
+     ```ts
+     // apps/remote-products — Mode B 공유 캐시 수정 시 응답 역전 원천 차단 패턴
+     useMutation({
+       mutationFn: postAddToCart,
+       onMutate: async () => {
+         // 1) 진행 중이던 구버전 장바구니 GET 요청 즉시 취소 & 결과 폐기
+         if (syncMode === 'mode-b-query') {
+           await sharedQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
+         }
+       },
+       onSuccess: async () => {
+         // 2) 취소 정리 후 최신 데이터로만 재조회 트리거
+         if (syncMode === 'mode-b-query') {
+           await sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+         }
+       },
+     });
+     ```
 
 ### #02. `Suspense` 환경에서 병렬 API 요청이 직렬 폭포수(`Request Waterfall`)로 변하는 현상
 * **왜 문제가 되나요?**
@@ -163,8 +188,26 @@
        2. **`standalone`은 실행 형태일 뿐 비즈니스 도메인이 아님**: 리모트 앱의 단독 실행(`standalone`)은 개발·테스트 편의성을 위한 실행 방식이지, 고객의 장바구니 데이터가 가져야 할 도메인 속성이 아닙니다.
      - **실무에서는 이 요구사항을 어떻게 해결하나요? (3대 실무 정석 패턴)**:
        1. **비즈니스 유입 경로(채널)가 필요한 경우**: 기술 스택 이름이 아니라 비즈니스 도메인 채널(예: `channel`: `'main-mall'`, `'partner-portal'`, `'mobile-web'`, `'ios-app'`)을 저장합니다.
-       2. **개발·디버깅 및 클라이언트 환경 추적이 필요한 경우**: 비즈니스 테이블(`cart_items`)에 컬럼을 만들지 않고, HTTP 요청 헤더(`X-Client-App`, `User-Agent`)에 담아 보내 **서버 액세스 로그나 APM/텔레메트리(`Sentry`, `Datadog` 등)**에만 기록합니다.
-       3. **프론트엔드 MFE 간 실시간 출처 표시만 필요한 경우**: DB에 영구 저장하지 않고 프론트엔드 런타임 이벤트(`CustomEvent` 페이로드)나 `MfeInspector` 디버거 메모리 상태로만 주고받습니다.
+       2. **개발·디버깅 및 클라이언트 환경 추적이 필요한 경우 (`Mutation Input` 순수성 유지 + `HTTP Header` 인터셉터 분리)**:
+          - 프론트엔드 도메인 모델(`AddToCartMutationInput`)과 API 요청 바디(`POST /api/cart` JSON)에는 순수 비즈니스 데이터(`userId`, `productId`, `quantity`)만 남기고, `hostType` 같은 실행 환경 정보는 절대 인자로 끌고 다니지 않습니다.
+          - 대신 공통 HTTP 클라이언트(`createApiClient`)의 `beforeRequest` 훅(인터셉터)에서 `X-Client-Host`, `X-App-Version` 같은 HTTP 헤더로 자동 주입하고, 백엔드는 이를 DB 테이블(`cart_items`)이 아니라 **서버 액세스 로그나 APM/텔레메트리(`Sentry`, `Datadog` 등)**에만 기록합니다.
+          ```ts
+          // ✅ 실무 표준: 도메인 Mutation Input과 API Body는 순수하게 유지하고, 환경 메타데이터는 HTTP 헤더로 분리
+          // 1) 공통 HTTP 클라이언트 (createApiClient)
+          const apiClient = ky.create({
+            hooks: {
+              beforeRequest: [
+                (request) => {
+                  request.headers.set('X-Client-Host', getRuntimeHostOrigin());
+                },
+              ],
+            },
+          });
+
+          // 2) 도메인 API / Mutation 호출부 (hostType 전달 불필요)
+          addToCart({ userId, productId, quantity });
+          ```
+       3. **프론트엔드 MFE 간 실시간 출처 표시만 필요한 경우**: DB에 영구 저장하지 않고 프론트엔드 런타임 Context, 이벤트(`CustomEvent` 페이로드), 또는 `MfeInspector` 디버거 메모리 상태로만 주고받습니다.
      - **본 스터디 프로젝트에서 현행 유지(`added_from_host`)한 이유 (학습용 트레이드오프)**:
        - 본 워크스페이스는 `host-vite(:3000)`, `host-rspack(:3001)`, 그리고 각 리모트의 `standalone(:3002, :3003)` 등 **4개의 서로 다른 프론트엔드 런타임이 단일 SQLite DB(`:4000`)를 공유**하는 MFE 비교 실험실입니다.
        - 사용자가 장바구니 화면을 열었을 때 *"방금 내가 Vite 호스트에서 담은 상품이 Rspack 호스트와 Standalone 화면에서도 똑같이 보이는구나!"*를 UI 배지(`Badge`)로 한눈에 확인하도록 돕는 **학습·시각화 전용 장치**로만 허용했으며, 실무 설계 시에는 도메인 테이블에서 분리해야 합니다.
@@ -222,12 +265,49 @@
 * **실무 해결 아키텍처**:
   - `remote-shared`의 노출 경로를 역할별로 엄격히 분리(`./ui`, `./theme`, `./utils`)하고, 내부 의존성은 무조건 **`utils`(최하단) -> `theme`(중간) -> `ui`(최상단)** 단방향으로만 흐르도록 강제합니다.
 
-### #10. 네트워크·이벤트·스토리지 데이터를 `as Type`으로만 믿었다가 런타임에 터지는 현상
+### #10. 네트워크·이벤트·스토리지 데이터를 `as Type`으로만 믿었다가 런타임에 터지는 현상 & `RESPONSE_SCHEMA_INVALID` 실무 디버깅 아키텍처
 * **왜 문제가 되나요?**
   - TypeScript의 `as CartItem[]`이나 `interface`는 빌드 후 런타임 JS 코드에서는 완전히 사라집니다.
   - 다른 마이크로 앱이 `CustomEvent`로 잘못된 형태의 페이로드를 보냈거나, `localStorage`에 예전 스키마의 데이터가 남아 있을 때 검증 없이 프로퍼티에 접근하면 즉시 화면이 하얗게 죽습니다.
-* **실무 해결 아키텍처 (경계 데이터 `Zod` 런타임 스키마 검증 & `React Hook Form` 연동)**:
-  - 외부와 맞닿는 3대 경계(① 백엔드 API 요청/응답, ② `mfeEventBus` 이벤트 페이로드, ③ `localStorage` 읽기)에는 **`zod` (`safeParse`)** 런타임 스키마 검증을 적용하여 데이터가 오염되었더라도 안전하게 폴백 처리하며, 사용자 입력 폼에는 **`react-hook-form` + `@hookform/resolvers/zod`(`zodResolver`)**를 결합해 클라이언트-서버 스키마를 일원화합니다.
+* **🔥 [실전 심화] 왜 단순히 `"서버 응답 데이터 형식이 계약과 일치하지 않습니다 (RESPONSE_SCHEMA_INVALID)"`라고만 띄우면 실무에서 디버깅 재앙이 되는가?**:
+  - **개발자가 겪는 3중 맹점**:
+    1. **브라우저 Network 탭에서는 `200 OK` 정상으로 표시됨**: 백엔드 서버는 정상 응답을 내려주었으므로 F12 개발자 도구의 Network 탭을 열어도 빨간색 실패 요청(`400`/`500`)이 없고 모두 초록색 `200 OK`로 보입니다.
+    2. **TanStack Query v5의 무음(Silent) 에러 처리**: TanStack Query v4까지는 쿼리 실패 시 브라우저 콘솔에 자동으로 에러를 찍어주었으나, **v5부터는 콘솔 자동 로깅을 완전히 제거**하고 `query.error` 상태에만 조용히 담습니다.
+    3. **대규모 DTO 스키마에서 육안 대조 불가능**: `unwrapApiResponse`가 `ZodError.issues` 상세 내역을 `originalError` 속성에 숨기고 겉 `message`에 추상적인 문구만 넣으면, 필드가 수십 개이고 API가 수백 개인 실제 서비스에서는 어떤 API의 몇 번째 아이템의 무슨 필드가 문제인지 찾는 데 엄청난 시간이 소모됩니다.
+* **실무 해결 아키텍처 (경계 데이터 `Zod` 검증 + `ZodError.issues` 좌표 추출 + `DEV` / `PROD` 환경별 이원화)**:
+  1. **외부 3대 경계 `safeParse` 검증 및 Tolerant Reader(관대한 소비자) 원칙**:
+     - 외부와 맞닿는 3대 경계(① 백엔드 API 요청/응답, ② `mfeEventBus` 이벤트 페이로드, ③ `localStorage` 읽기)에는 `zod` (`safeParse`) 런타임 스키마 검증을 적용합니다.
+     - 이때 마틴 파울러의 **Tolerant Reader 원칙**에 따라, 프론트엔드 화면 렌더링에 실제로 사용하는 필수 필드만 엄격히 검증하고 미사용 부가 메타데이터는 스키마에 넣지 않거나 `.optional()`로 선언하여 불필요한 스키마 결합도를 낮춥니다.
+  2. **`ZodError.issues` 기반 실패 필드 좌표(`path`, `code`, `message`) 구조화 추출**:
+     - 스키마 검증 실패 시 `originalError.issues` 배열을 파싱하여 **`[0].createdAt — Invalid input: expected string, received undefined`**처럼 정확히 몇 번째 데이터의 어느 필드 경로(`path`)가 왜 실패했는지 즉시 문자열/객체로 추출합니다.
+  3. **환경별(`DEV` vs `PROD`) 에러 표시 및 로깅 이원화 아키텍처**:
+     | 구분 | 개발 환경 (`import.meta.env.DEV === true`) | 운영 환경 (`import.meta.env.PROD === true`) |
+     | :--- | :--- | :--- |
+     | **화면(UI) 에러 배너** | 기본 에러 메시지 하단에 **`[DEV 상세 진단 - 스키마 불일치 필드]`** 블록을 렌더링하여 실패한 필드 경로(`[0].createdAt`)와 사유를 화면에 즉시 표시 | 내부 DB/스키마 필드명 노출(보안 위협)을 차단하고 사용자 친화적 안내 문구만 깔끔하게 표시 |
+     | **브라우저 F12 Console** | `console.error`로 구조화된 `schemaIssues` 배열 및 원본 에러(`rawError`)를 자동 출력하여 F12 콘솔에서 1초 만에 원인 파악 | 브라우저 콘솔 출력 생략 (사내 모니터링·Sentry/Datadog RUM 파이프라인으로만 `zod_issues` 전송) |
+     ```ts
+     // 실무 표준 패턴: ZodError.issues 좌표 추출 및 환경별(DEV vs PROD) 리포트 이원화
+     export function formatCatalogErrorReport(
+       error: NormalizedApiError,
+       isDev: boolean = import.meta.env.DEV,
+     ): CatalogErrorReport {
+       const isSchemaInvalid = error.code === 'RESPONSE_SCHEMA_INVALID';
+       if (!isDev) {
+         return {
+           code: error.code,
+           userMessage: isSchemaInvalid
+             ? '데이터 형식이 일시적으로 일치하지 않습니다. 잠시 후 다시 시도해 주세요.'
+             : error.message,
+           devDetails: [], // PROD에서는 내부 스키마 경로를 절대 UI에 노출하지 않음
+         };
+       }
+       return {
+         code: error.code,
+         userMessage: error.message,
+         devDetails: isSchemaInvalid ? extractSchemaIssues(error.originalError) : [],
+       };
+     }
+     ```
 
 ### #11. 공통 컴포넌트의 과도한 추상화(`Props` 폭발)로 인한 유지보수 불가
 * **왜 문제가 되나요?**

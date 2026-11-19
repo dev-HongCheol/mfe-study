@@ -74,6 +74,8 @@ pnpm dev
 4. **[Study 04. MFE 미경험자는 미리 알 수 없는 14대 실전 이슈와 해결 아키텍처](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md)**: 싱글톤 `eager` 에러, 에셋 404, 다중 포트 `CORS`, 전역 CSS Reset 참사, `z-index` 전쟁, 좀비 이벤트 리스너, 런타임 MF 스모크 테스트 등
 5. **[Study 05. 풀스택 서비스 구현 16대 실전 이슈와 해결 아키텍처](./docs/study/05-fullstack-service-real-world-issues.md)**: `Race Condition`(`ky` + `AbortSignal`), `Waterfall` 방지, `node:sqlite` 외래키 `PRAGMA`, 원자적 `UPSERT`, `Zod` + `React Hook Form` 경계 검증, `CLS` 방지 등
 6. **[Study 06. 루트 워크스페이스 및 AI 하네스 초기 세팅 A-to-Z 가이드](./docs/study/06-workspace-and-harness-setup-guide.md)**: 빈 폴더부터 따라 치는 명령어(`Corepack`, `Git`, `pnpm catalog:`, `Biome`, `Lefthook`, `Antigravity Hooks`, `gh CLI`) 및 설정 옵션 상세 해설
+7. **[Study 07. JavaScript 클로저·참조 동일성과 React `useRef` 최신 핸들러 패턴](./docs/study/07-js-and-react-closure-ref-patterns.md)**: 프로젝트 비의존 순수 JS·React 샘플 코드로 배우는 함수 참조 동일성, Stale Closure 재현 및 해결, `useState` vs `useRef`, Latest Ref Pattern 완벽 가이드
+8. **[Study 08. JavaScript `AbortController` · `AbortSignal`과 React 비동기 취소 패턴](./docs/study/08-abort-signal-and-async-cancellation.md)**: 순수 JS·React 독립 샘플로 배우는 `AbortController` vs `AbortSignal` 구조, `'abort'` 이벤트 기반 즉시 취소(`delayWithSignal`), `useEffect` Race Condition 방지 및 TanStack Query `signal` 연동 원리
 
 ### 📝 표준 작업 템플릿 (`docs/templates/`)
 - **[todo.template.md](./docs/templates/todo.template.md)**: 마이크로 앱별 `docs/todo.md` 생성 템플릿
