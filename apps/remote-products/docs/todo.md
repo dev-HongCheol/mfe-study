@@ -24,14 +24,17 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- *현재 진행 중인 작업이 없습니다.*
+- [-] **[`20261119-remove-ark-type-shim`](./features/20261119-remove-ark-type-shim/01-plan-and-design.md)**: [Step 1.2/1.3 후속 정리] `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(10~89행) 제거 및 갱신된 `@mf-types` 기반 무-Shim 소비 검증 (`Port 3002`)
+  - **작업 브랜치**: `products/chore/remove-ark-type-shim` (`Scope: products`)
+  - **설계 문서**: [01-plan-and-design.md](./features/20261119-remove-ark-type-shim/01-plan-and-design.md)
+  - **TDD 명세**: [02-tdd-spec.md](./features/20261119-remove-ark-type-shim/02-tdd-spec.md)
+  - **코드 리뷰**: [03-code-review.md](./features/20261119-remove-ark-type-shim/03-code-review.md)
 
 ---
 
 ## 📝 3. 예정된 작업 목록 (백로그)
 > 앞으로 이 서비스 스코프에서 진행할 작업 목록입니다. 작업 시작 시 `features/YYYYMMDD-<작업명>/` 폴더를 생성하고 위 섹션으로 이동합니다.
 
-- [ ] **[Step 1.2/1.3 후속 정리] `src/vite-env.d.ts` 내 `@ark-ui/react/*` 타입 Shim 제거**: `remote-shared`(`shared` 스코프)에서 UI 노출 Props 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환) 완료 후, 갱신된 `@mf-types`를 반영하고 [`src/vite-env.d.ts`](../src/vite-env.d.ts)의 임시 `declare module` 블록(10~89행) 제거 ([`Study 09`](../../../docs/study/09-mfe-shared-types-and-design-system-encapsulation.md))
 - [ ] **[Phase 2 - Step 2.1] 상품 상세 하위 라우트(`/products/:id`) 및 호스트 라우터 히스토리 동기화**: 단독 실행(`BrowserRouter`)과 호스트 결합(하위/메모리 라우터) 시 `window.history` 충돌 방지 라우팅 구현
 - [ ] **[Phase 3 - Step 3.3] 상품 리모트 에러 출처 메타데이터(`moduleMetadata`) 연동**: 분산 마이크로 앱 콜스택 추적 실험 연동
 
