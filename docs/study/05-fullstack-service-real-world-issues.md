@@ -13,7 +13,7 @@
 | **1. 프론트엔드**<br>(React / Query) | **#03.** 잘못된 `key` 부여 및 불필요한 `useEffect` 파생 상태 동기화 버그 | 리스트 갱신 / 합계 계산 | DB 고유 ID `key` 고정 + 렌더링 중 파생 상태(`Derived State`) 계산 |
 | **1. 프론트엔드**<br>(React / Query) | **#04.** 시간대(`UTC` vs `KST`) 불일치 및 부동소수점 금액 계산 오차 | 주문 시간 / 할인 금액 표시 | 정수(원 단위) 연산 + `Intl.NumberFormat` (`formatCurrency`) |
 | **2. 백엔드·DB**<br>(Express / SQLite) | **#05.** SQLite 외래키 기본 비활성화와 주석(`COMMENT`) 부재 이슈 | 유령 데이터 누적 / 스키마 의도 유실 | `PRAGMA foreign_keys = ON`, `WAL` 자가 점검 + `_schema_comments` 사전 테이블 |
-| **2. 백엔드·DB**<br>(Express / SQLite) | **#06.** 수량 증가·재고 차감 시 동시성 경합(`TOCTOU`)과 트랜잭션 누락 | 동시 장바구니 추가 요청 | 원자적 `UPSERT`(`ON CONFLICT DO UPDATE`) + `db.transaction()` |
+| **2. 백엔드·DB**<br>(Express / SQLite) | **#06.** 수량 증가·재고 차감 시 동시성 경합(`TOCTOU`)과 트랜잭션 누락 | 동시 장바구니 추가 요청 | 원자적 `UPSERT`(`ON CONFLICT DO UPDATE`) + `runInTransaction()` (`BEGIN IMMEDIATE`) |
 | **2. 백엔드·DB**<br>(Express / SQLite) | **#07.** API마다 제각각인 에러 응답과 미처리 비동기 예외로 인한 서버 다운 | 예외 발생 / 잘못된 요청 | 표준 응답 엔벨로프(`{ success, data, error }`) + 전역 에러 미들웨어 |
 | **2. 백엔드·DB**<br>(Express / SQLite) | **#08.** 장바구니 조회 시 루프를 돌며 상품을 조회하는 `N+1 쿼리`와 인덱스 누락 | 목록 조회 성능 저하 | `JOIN` 단일 쿼리 조회 + 외래키 복합 인덱스(`CREATE INDEX`) |
 | **3. 공통 모듈**<br>(`remote-shared`) | **#09.** 단일 배럴 파일(`index.ts`) 남용으로 인한 트리 쉐이킹 실패 및 순환 참조 | 공통 모듈 임포트 시 | `./ui`, `./theme`, `./utils` 서브패스 분리 및 단방향 의존성 |
@@ -21,7 +21,7 @@
 | **3. 공통 모듈**<br>(`remote-shared`) | **#11.** 공통 컴포넌트에 도메인 플래그를 넣는 과도한 추상화(`Props` 폭발) | 버튼/셀렉트 기능 확장 시 | 도메인 지식 0% 유지 + 표준 HTML 속성 상속 및 합성 패턴 |
 | **3. 공통 모듈**<br>(`remote-shared`) | **#12.** `Error` 인스턴스가 아닌 예외(`throw "문자열"`) 발생 시 에러 핸들러 크래시 | `try / catch` 예외 처리 | 모든 예외를 표준 객체로 변환하는 `normalizeError` 유틸리티 |
 | **4. 디자인·UI**<br>(`Ark UI` / CSS) | **#13.** 스켈레톤(`Skeleton`)과 실제 카드 높이 불일치로 화면이 덜컥거리는 현상 (`CLS`) | 1.5초 지연 로딩 완료 시 | 스켈레톤과 실제 카드의 `min-height` · 그리드 규격 1:1 매칭 |
-| **4. 디자인·UI**<br>(`Ark UI` / CSS) | **#14.** 다크 모드 및 실시간 테마 전환 시 하드코딩 색상으로 글자가 사라지는 현상 | 테마 스위처 변경 시 | 색상 하드코딩 금지 + 시맨틱 CSS 변수 토큰(`--color-*`) 강제 |
+| **4. 디자인·UI**<br>(`Ark UI` / CSS) | **#14.** 다크 모드 및 실시간 테마 전환 시 하드코딩 색상으로 글자가 사라지는 현상 | 테마 스위처 변경 시 | 색상 하드코딩 금지 + 시맨틱 CSS 변수 토큰(`--mfe-*`) 강제 |
 | **4. 디자인·UI**<br>(`Ark UI` / CSS) | **#15.** 헤드리스 UI 적용 시 키보드 포커스 링 증발 및 로딩 중 엔터키 중복 실행 | 키보드 탭 이동 / 폼 제출 | `:focus-visible` 스타일링 + `data-disabled` / `aria-busy` 연동 |
 | **4. 디자인·UI**<br>(`Ark UI` / CSS) | **#16.** 긴 상품명·큰 금액 숫자로 플렉스박스가 터지고 숫자가 흔들리는 현상 | 긴 텍스트 / 실시간 수량 변경 | 플렉스 자식 `min-width: 0` 말줄임 + 숫자 `tabular-nums` 고정폭 적용 |
 
@@ -288,7 +288,7 @@
      ```ts
      // 실무 표준 패턴: ZodError.issues 좌표 추출 및 환경별(DEV vs PROD) 리포트 이원화
      export function formatCatalogErrorReport(
-       error: NormalizedApiError,
+       error: NormalizedError,
        isDev: boolean = import.meta.env.DEV,
      ): CatalogErrorReport {
        const isSchemaInvalid = error.code === 'RESPONSE_SCHEMA_INVALID';
@@ -320,7 +320,7 @@
 * **왜 문제가 되나요?**
   - JavaScript에서는 `throw new Error()`뿐만 아니라 `throw "에러 문자열"`, `throw null`, `throw { code: 500 }` 등 무엇이든 던질 수 있습니다. 그래서 `catch (e)` 블록에서 무조건 `e.message`를 읽으면 에러를 처리하려던 코드가 또 에러를 내며 죽습니다.
 * **실무 해결 아키텍처 (`normalizeError` 공통 유틸리티)**:
-  - `unknown` 타입의 예외를 받아 항상 안전한 `{ message: string, code?: string, originalError: unknown }` 객체로 변환해 주는 `normalizeError(err: unknown)` 함수를 `remote-shared/utils`에서 제공합니다.
+  - `unknown` 타입의 예외를 받아 항상 안전한 `NormalizedError` (`{ message: string, code: string, status?: number, originalError: unknown }`) 객체로 변환해 주는 `normalizeError(err: unknown)` 함수를 `remote-shared/utils`에서 제공합니다.
 
 ---
 

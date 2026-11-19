@@ -10,8 +10,8 @@
 | :--- | :--- |
 | **`vite-env.d.ts`는 환경변수(`import.meta.env`) 전용 파일인가요?** | **아니요.** Vite 실행 환경(Environment)의 전역 타입과 TypeScript 앰비언트 모듈 선언(`declare module`)을 두는 일반 `.d.ts` 파일입니다. |
 | **`.d.ts` 파일은 프로젝트 아무 곳에나 두어도 자동 로드되나요?** | **아니요.** `tsconfig.json`의 `include` 범위(예: `"src"`) 안에 있어야 하며, 파일 최상단에 `import`/`export`가 없어야 전역으로 자동 인식됩니다. |
-| **왜 `remote-shared`에 정의한 `Splitter` 때문에 `remote-products`에 별도 타입을 적었나요?** | `remote-shared`가 내보낸 `Splitter.d.ts` 안에 `import ... from '@ark-ui/react/splitter'`가 남아 있는데, `@ark-ui/react`가 없는 `remote-products`가 이를 읽지 못해 **임시 Shim(호환 껍데기)**을 두었기 때문입니다. |
-| **가장 깔끔한 해결책은 무엇인가요?** | `remote-shared`가 외부에 공개하는 `Props`에서 `@ark-ui/react` 상속을 제거하고 **`React.ComponentPropsWithoutRef` + 허용 속성만 명시**해 경계를 캡슐화하는 것입니다. |
+| **왜 `remote-shared`의 초기 `Splitter` 구현 때문에 `remote-products`에 임시 Shim을 뒀었나요?** | 초기 `remote-shared`가 내보낸 `Splitter.d.ts` 안에 `import ... from '@ark-ui/react/splitter'`가 남아 있어, `@ark-ui/react`가 없는 `remote-products`가 이를 읽지 못해 **임시 Shim(호환 껍데기)**으로 우회했었기 때문입니다. |
+| **어떻게 근본 해결했나요?** | `remote-shared`가 외부에 공개하는 13종 UI `Props`에서 `@ark-ui/react` 상속을 제거하고 **`React.ComponentPropsWithoutRef` + 허용 속성만 명시**해 경계를 캡슐화한 뒤(PR #10), `remote-products`의 임시 Shim을 완전 제거했습니다(PR #11). |
 
 ---
 
@@ -32,14 +32,14 @@
 
 ---
 
-## Part 2. `Splitter` 사례로 보는 `@mf-types` 타입 누출과 Shim
+## Part 2. `Splitter` 사례로 보는 `@mf-types` 타입 누출과 Shim (Before)
 
-### 2.1 문제 발생 메커니즘
-1. **공급자 (`remote-shared`)의 타입 노출**:
-   - `apps/remote-shared/src/features/ui/layouts/Splitter.tsx`에서 `SplitterProps`가 `@ark-ui/react/splitter`의 `ArkSplitter.RootProps`를 직접 상속합니다.
-   - Module Federation(`dts`)이 생성해 전달한 `@mf-types/.../Splitter.d.ts` 안에도 외부 패키지 import가 그대로 남습니다.
+### 2.1 문제 발생 당시의 메커니즘 (Step 1.2 초기 구현 사례)
+1. **공급자 (`remote-shared`)의 초기 타입 노출 (개선 전)**:
+   - 초기 `apps/remote-shared/src/features/ui/layouts/Splitter.tsx`에서는 `SplitterProps`가 `@ark-ui/react/splitter`의 `ArkSplitter.RootProps`를 직접 상속하고 있었습니다.
+   - 그 결과 Module Federation(`dts`)이 생성해 전달한 `@mf-types/.../Splitter.d.ts` 안에도 외부 패키지 import가 그대로 남았습니다.
      ```ts
-     // @mf-types/remote_shared/.../Splitter.d.ts (자동 생성 결과)
+     // @mf-types/remote_shared/.../Splitter.d.ts (개선 전 자동 생성 결과)
      import { Splitter as ArkSplitter } from '@ark-ui/react/splitter';
 
      export interface SplitterProps extends Omit<ArkSplitter.RootProps, 'panels' | 'children'> {
@@ -48,10 +48,10 @@
      ```
 2. **소비자 (`remote-products`)의 해석 실패**:
    - 아키텍처 원칙상 `remote-products`에는 `@ark-ui/react`를 설치하지 않습니다.
-   - 따라서 `tsc --noEmit` 실행 시 `Splitter.d.ts`가 요구하는 `@ark-ui/react/splitter`를 `node_modules`에서 찾지 못해 `SplitterProps`, `ButtonProps`, `SelectProps` 등의 기본 속성 추론이 깨집니다.
-3. **임시 우회 — Shim(심) 배치**:
+   - 따라서 `tsc --noEmit` 실행 시 `Splitter.d.ts`가 요구하는 `@ark-ui/react/splitter`를 `node_modules`에서 찾지 못해 `SplitterProps`, `ButtonProps`, `SelectProps` 등의 기본 속성 추론이 깨졌습니다.
+3. **당시 임시 우회 — Shim(심) 배치**:
    - **Shim**은 서로 맞지 않는 두 인터페이스 사이를 메우는 얇은 호환 껍데기 코드를 뜻합니다.
-   - `apps/remote-products/src/vite-env.d.ts`에 `declare module '@ark-ui/react/splitter'` 등을 선언해 React 표준 `ComponentPropsWithoutRef`로 연결해 둔 것이 바로 타입 Shim입니다.
+   - 개선 전 `apps/remote-products/src/vite-env.d.ts`(10~89행)에 `declare module '@ark-ui/react/splitter'` 등을 선언해 React 표준 `ComponentPropsWithoutRef`로 연결해 둔 것이 바로 임시 타입 Shim이었습니다.
 
 ### 2.2 왜 소비자 앱에 타입 Shim을 두는 패턴이 좋지 않은가요?
 - **추상화 누출(Leaky Abstraction)**: 하위 공통 레이어(`remote-shared`)가 내부에서 사용하는 UI 라이브러리(`Ark UI`) 세부가 상위 소비자 앱의 계약까지 새어 나와, 소비자가 내부 구현 라이브러리를 알아야 하는 모순이 생깁니다.
@@ -84,7 +84,7 @@ dts: {
 
 ### 3.2 엔터프라이즈·실무 3가지 방안 비교
 
-| 구분 | 방안 A: `remote-shared` 순수 React 타입 캡슐화 | 방안 B: 각 소비자 앱에 `@ark-ui/react` 설치 | 방안 C: 대기업 실무 정석 (코어 DS는 npm + 도메인만 MF) |
+| 구분 | 방안 A: `remote-shared` 순수 React 타입 캡슐화 (채택 ✅) | 방안 B: 각 소비자 앱에 `@ark-ui/react` 설치 | 방안 C: 대기업 실무 정석 (코어 DS는 npm + 도메인만 MF) |
 | :--- | :--- | :--- | :--- |
 | **구현 방식** | 내부 구현은 `Ark UI`, 외부 `Props`는 **`ComponentPropsWithoutRef` + 허용 속성만 명시** | 소비자 `devDependencies`에 `@ark-ui/react` 직접 설치 | 버튼/셀렉트 등 코어 디자인 시스템은 **Private npm 패키지**로 배포하고, 도메인 앱만 MF로 공유 |
 | **소비자 Shim** | **불필요 (0줄)** | **불필요 (0줄)** | **불필요 (0줄)** |
@@ -93,10 +93,25 @@ dts: {
 
 ---
 
-## Part 4. 향후 개선 로드맵 (`shared` → `products`)
+## Part 4. 실제 적용 완료 결과 (`shared` PR #10 → `products` PR #11)
 
-1. **`remote-shared` (`shared` 스코프)**:
-   - `apps/remote-shared/src/features/ui/` 컴포넌트들의 노출 `Props`가 `@ark-ui/react`를 직접 상속하지 않고 `ComponentPropsWithoutRef` 기반의 명시적 계약으로 전환 (`GEMINI.md` 관련 규칙 조정 포함).
-   - `remote-products`의 실제 사용처를 점검한 결과, `remote-products`는 이미 `remote-shared`가 직접 정의한 커스텀 Props와 표준 HTML 속성만 사용하고 있어 UI/비즈니스 로직 수정 영향도는 `0건`입니다.
-2. **`remote-products` (`products` 스코프)**:
-   - 갱신된 `@mf-types` 반영 후 `apps/remote-products/src/vite-env.d.ts`의 `declare module '@ark-ui/react/...'` 블록(10~89행)을 완전히 제거하고 `typecheck` · `build` · `test`를 검증합니다.
+방안 A(공급자 경계 캡슐화)를 두 단계의 독립 스코프 PR로 순차 적용하여 **무-Shim `@mf-types` 소비 구조**를 완결했습니다.
+
+1. **`remote-shared` 경계 캡슐화 완료 (`shared` 스코프 · PR #10)**:
+   - `apps/remote-shared/src/features/ui/` 내 노출 컴포넌트 **13종**(`Button`, `Heading`, `Select`, `Skeleton`, `Badge`, `Splitter`, `Tabs`, `Collapsible`, `Container`, `Grid`, `Flex`, `Stack`, `Card`)의 공개 `Props`를 `@ark-ui/react` 직접 상속에서 **`React.ComponentPropsWithoutRef<*>` + 명시적 허용 속성**으로 전환했습니다.
+   - `dist/@mf-types/**/*.d.ts` 산출물 내 `@ark-ui/react` 참조 **`0건`**을 정적 테스트로 보증하고, `GEMINI.md` 3조 3항과 `docs/service-registry.md`에 경계 캡슐화 규칙을 영구 정본화했습니다.
+     ```ts
+     // apps/remote-shared/src/features/ui/layouts/Splitter.tsx (개선 후 실제 공개 계약)
+     export interface SplitterProps
+       extends Omit<ComponentPropsWithoutRef<'div'>, 'children' | 'dir' | 'onResize'> {
+       panels: SplitterPanelItem[];
+       defaultSize?: number[];
+       size?: number[];
+       orientation?: 'horizontal' | 'vertical';
+       onResize?: (size: number[]) => void;
+     }
+     ```
+2. **`remote-products` 임시 Shim 완전 제거 및 무-Shim 검증 완료 (`products` 스코프 · PR #11)**:
+   - 갱신된 `@mf-types`를 반영한 뒤 `apps/remote-products/src/vite-env.d.ts`의 `declare module '@ark-ui/react/...'` 임시 Shim 블록(80줄)을 완전히 삭제하여 `/// <reference types="vite/client" />` 1줄만 남겼습니다.
+   - UI·비즈니스 로직 수정 영향도 `0건` 상태에서 `tsc --noEmit`, `vite build`, `Vitest` 정적 회귀 차단 테스트(무-Shim 및 `@mf-types` 누출 `0건` 검증)를 모두 통과했습니다.
+   - 앞으로 구축할 `remote-cart`, `host-vite`, `host-rspack` 역시 별도 타입 Shim 없이 순수 `@mf-types`만으로 `remote_shared/ui`를 소비할 수 있습니다.
