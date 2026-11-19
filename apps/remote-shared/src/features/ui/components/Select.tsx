@@ -2,12 +2,12 @@
  * @file Select.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed true (via ./ui)
- * @description Ark UI Select.RootProps를 Omit으로 기본 상속하고 createListCollection·Portal·--mfe-z-dropdown을 캡슐화한 드롭다운 컴포넌트입니다.
+ * @description 내부 구현에만 Ark UI Select·Portal·--mfe-z-dropdown을 캡슐화하고 외부 계약은 순수 React 표준 속성으로 노출하는 드롭다운 컴포넌트입니다 ([Study 09]).
  */
 import { Portal } from '@ark-ui/react/portal';
 import { Select as ArkSelect, createListCollection } from '@ark-ui/react/select';
 import { clsx } from 'clsx';
-import { useMemo } from 'react';
+import { type ComponentPropsWithoutRef, useMemo } from 'react';
 import '../ui-styles.css';
 
 /**
@@ -25,12 +25,12 @@ export interface SelectOptionItem {
 }
 
 /**
- * @description [Select.tsx] ArkSelect.RootProps를 Omit으로 기본 상속하고 단일 문자열 value/onChange 및 options 배열로 편의성을 높인 Props
+ * @description [Select.tsx] 표준 div 속성(충돌 속성 제외) 기반의 경계 캡슐화 드롭다운 Props
  */
 export interface SelectProps
   extends Omit<
-    ArkSelect.RootProps<SelectOptionItem>,
-    'collection' | 'value' | 'defaultValue' | 'onValueChange' | 'onChange' | 'children'
+    ComponentPropsWithoutRef<'div'>,
+    'defaultValue' | 'onChange' | 'onSelect' | 'children' | 'dir'
   > {
   /** 선택 가능한 옵션 배열 (내부에서 createListCollection으로 자동 변환) */
   options: SelectOptionItem[];
@@ -49,12 +49,36 @@ export interface SelectProps
 
   /** 상단에 시각적으로 표시할 선택적 라벨 텍스트 */
   label?: string;
+
+  /** 네이티브 폼 제출 시 사용할 hidden select 필드 이름 (선택적) */
+  name?: string;
+
+  /** 드롭다운 전체 비활성화 여부 (선택적) */
+  disabled?: boolean;
+
+  /** 읽기 전용 여부 (선택적) */
+  readOnly?: boolean;
+
+  /** 필수 입력 여부 (선택적) */
+  required?: boolean;
+
+  /** 유효성 검사 오류 상태 표시 여부 (선택적) */
+  invalid?: boolean;
+
+  /** 항목 선택 후 드롭다운 자동 닫힘 여부 (기본값: true) */
+  closeOnSelect?: boolean;
+
+  /** 드롭다운 콘텐츠 최초 열림 시 지연 마운트 여부 (선택적) */
+  lazyMount?: boolean;
+
+  /** 드롭다운 닫힘 시 콘텐츠 언마운트 여부 (선택적) */
+  unmountOnExit?: boolean;
 }
 
 /**
- * 다른 마이크로 앱들이 @ark-ui/react를 직접 설치하지 않고도 포털 드롭다운을 사용할 수 있도록 캡슐화한 Select 컴포넌트입니다.
+ * 다른 마이크로 앱들이 Ark UI를 직접 설치하지 않고도 포털 드롭다운을 사용할 수 있도록 경계 캡슐화한 Select 컴포넌트입니다.
  *
- * @param props - ArkSelect.RootProps 상속 속성 및 options/value/onChange 편의 속성
+ * @param props - 표준 div 속성 및 드롭다운 제어·폼 편의 속성
  * @returns ArkSelect 조합 엘리먼트
  */
 export function Select({
@@ -64,8 +88,16 @@ export function Select({
   placeholder = '선택하세요',
   ariaLabel,
   label,
+  name,
+  disabled,
+  readOnly,
+  required,
+  invalid,
+  closeOnSelect,
+  lazyMount,
+  unmountOnExit,
   className,
-  ...restArkRootProps
+  ...restDivProps
 }: SelectProps) {
   /** options 배열이 바뀔 때만 Ark UI ListCollection을 재생성합니다 */
   const collection = useMemo(
@@ -80,6 +112,14 @@ export function Select({
     <ArkSelect.Root
       collection={collection}
       value={value ? [value] : []}
+      name={name}
+      disabled={disabled}
+      readOnly={readOnly}
+      required={required}
+      invalid={invalid}
+      closeOnSelect={closeOnSelect}
+      lazyMount={lazyMount}
+      unmountOnExit={unmountOnExit}
       onValueChange={(details) => {
         const nextVal = details.value[0];
         // [분기 설명] 유효한 문자열 항목이 선택되었을 때만 상위 onChange 콜백을 호출합니다.
@@ -88,7 +128,7 @@ export function Select({
         }
       }}
       className={clsx('mfe-ui-select-root', className)}
-      {...restArkRootProps}
+      {...restDivProps}
     >
       {label ? <span className="mfe-ui-select-label">{label}</span> : null}
 

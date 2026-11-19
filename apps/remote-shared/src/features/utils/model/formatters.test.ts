@@ -5,7 +5,7 @@
  * @description [TC-03 / EC-04] 원화 정수 포맷터(formatCurrency) 및 한국어 날짜·상대 시간 포맷터 테스트입니다.
  */
 import { describe, expect, it } from 'vitest';
-import { formatCurrency, formatDate, formatRelativeTime } from './formatters.js';
+import { formatCurrency, formatDate, formatRelativeTime } from './formatters';
 
 describe('formatters (TC-03 & EC-04)', () => {
   it('TC-03: 원화 정수를 천 단위 콤마와 원 단위로 포맷팅하고 날짜와 상대 시간을 한국어로 반환한다', () => {

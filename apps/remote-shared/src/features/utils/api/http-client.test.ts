@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { createApiClient, unwrapApiResponse } from './http-client.js';
+import { createApiClient, unwrapApiResponse } from './http-client';
 
 const server = setupServer(
   http.get('http://localhost:4000/api/health', () => {

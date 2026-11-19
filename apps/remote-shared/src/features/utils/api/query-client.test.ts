@@ -8,8 +8,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CART_QUERY_KEY as exposedKey,
   sharedQueryClient as exposedQueryClient,
-} from '../../../exposed/utils.js';
-import { CART_QUERY_KEY, createMfeQueryClient, sharedQueryClient } from './query-client.js';
+} from '../../../exposed/utils';
+import { CART_QUERY_KEY, createMfeQueryClient, sharedQueryClient } from './query-client';
 
 describe('sharedQueryClient & CART_QUERY_KEY (TC-04)', () => {
   it('sharedQueryClient는 exposed/utils에서도 항상 동일한 메모리 참조를 유지하는 싱글톤이며 CART_QUERY_KEY는 ["cart"]이다', () => {

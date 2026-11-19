@@ -1,8 +1,8 @@
 {
-  "scope": "products",
-  "path": "apps/remote-products",
-  "branch": "products/feat/catalog-list",
-  "featureDir": "apps/remote-products/docs/features/20261107-catalog-list",
+  "scope": "shared",
+  "path": "apps/remote-shared",
+  "branch": "shared/refactor/ui-prop-encapsulation",
+  "featureDir": "apps/remote-shared/docs/features/20261119-ui-prop-encapsulation",
   "currentStep": 5,
   "isDocsOnly": false
 }

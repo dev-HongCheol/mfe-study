@@ -2,11 +2,11 @@
  * @file Heading.test.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed false
- * @description [TC-06] Heading 컴포넌트의 시맨틱 제목 레벨(h1 ~ h5) 렌더링 및 HTMLArkProps 투과 테스트입니다.
+ * @description [TC-01, TC-06] Heading 컴포넌트의 시맨틱 제목 레벨(h1 ~ h5) 렌더링 및 표준 heading 속성(ComponentPropsWithoutRef) 투과 테스트입니다.
  */
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Heading } from './Heading.js';
+import { Heading } from './Heading';
 
 describe('Heading (TC-06)', () => {
   it('지정된 level(1~5)에 맞는 시맨틱 h1~h5 태그를 렌더링하고 기본 속성을 투과한다', () => {

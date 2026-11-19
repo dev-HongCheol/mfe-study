@@ -2,15 +2,15 @@
  * @file SharedShowcase.integration.test.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed false
- * @description [TC-08] 3계층 단방향 의존성(utils -> theme -> ui), 컴포넌트 파일명 PascalCase 규칙 및 단독 쇼케이스(App.tsx) 통합 테스트입니다.
+ * @description [TC-06, TC-08] 3계층 단방향 의존성(utils -> theme -> ui), 컴포넌트 파일명 PascalCase 규칙, UI Props 경계 캡슐화(Study 09), .js 확장자 0건 및 단독 쇼케이스 통합 테스트입니다.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { App } from '../App.js';
-import { ThemeProvider } from '../exposed/theme.js';
+import { App } from '../App';
+import { ThemeProvider } from '../exposed/theme';
 
 /**
  * 지정된 디렉터리 하위의 모든 파일 경로를 재귀적으로 수집합니다.
@@ -33,7 +33,7 @@ function collectAllFiles(dirPath: string): string[] {
   return results;
 }
 
-describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 검증 (TC-08)', () => {
+describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 검증 (TC-06, TC-08)', () => {
   const srcRoot = resolve(import.meta.dirname, '..');
 
   it('1) utils -> theme -> ui 단방향 의존성만 허용하며 역방향 import가 0건이어야 한다 (Study 05 #09)', () => {
@@ -88,12 +88,74 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     expect(document.documentElement.getAttribute('data-mfe-theme')).toBe('dark');
   });
 
-  it('4) vite.config.ts에 Module Federation @mf-types 원격 타입 자동 생성(generateTypes: true)이 활성화되어 있어야 한다 (Study 04 #04)', () => {
+  it('4) vite.config.ts에 @mf-types 생성(generateTypes: true)과 동적 힌트 비활성화(disableDynamicRemoteTypeHints: true)가 함께 설정되어 있어야 한다 (Study 04 #04)', () => {
     const viteConfigPath = resolve(srcRoot, '../vite.config.ts');
     const viteConfigCode = readFileSync(viteConfigPath, 'utf-8');
 
     expect(viteConfigCode).not.toContain('dts: false');
     expect(viteConfigCode).toContain('generateTypes: true');
     expect(viteConfigCode).toContain("tsConfigPath: './tsconfig.json'");
+    expect(viteConfigCode).toContain('disableDynamicRemoteTypeHints: true');
+  });
+
+  it('5) TC-06: src/** 전체 TypeScript 파일의 상대 경로 import에 .js 확장자가 0건이어야 한다 (Study 04 #01)', () => {
+    const tsFiles = collectAllFiles(srcRoot).filter(
+      (file) => file.endsWith('.ts') || file.endsWith('.tsx'),
+    );
+    const offendingFiles: string[] = [];
+
+    for (const file of tsFiles) {
+      const code = readFileSync(file, 'utf-8');
+      if (/(?:from|import\s*\()\s*['"]\.\.?\/[^'"]+\.js['"]/.test(code)) {
+        offendingFiles.push(file);
+      }
+    }
+
+    expect(offendingFiles).toEqual([]);
+  });
+
+  it('6) TC-06: 13종 UI 컴포넌트의 노출 Props가 @ark-ui/react 타입(HTMLArkProps, Ark*.RootProps)을 직접 상속하지 않아야 한다 (Study 09)', () => {
+    const uiComponentFiles = [
+      ...collectAllFiles(resolve(srcRoot, 'features/ui/components')),
+      ...collectAllFiles(resolve(srcRoot, 'features/ui/layouts')),
+    ].filter((file) => file.endsWith('.tsx') && !file.endsWith('.test.tsx'));
+
+    expect(uiComponentFiles.length).toBe(13);
+
+    const leakyFiles: string[] = [];
+    for (const file of uiComponentFiles) {
+      const code = readFileSync(file, 'utf-8');
+      // [분기 설명] 외부 계약(Props)으로 HTMLArkProps나 Ark*.RootProps가 누출되는 패턴을 정적 차단합니다.
+      if (/\bHTMLArkProps\b|Ark\w+\.RootProps\b/.test(code)) {
+        leakyFiles.push(file);
+      }
+    }
+
+    expect(leakyFiles).toEqual([]);
+  });
+
+  it('7) TC-06: dist/@mf-types 산출물이 존재하는 경우 모든 .d.ts 파일에 @ark-ui/react 참조가 0건이어야 한다 (Study 09)', () => {
+    const mfTypesDir = resolve(srcRoot, '../dist/@mf-types');
+    // [분기 설명] 최초 빌드 전 단위 테스트만 실행되는 경우 건너뛰고, 빌드 산출물이 존재할 때는 실제 생성된 .d.ts 전체를 검사합니다.
+    if (!existsSync(mfTypesDir)) {
+      return;
+    }
+
+    const dtsFiles = collectAllFiles(mfTypesDir).filter((file) => file.endsWith('.d.ts'));
+    expect(dtsFiles.length).toBeGreaterThan(0);
+
+    const leakyDtsFiles: string[] = [];
+    for (const file of dtsFiles) {
+      const content = readFileSync(file, 'utf-8');
+      // [분기 설명] 생성된 .d.ts 타입 선언 파일에 @ark-ui/react 모듈 import 또는 참조가 단 한 건이라도 남으면 실패 처리합니다.
+      if (
+        /(?:from|import\s*\()\s*['"]@ark-ui\/react/.test(content) ||
+        content.includes('@ark-ui/react')
+      ) {
+        leakyDtsFiles.push(file);
+      }
+    }
+
+    expect(leakyDtsFiles).toEqual([]);
   });
 });

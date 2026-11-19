@@ -11,7 +11,7 @@
 - **스코프 ID (`Scope ID`)**: `shared`
 - **대상 경로**: `apps/remote-shared` (루트 작업은 루트 [`todo.md`](../../../todo.md)에서 통합 관리)
 - **기술 스택**: `Vite 7 + React 19 + TypeScript 5.7 + @module-federation/vite + @ark-ui/react v5 + clsx + TanStack Query v5 + ky + Zod + date-fns + Vitest`
-- **최종 업데이트**: `2026-11-07`
+- **최종 업데이트**: `2026-11-19`
 - **핵심 역할**: 모든 호스트(`host-vite:3000`, `host-rspack:3001`)와 도메인 리모트(`remote-products:3002`, `remote-cart:3003`)가 런타임 Module Federation으로 공유하는 **원격 공통 디자인 시스템(`@ark-ui/react` + `clsx` 단일 창구 캡슐화)**, **실시간 4종 시맨틱 테마 엔진(`ThemeProvider` + CSS 변수 + 표준 `z-index` 계층)**, **공통 MFE 유틸리티(`mfeEventBus`, `useMfeEvent`, `createScopedStorage`, 포맷터, `httpClient`, 싱글톤 `sharedQueryClient`)**, 그리고 **Module Federation 2.0 정식 원격 타입 아카이브(`@mf-types.zip`, `dts.generateTypes: true`)**를 생성·서빙합니다 (`Port 3004`).
 - **노출 모듈 (`exposes`)**:
   - `./ui` (`./src/exposed/ui.ts`): 기본 UI 5종(`Button`, `Heading`, `Select`, `Skeleton`, `Badge`), 인터랙티브 레이아웃 3종(`Splitter`, `Tabs`, `Collapsible`), 정적 레이아웃 5종(`Container`, `Grid`, `Flex`, `Stack`, `Card`), `clsx` 재노출
@@ -38,6 +38,12 @@
 
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
+
+- [x] **[`20261119-ui-prop-encapsulation`](./features/20261119-ui-prop-encapsulation/01-plan-and-design.md)**: [Step 1.2/1.3 후속 정리 및 개선] `remote-shared/ui` 노출 Props 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환으로 `@ark-ui/react` 타입 누출 `0건` 달성), `dev.disableDynamicRemoteTypeHints: true` 적용 및 `src/**` `.js` 확장자 일괄 제거 (`Port 3004`) — **완료일: `2026-11-19`** (PR #10)
+  - **작업 브랜치**: `shared/refactor/ui-prop-encapsulation` (`Scope: shared`)
+  - **설계 문서**: [01-plan-and-design.md](./features/20261119-ui-prop-encapsulation/01-plan-and-design.md)
+  - **TDD 명세**: [02-tdd-spec.md](./features/20261119-ui-prop-encapsulation/02-tdd-spec.md)
+  - **코드 리뷰**: [03-code-review.md](./features/20261119-ui-prop-encapsulation/03-code-review.md)
 
 - [x] **[`20261106-enable-mf-types`](./features/20261106-enable-mf-types/01-plan-and-design.md)**: [Phase 1 - Step 1.2 보강] Module Federation 2.0 정식 원격 타입(`@mf-types.zip`) 생성·서빙(`generateTypes: true`) 활성화 (`Port 3004`) — `완료일: 2026-11-07`
   - **작업 브랜치**: `shared/feat/enable-mf-types`

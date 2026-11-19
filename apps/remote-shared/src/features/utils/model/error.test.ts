@@ -5,7 +5,7 @@
  * @description [EC-03] 비표준 예외(문자열, null, API 에러 봉투)를 표준 객체로 변환하는 normalizeError 테스트입니다.
  */
 import { describe, expect, it } from 'vitest';
-import { normalizeError } from './error.js';
+import { normalizeError } from './error';
 
 describe('normalizeError (EC-03)', () => {
   it('Error 인스턴스, 단순 문자열, null, 백엔드 API 에러 봉투를 모두 안전한 NormalizedError로 변환한다', () => {

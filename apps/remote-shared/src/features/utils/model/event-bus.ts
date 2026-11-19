@@ -10,7 +10,7 @@ import {
   MFE_EVENT_SCHEMAS,
   type MfeEventName,
   type MfeEventPayloadMap,
-} from './contracts.js';
+} from './contracts';
 
 export { MFE_EVENTS };
 

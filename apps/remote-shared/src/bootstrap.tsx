@@ -6,8 +6,8 @@
  */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App.js';
-import { ThemeProvider } from './exposed/theme.js';
+import { App } from './App';
+import { ThemeProvider } from './exposed/theme';
 
 const rootElement = document.getElementById('root');
 

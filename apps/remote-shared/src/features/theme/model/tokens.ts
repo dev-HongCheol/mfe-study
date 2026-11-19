@@ -4,7 +4,7 @@
  * @exposed true (via ./theme)
  * @description 전사 표준 z-index 계층 상수(Z_INDEX_TOKENS), 4종 실시간 테마 메타데이터 및 루트 CSS 변수 주입 함수입니다 ([Study 04 #06, Study 05 #14]).
  */
-import type { ThemeMode } from '../../utils/model/contracts.js';
+import type { ThemeMode } from '../../utils/model/contracts';
 
 /**
  * @description 다중 마이크로 앱 간 Portal(드롭다운, 모달, 토스트 등) 레이어 충돌을 방지하는 전사 표준 z-index 계층 토큰 상수 (루트 SSOT § 5.3.2)

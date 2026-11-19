@@ -30,6 +30,9 @@ export default defineConfig({
       name: 'remote_shared',
       filename: 'remoteEntry.js',
       manifest: true,
+      dev: {
+        disableDynamicRemoteTypeHints: true,
+      },
       dts: {
         generateTypes: true,
         tsConfigPath: './tsconfig.json',

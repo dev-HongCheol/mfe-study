@@ -2,17 +2,17 @@
  * @file Card.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed true (via ./ui)
- * @description Ark UI의 HTMLArkProps<'div'>를 기본 상속하고 시맨틱 서피스 배경·테두리 토큰을 적용한 카드 레이아웃입니다.
+ * @description 표준 div 속성을 경계 캡슐화하여 상속하고 시맨틱 서피스 배경·테두리 토큰을 적용한 카드 레이아웃입니다 ([Study 09]).
  */
-import { type HTMLArkProps, ark } from '@ark-ui/react/factory';
+import { ark } from '@ark-ui/react/factory';
 import { clsx } from 'clsx';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ComponentPropsWithoutRef } from 'react';
 import '../ui-styles.css';
 
 /**
- * @description [Card.tsx] HTMLArkProps<'div'>를 기본 상속하는 카드 서피스 레이아웃 Props
+ * @description [Card.tsx] 표준 div 속성을 상속하는 카드 서피스 레이아웃 Props
  */
-export interface CardProps extends HTMLArkProps<'div'> {
+export interface CardProps extends ComponentPropsWithoutRef<'div'> {
   /** 내부 패딩 프리셋 ('sm' | 'md' | 'lg', 기본값: 'md') */
   padding?: 'sm' | 'md' | 'lg';
 
@@ -30,7 +30,7 @@ const PADDING_TOKEN_MAP: Record<NonNullable<CardProps['padding']>, string> = {
 /**
  * 테마 전환(Dark 모드 포함)에 맞춰 배경·테두리가 자동 변경되는 공통 Card 레이아웃입니다.
  *
- * @param props - padding, elevated 및 HTMLArkProps<'div'>
+ * @param props - padding, elevated 및 표준 div 속성
  * @returns ark.div 엘리먼트
  */
 export function Card({
@@ -39,7 +39,7 @@ export function Card({
   style,
   className,
   children,
-  ...restArkProps
+  ...restDivProps
 }: CardProps) {
   const mergedStyle: CSSProperties = {
     padding: PADDING_TOKEN_MAP[padding],
@@ -50,7 +50,7 @@ export function Card({
     <ark.div
       style={mergedStyle}
       className={clsx('mfe-ui-card', elevated && 'mfe-ui-card--elevated', className)}
-      {...restArkProps}
+      {...restDivProps}
     >
       {children}
     </ark.div>

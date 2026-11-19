@@ -2,17 +2,17 @@
  * @file Grid.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed true (via ./ui)
- * @description Ark UI의 HTMLArkProps<'div'>를 기본 상속하는 CSS Grid 레이아웃 컴포넌트입니다.
+ * @description 표준 div 속성을 경계 캡슐화하여 상속하는 CSS Grid 레이아웃 컴포넌트입니다 ([Study 09]).
  */
-import { type HTMLArkProps, ark } from '@ark-ui/react/factory';
+import { ark } from '@ark-ui/react/factory';
 import { clsx } from 'clsx';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ComponentPropsWithoutRef } from 'react';
 import '../ui-styles.css';
 
 /**
- * @description [Grid.tsx] HTMLArkProps<'div'>를 기본 상속하는 그리드 레이아웃 Props
+ * @description [Grid.tsx] 표준 div 속성을 상속하는 그리드 레이아웃 Props
  */
-export interface GridProps extends HTMLArkProps<'div'> {
+export interface GridProps extends ComponentPropsWithoutRef<'div'> {
   /** 그리드 열 개수(숫자 입력 시 repeat(N, minmax(0, 1fr))) 또는 커스텀 gridTemplateColumns 문자열 (기본값: 2) */
   columns?: number | string;
 
@@ -30,7 +30,7 @@ const GAP_TOKEN_MAP: Record<string, string> = {
 /**
  * 상품 카드 목록 등을 균등한 열과 간격으로 배치하는 Grid 레이아웃 컴포넌트입니다.
  *
- * @param props - columns, gap 및 HTMLArkProps<'div'>
+ * @param props - columns, gap 및 표준 div 속성
  * @returns ark.div 엘리먼트
  */
 export function Grid({
@@ -39,7 +39,7 @@ export function Grid({
   style,
   className,
   children,
-  ...restArkProps
+  ...restDivProps
 }: GridProps) {
   const templateColumns =
     typeof columns === 'number' ? `repeat(${columns}, minmax(0, 1fr))` : columns;
@@ -51,7 +51,7 @@ export function Grid({
   };
 
   return (
-    <ark.div style={mergedStyle} className={clsx('mfe-ui-grid', className)} {...restArkProps}>
+    <ark.div style={mergedStyle} className={clsx('mfe-ui-grid', className)} {...restDivProps}>
       {children}
     </ark.div>
   );

@@ -5,7 +5,7 @@
  * @description [TC-01 / EC-01] mfeEventBus 커스텀 이벤트 발행·구독 및 오염된 페이로드 Zod 차단 단위 테스트입니다.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { MFE_EVENTS, mfeEventBus } from './event-bus.js';
+import { MFE_EVENTS, mfeEventBus } from './event-bus';
 
 describe('mfeEventBus (TC-01 & EC-01)', () => {
   it('TC-01: 유효한 페이로드로 이벤트를 발행하면 구독 핸들러에 검증된 데이터가 전달되고 unsubscribe 후에는 호출되지 않는다', () => {

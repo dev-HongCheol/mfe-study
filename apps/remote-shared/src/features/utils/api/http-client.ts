@@ -6,8 +6,8 @@
  */
 import ky, { HTTPError, type KyInstance, type ResponsePromise } from 'ky';
 import type { ZodType } from 'zod';
-import type { ApiResponse } from '../model/contracts.js';
-import { type NormalizedError, normalizeError } from '../model/error.js';
+import type { ApiResponse } from '../model/contracts';
+import { type NormalizedError, normalizeError } from '../model/error';
 
 /** 백엔드 REST API 기본 Base URL 상수 (Port 4000) */
 export const DEFAULT_API_BASE_URL = 'http://localhost:4000/api';

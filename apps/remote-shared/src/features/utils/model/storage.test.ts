@@ -6,7 +6,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { createScopedStorage } from './storage.js';
+import { createScopedStorage } from './storage';
 
 describe('createScopedStorage (TC-02 & EC-02)', () => {
   beforeEach(() => {
