@@ -1,8 +1,8 @@
 {
-  "scope": "products",
-  "path": "apps/remote-products",
-  "branch": "products/chore/remove-ark-type-shim",
-  "featureDir": "apps/remote-products/docs/features/20261119-remove-ark-type-shim",
+  "scope": "root",
+  "path": ".",
+  "branch": "root/docs/sync-study-docs",
+  "featureDir": "docs/study",
   "currentStep": 5,
-  "isDocsOnly": false
+  "isDocsOnly": true
 }

@@ -9,7 +9,7 @@
 
 | 분류 | 번호 및 이슈명 | 발생 시점 | 핵심 해결 키워드 |
 | :---: | :--- | :---: | :--- |
-| **영역 A**<br>초기화·번들·경로 | **#01.** 싱글톤 공유 시 `eager consumption` 초기화 에러 | 앱 최초 기동 | `main.tsx` + `bootstrap.tsx` 2단 분리 |
+| **영역 A**<br>초기화·번들·경로 | **#01.** 싱글톤 공유 시 `eager consumption` 초기화 에러 | 앱 최초 기동 | `main.ts` + `bootstrap.tsx` 2단 분리 |
 | **영역 A**<br>초기화·번들·경로 | **#02.** 리모트 이미지·폰트·청크 404 깨짐 (`publicPath` 함정) | 리모트 마운트 | `publicPath: 'auto'` / `import.meta.url` |
 | **영역 A**<br>초기화·번들·경로 | **#03.** 다중 포트(`3000~3004`) 브라우저 `CORS` 차단 및 포트 밀림 | 네트워크 로드 | 리모트 개발 서버 `cors: true`, `strictPort` |
 | **영역 A**<br>초기화·번들·경로 | **#04.** 멀티 서버 동시 기동(`turbo dev`) 순서 경합 및 원격 타입(`@mf-types`) 수신 | 개발 서버 시작 | DB 자동 초기화 + `@mf-types.zip` 원격 서빙·폴더 압축 해제 |
@@ -30,7 +30,7 @@
 
 ### #01. 싱글톤 공유 시 발생하는 `"Shared module is not available for eager consumption"` 에러
 * **왜 안 해본 사람은 모르나요?**
-  - 단일 React 앱에서는 진입 파일(`main.tsx`) 첫 줄에 `import React from 'react'`를 쓰는 것이 당연한 상식입니다.
+  - 단일 React 앱에서는 진입 파일(`main.tsx` / `main.ts`) 첫 줄에 `import React from 'react'`를 쓰는 것이 당연한 상식입니다.
   - 하지만 MFE에서 `react`, `react-dom`, `@tanstack/react-query`를 **`singleton: true`(브라우저 전체에 단 1개만 로드)**로 설정하면, 브라우저가 켜질 때 호스트와 리모트들이 *"누가 가진 React를 대표로 쓸지"* 결정하는 **비동기 협상(Async Negotiation) 시간**이 필요합니다.
 * **어떤 증상이 나타나나요?**
   - 앱을 켜자마자 화면이 하얗게 죽고 콘솔에 `Uncaught Error: Shared module is not available for eager consumption` 에러가 찍힙니다.
@@ -38,11 +38,11 @@
   - **정적 import (`import React from 'react'`)의 동작**: 번들러가 모든 코드를 단 하나의 `main.js` 파일로 합쳐서 번들링합니다.
   - **동기 콜스택의 폭주**: 브라우저 JS 엔진이 `<script src="main.js">`를 실행할 때 위에서부터 아래로 동기식(Call Stack)으로 한 번에 끝까지 실행합니다.
   - **충돌 원인**: 모듈 페더레이션 런타임이 백그라운드에서 싱글톤 React 협상 Promise(`initSharing`)를 시작했으나, 브라우저는 이 Promise가 완료되기를 기다리지(await) 않고 즉시 다음 줄의 `createRoot` 및 React 코드를 실행합니다. 이때 내부 상태 검사(`if (!sharedModule.isReady) throw Error(...)`)에 걸려 **"비동기 협상도 안 끝났는데 성급하게(eager) 모듈을 소비하려 했다"**면서 런타임 크래시가 발생합니다.
-* **실무 해결책: `main.tsx` + `bootstrap.tsx` 2단 비동기 엔트리 분리**:
-  - `bootstrap`은 별도의 복잡한 컴포넌트가 아니라, 원래 `main.tsx`에 있던 평범한 DOM 마운트 코드를 파일 이름만 옮겨 담은 것입니다.
-  - 진입점(`main.tsx`)에서는 오직 `import('./bootstrap')` 동적 임포트 한 줄만 호출합니다.
+* **실무 해결책: `main.ts` + `bootstrap.tsx` 2단 비동기 엔트리 분리**:
+  - `bootstrap.tsx`는 별도의 복잡한 컴포넌트가 아니라, 원래 진입 파일에 있던 평범한 DOM 마운트 코드를 파일 이름만 옮겨 담은 것입니다.
+  - 진입점(`main.ts`)에는 JSX가 없으므로 순수 TypeScript 파일(`.ts`)로 두고 `import('./bootstrap')` 동적 임포트 한 줄만 호출합니다.
   ```ts
-  // [1] src/main.tsx — 진입점 (단 한 줄의 비동기 동적 임포트)
+  // [1] src/main.ts — 진입점 (단 한 줄의 비동기 동적 임포트)
   import('./bootstrap');
   ```
   ```tsx
@@ -232,7 +232,7 @@
   - 한 화면에 합쳐놓으면 `상품 앱`의 상세 모달, `장바구니 앱`의 결제 팝업, `호스트`의 유저 선택 드롭다운이 모두 `document.body` 아래에 `Portal`로 붙으면서 **누가 위에 떠야 할지 몰라 모달 위로 헤더나 다른 위젯이 뚫고 나오는 현상**이 발생합니다.
   - 또한 두 마이크로 앱이 동시에 `document.body.style.overflow = 'hidden'`(배경 스크롤 잠금)을 건드려 모달을 닫아도 화면 스크롤이 영구히 멈추는 버그가 터집니다.
 * **실무 해결책**:
-  - `remote-shared(3004)`의 테마 토큰에서 **전사 표준 `z-index` 계층 상수(`--z-header: 100`, `--z-dropdown: 200`, `--z-drawer: 300`, `--z-modal: 400`, `--z-toast: 500`)**를 정의해 모든 앱이 이 변수만 쓰도록 통제하고, 모달·셀렉트 UI는 `Ark UI` 기반의 `remote-shared/ui` 컴포넌트를 통해 일관되게 처리합니다.
+  - `remote-shared(3004)`의 테마 토큰에서 **전사 표준 `z-index` 계층 상수(`--mfe-z-header: 100`, `--mfe-z-dropdown: 200`, `--mfe-z-drawer: 300`, `--mfe-z-modal: 400`, `--mfe-z-toast: 500`)**를 정의해 모든 앱이 이 변수만 쓰도록 통제하고, 모달·셀렉트 UI는 `Ark UI` 기반의 `remote-shared/ui` 컴포넌트를 통해 일관되게 처리합니다.
 
 ---
 
@@ -309,7 +309,11 @@
      // 리모트 진입점 분기 패턴 (Standalone vs Hosted)
      export function ProductWidget({ isStandalone }: { isStandalone?: boolean }) {
        // 단독 실행(3002)일 때만 BrowserHistory 사용, 호스트에 들어갈 땐 MemoryHistory 강제!
-       const history = isStandalone ? createBrowserHistory() : createMemoryHistory();
+       // ⚠️ 렌더 본문에서 매번 새로 생성하면 리렌더링마다 히스토리가 초기화되므로 useMemo로 인스턴스를 보존
+       const history = useMemo(
+         () => (isStandalone ? createBrowserHistory() : createMemoryHistory()),
+         [isStandalone],
+       );
        return <Router history={history}><ProductRoutes /></Router>;
      }
      ```

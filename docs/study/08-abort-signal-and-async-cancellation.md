@@ -81,9 +81,16 @@ setTimeout(() => controller.abort(), 100);
  */
 function delayWithSignal(ms, signal) {
   return new Promise((resolve, reject) => {
+    // 사용자 정의 문자열 사유(signal.reason)가 있더라도 err.name === 'AbortError'로 일관 처리하도록 정규화 (2.3절 참고)
+    const createAbortError = () =>
+      new DOMException(
+        typeof signal?.reason === 'string' ? signal.reason : 'The operation was aborted.',
+        'AbortError',
+      );
+
     // 1. [사전 가드] 호출 시점에 이미 취소된 신호라면 타이머조차 만들지 않고 즉시 거절
     if (signal?.aborted) {
-      reject(new DOMException('The operation was aborted.', 'AbortError'));
+      reject(createAbortError());
       return;
     }
 
@@ -96,7 +103,7 @@ function delayWithSignal(ms, signal) {
     // 3. 도중 취소 시: 남은 타이머를 즉시 지우고(clearTimeout) AbortError로 즉시 탈출
     function handleAbort() {
       clearTimeout(timerId);
-      reject(new DOMException('The operation was aborted.', 'AbortError'));
+      reject(createAbortError());
     }
 
     // 4. { once: true }: abort 이벤트는 1회성이므로 한 번 실행 후 자동 정리
@@ -193,6 +200,8 @@ export function UserSearch() {
   useEffect(() => {
     if (!keyword.trim()) {
       setUsers([]);
+      // 이전 요청이 진행 중일 때 검색어를 비우면 cleanup이 AbortError로 무시되므로 로딩 상태를 반드시 해제
+      setIsLoading(false);
       return;
     }
 
@@ -203,7 +212,12 @@ export function UserSearch() {
     fetch(`/api/users?search=${encodeURIComponent(keyword)}`, {
       signal: controller.signal, // 2. fetch에 시그널 연결
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data: UserItem[]) => {
         setUsers(data);
         setIsLoading(false);
@@ -288,9 +302,10 @@ export function UserListWithQuery({ keyword }: { keyword: string }) {
 ```
 
 #### TanStack Query가 자동으로 취소 신호를 쏘는 순간
-1. **컴포넌트 언마운트 시**: 해당 `queryKey`를 구독하는 컴포넌트가 사라질 때
-2. **`queryKey` 변경 전에 수동 취소 시**: `queryClient.cancelQueries({ queryKey })` 호출 시 (예: `useMutation`의 `onMutate`에서 구버전 조회 요청을 취소할 때)
-3. **쿼리 무효화(`invalidateQueries`) 시** 진행 중인 이전 요청과 겹칠 때
+*(단, `queryFn` 내부에서 `signal` 속성을 실제로 참조·소비하는 쿼리에 한해 자동 취소가 활성화됩니다.)*
+1. **활성 구독자가 모두 사라질 때**: 해당 `queryKey`를 구독하던 **모든 컴포넌트(옵저버)가 언마운트되거나 `queryKey` 변경으로 이전 키의 활성 구독자가 0명이 될 때**
+2. **수동 취소(`cancelQueries`) 호출 시**: `queryClient.cancelQueries({ queryKey })` 호출 시 (예: `useMutation`의 `onMutate`에서 구버전 조회 요청을 취소할 때)
+3. **쿼리 무효화(`invalidateQueries`) 및 강제 재조회 시**: 진행 중인 이전 요청을 중단하고 최신 요청으로 교체할 때
 
 > **💡 핵심 체크**: `queryFn: ({ signal }) => ...`에서 전달받은 `signal`을 내부의 `fetch`, `ky`, `axios`, 또는 커스텀 `delayWithSignal`까지 끝까지 내려주지 않으면 TanStack Query가 `cancelQueries`를 호출해도 실제 네트워크 요청은 중단되지 않습니다.
 
