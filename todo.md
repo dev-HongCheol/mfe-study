@@ -26,6 +26,7 @@
      - **즉시 진행할 작업**: `03-code-review.md` 수치 현행화 확인 및 PR 초안 보고 → 사용자 머지 승인 시 `todo.md` · [`apps/remote-products/docs/todo.md`](./apps/remote-products/docs/todo.md) · [`docs/service-registry.md`](./docs/service-registry.md) 완료 갱신 후 `main`에 머지.
   2. **[다음 대기 | `Scope: cart` | `Branch: cart/feat/cart-widget-sync`] [Phase 1 - Step 1.4] 장바구니 원격 앱(`apps/remote-cart`, `Port 3003`, `Rspack`) 구축**
   3. **[후속 정리 대기 | `Scope: shared` | `Branch: shared/chore/strip-js-import-extensions`] [Step 1.2 후속 정리] `apps/remote-shared/vite.config.ts` `dev.disableDynamicRemoteTypeHints: true` 추가(WebSocket 타입 힌트 에러 제거) · `.vite` 캐시 정리 및 `src/**` 내부 상대 경로 `.js` 확장자 일괄 제거**
+  4. **[후속 개선 대기 | `Scope: shared` → `products` | `Branch: shared/refactor/ui-prop-encapsulation`] [Step 1.2/1.3 후속 개선] `remote-shared/ui` 노출 Props 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환으로 `@ark-ui/react` 타입 누출 제거) 및 `remote-products/src/vite-env.d.ts` 임시 Shim 제거** ([`Study 09`](./docs/study/09-mfe-shared-types-and-design-system-encapsulation.md))
 
 ---
 
@@ -74,6 +75,9 @@
 - [ ] **Step 1.2 후속 정리 (`Scope: shared` | `Branch: shared/chore/strip-js-import-extensions`)**:
   - `apps/remote-shared/vite.config.ts`의 `federation({ ... })` 옵션에 `dev: { disableDynamicRemoteTypeHints: true }` 추가 및 `apps/remote-shared/node_modules/.vite` 캐시 정리를 통해 소비자 앱(`remote-products` 등) `pnpm dev` 실행 시 발생하는 `dynamic-remote-type-hints-plugin` `ws://127.0.0.1:16322` WebSocket 연결 에러 제거
   - 프론트엔드 번들러 표준(`Study 04 #01`)에 맞춰 `apps/remote-shared/src/**` 내부 상대 경로 import의 `.js` 확장자 일괄 제거 (하위 레이어가 타 원격을 소비하지 않아 즉시 장애는 없으나, 코드 일관성 및 MF 정적 스캐너 호환성을 위해 추후 `shared` 스코프 작업 시 함께 반영)
+- [ ] **Step 1.2/1.3 후속 개선 (`Scope: shared` → `products` | `Branch: shared/refactor/ui-prop-encapsulation`)**:
+  - `remote-shared/ui` 노출 컴포넌트 Props(`Button`, `Select`, `Splitter` 등)가 `@ark-ui/react` 타입을 직접 상속해 `@mf-types`로 누출시키지 않고 `React.ComponentPropsWithoutRef` + 허용 속성만 노출하도록 경계 캡슐화 (`GEMINI.md` 관련 규칙 조정 포함, [`Study 09`](./docs/study/09-mfe-shared-types-and-design-system-encapsulation.md) 참조)
+  - `remote-shared` 반영 후 `remote-products`의 `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(10~89행) 제거 및 후속 앱(`remote-cart`, `host-*`) 무-Shim 소비 보장
 - [-] **Step 1.3: 상품 목록 원격 앱 구축** (`Scope: products` | `Branch: products/feat/catalog-list`)
   - 문서 경로: `apps/remote-products/docs/todo.md` 및 `apps/remote-products/docs/features/20261107-catalog-list/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - `./ProductList` 컴포넌트, 장바구니 담기 **비교 학습 모드(`Mode A: 리모트별 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)** 지원, 단독 실행(Standalone) 화면 및 방어 아키텍처 TDD 구현·검증 완료 (`Port 3002` / Vite, 테스트 21건·`typecheck`·`vite build` 통과) — *5단계-B PR 및 `service-registry.md` 갱신 후 머지 대기 중*

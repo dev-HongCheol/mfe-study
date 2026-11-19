@@ -44,6 +44,7 @@
 ## 📝 3. 예정된 작업 목록 (백로그)
 > 앞으로 이 서비스 스코프에서 진행할 작업 목록입니다. 작업 시작 시 `features/YYYYMMDD-<작업명>/` 폴더를 생성하고 위 섹션으로 이동합니다.
 
+- [ ] **[Step 1.2/1.3 후속 정리] `src/vite-env.d.ts` 내 `@ark-ui/react/*` 타입 Shim 제거**: `remote-shared`(`shared` 스코프)에서 UI 노출 Props 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환) 완료 후, 갱신된 `@mf-types`를 반영하고 [`src/vite-env.d.ts`](../src/vite-env.d.ts)의 임시 `declare module` 블록(10~89행) 제거 ([`Study 09`](../../../docs/study/09-mfe-shared-types-and-design-system-encapsulation.md))
 - [ ] **[Phase 2 - Step 2.1] 상품 상세 하위 라우트(`/products/:id`) 및 호스트 라우터 히스토리 동기화**: 단독 실행(`BrowserRouter`)과 호스트 결합(하위/메모리 라우터) 시 `window.history` 충돌 방지 라우팅 구현
 - [ ] **[Phase 3 - Step 3.3] 상품 리모트 에러 출처 메타데이터(`moduleMetadata`) 연동**: 분산 마이크로 앱 콜스택 추적 실험 연동
 
