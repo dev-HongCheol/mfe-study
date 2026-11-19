@@ -24,11 +24,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- [-] **[`20261119-ui-prop-encapsulation`](./features/20261119-ui-prop-encapsulation/01-plan-and-design.md)**: [Step 1.2/1.3 후속 정리 및 개선] `remote-shared/ui` 노출 Props 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환으로 `@ark-ui/react` 타입 누출 제거), `dev.disableDynamicRemoteTypeHints: true` 적용 및 `src/**` `.js` 확장자 일괄 제거 (`Port 3004`)
-  - **작업 브랜치**: `shared/refactor/ui-prop-encapsulation` (`Scope: shared`)
-  - **설계 문서**: [01-plan-and-design.md](./features/20261119-ui-prop-encapsulation/01-plan-and-design.md)
-  - **TDD 명세**: [02-tdd-spec.md](./features/20261119-ui-prop-encapsulation/02-tdd-spec.md)
-  - **코드 리뷰**: [03-code-review.md](./features/20261119-ui-prop-encapsulation/03-code-review.md)
+- *현재 진행 중인 작업이 없습니다.*
 
 ---
 
@@ -42,6 +38,12 @@
 
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
+
+- [x] **[`20261119-ui-prop-encapsulation`](./features/20261119-ui-prop-encapsulation/01-plan-and-design.md)**: [Step 1.2/1.3 후속 정리 및 개선] `remote-shared/ui` 노출 Props 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환으로 `@ark-ui/react` 타입 누출 `0건` 달성), `dev.disableDynamicRemoteTypeHints: true` 적용 및 `src/**` `.js` 확장자 일괄 제거 (`Port 3004`) — **완료일: `2026-11-19`** (PR #10)
+  - **작업 브랜치**: `shared/refactor/ui-prop-encapsulation` (`Scope: shared`)
+  - **설계 문서**: [01-plan-and-design.md](./features/20261119-ui-prop-encapsulation/01-plan-and-design.md)
+  - **TDD 명세**: [02-tdd-spec.md](./features/20261119-ui-prop-encapsulation/02-tdd-spec.md)
+  - **코드 리뷰**: [03-code-review.md](./features/20261119-ui-prop-encapsulation/03-code-review.md)
 
 - [x] **[`20261106-enable-mf-types`](./features/20261106-enable-mf-types/01-plan-and-design.md)**: [Phase 1 - Step 1.2 보강] Module Federation 2.0 정식 원격 타입(`@mf-types.zip`) 생성·서빙(`generateTypes: true`) 활성화 (`Port 3004`) — `완료일: 2026-11-07`
   - **작업 브랜치**: `shared/feat/enable-mf-types`
