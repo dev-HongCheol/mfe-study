@@ -76,6 +76,8 @@ pnpm dev
 6. **[Study 06. 루트 워크스페이스 및 AI 하네스 초기 세팅 A-to-Z 가이드](./docs/study/06-workspace-and-harness-setup-guide.md)**: 빈 폴더부터 따라 치는 명령어(`Corepack`, `Git`, `pnpm catalog:`, `Biome`, `Lefthook`, `Antigravity Hooks`, `gh CLI`) 및 설정 옵션 상세 해설
 7. **[Study 07. JavaScript 클로저·참조 동일성과 React `useRef` 최신 핸들러 패턴](./docs/study/07-js-and-react-closure-ref-patterns.md)**: 프로젝트 비의존 순수 JS·React 샘플 코드로 배우는 함수 참조 동일성, Stale Closure 재현 및 해결, `useState` vs `useRef`, Latest Ref Pattern 완벽 가이드
 8. **[Study 08. JavaScript `AbortController` · `AbortSignal`과 React 비동기 취소 패턴](./docs/study/08-abort-signal-and-async-cancellation.md)**: 순수 JS·React 독립 샘플로 배우는 `AbortController` vs `AbortSignal` 구조, `'abort'` 이벤트 기반 즉시 취소(`delayWithSignal`), `useEffect` Race Condition 방지 및 TanStack Query `signal` 연동 원리
+9. **[Study 09. MFE 원격 타입(`@mf-types`) 전이 의존성과 디자인 시스템 경계 캡슐화](./docs/study/09-mfe-shared-types-and-design-system-encapsulation.md)**: `vite-env.d.ts`와 `.d.ts` 로드 규약, 서드파티(`@ark-ui/react`) 타입 누출 원인 및 경계 캡슐화 해결 아키텍처
+10. **[Study 10. MFE 실서비스 프로덕션 배포 · 정적 서빙 테스트 · 운영 가이드](./docs/study/10-mfe-production-deployment-and-operations.md)**: `@mf-types.zip` 제외·차단 전략, 단일 정적 서버(서브패스·VS Code Live Server) vs 멀티 도메인 배포, `Cache-Control`·`ChunkLoadError`·롤백 전략
 
 ### 📝 표준 작업 템플릿 (`docs/templates/`)
 - **[todo.template.md](./docs/templates/todo.template.md)**: 마이크로 앱별 `docs/todo.md` 생성 템플릿

@@ -90,6 +90,9 @@
 - [ ] **Step 1.6: ★ [필수] Phase 1 실제 Module Federation 런타임 연결 스모크 테스트** (`Scope: root` | `Branch: root/test/phase1-mfe-smoke`)
   - 문서 경로: `docs/features/YYYYMMDD-phase1-mfe-smoke/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - `Vitest`의 로컬 스텁(`stubs/`) 모킹이 잡아내지 못하는 실제 번들러 런타임 연결(`Host(3000/3001) → remoteEntry.js / mf-manifest.json → Remote(3002/3003) → remote-shared(3004) → 싱글톤 협상 및 실제 렌더링`)이 정상 동작하는지 6개 서버를 실제로 띄워 검증하는 얇은 스모크 테스트(`scripts/verify-mfe-smoke.mjs`) 구축 및 통과 확인
+- [ ] **Step 1.7: 실서비스 프로덕션 배포 패키지 정제 및 정적 서빙 통합 검증** (`Scope: root` | `Branch: root/chore/prod-static-deploy-preview`)
+  - 참조 가이드: [`docs/study/10-mfe-production-deployment-and-operations.md`](./docs/study/10-mfe-production-deployment-and-operations.md)
+  - 5개 프론트엔드 앱 빌드 결과물에서 개발·CI 전용 산출물(`@mf-types*`, `mf-stats.json`, `*.map`)을 제거한 클린 정적 배포 패키지(`deploy-preview/`, `.gitignore` 등록) 조립 스크립트 작성 및 서브패스(`base`·`remotes`) 기반 단일 정적 서버(VS Code Live Server / 경량 Node 정적 서버 + `api-server:4000`) 통합 동작·404 0건 검증
 
 ---
 
