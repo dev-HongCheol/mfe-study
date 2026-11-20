@@ -277,26 +277,27 @@
      - 주소창 변경을 감지한 호스트 라우터는 자기 라우트 테이블에 `/products/123`이 등록되어 있지 않으므로 **"정의되지 않은 경로"로 판단하여 화면 전체를 404 에러 페이지로 덮어써 버립니다.**
 
 * **🏗️ MFE 공존 아키텍처 다이어그램**:
-  ```mermaid
-  flowchart TD
-      subgraph Browser["브라우저 전역 공간 (단 1개만 존재)"]
-          AddressBar["🌐 실제 주소창 URL: /dashboard<br/>(window.location / window.history)"]
-          PopstateEvt["⚡ window popstate 이벤트"]
-      end
 
-      subgraph HostApp["호스트 앱 (Host Dashboard)"]
-          HostRouter["🧭 호스트 라우터 (BrowserHistory)<br/>주소창을 독점 제어함"]
-      end
+```mermaid
+flowchart TD
+    subgraph Browser["브라우저 전역 공간 (단 1개만 존재)"]
+        AddressBar["🌐 실제 주소창 URL: /dashboard<br/>(window.location / window.history)"]
+        PopstateEvt["⚡ window popstate 이벤트"]
+    end
 
-      subgraph RemoteApp["리모트 앱 (Remote Products Widget)"]
-          RemoteMemory["📦 리모트 가상 라우터 (MemoryHistory)<br/>entries: ['/tab-info', '/tab-reviews']<br/>주소창을 전혀 건드리지 않고 메모리 안에서만 작동!"]
-      end
+    subgraph HostApp["호스트 앱 (Host Dashboard)"]
+        HostRouter["🧭 호스트 라우터 (BrowserHistory)<br/>주소창을 독점 제어함"]
+    end
 
-      AddressBar <-->|양방향 동기화| HostRouter
-      PopstateEvt -->|호스트만 단독 수신| HostRouter
-      HostRouter -.->|Props / Event로 상태 전달| RemoteApp
-      RemoteMemory -.->|주소창과 완전 격리 (간섭 0%)| AddressBar
-  ```
+    subgraph RemoteApp["리모트 앱 (Remote Products Widget)"]
+        RemoteMemory["📦 리모트 가상 라우터 (MemoryHistory)<br/>내부 경로: /tab-info → /tab-reviews<br/>주소창을 전혀 건드리지 않고 메모리 안에서만 작동"]
+    end
+
+    AddressBar <-->|"양방향 동기화"| HostRouter
+    PopstateEvt -->|"호스트만 단독 수신"| HostRouter
+    HostRouter -.->|"Props 또는 Event로 상태 전달"| RemoteMemory
+    RemoteMemory -.->|"주소창과 완전 격리 (간섭 없음)"| AddressBar
+```
 
 * **실무 해결책: 엔터프라이즈 MFE 라우팅 3대 아키텍처 패턴**:
   1. **패턴 1. Props 주도형 (No-Router 패턴 — 실무 80% 권장)**:
