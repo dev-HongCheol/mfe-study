@@ -246,7 +246,7 @@ AI 에이전트가 헌법([`GEMINI.md`](../../GEMINI.md))을 잊어버리지 않
    - Antigravity 에이전트의 5대 생명주기(`SessionStart`, `PreInvocation`, `PreToolUse`, `PostToolUse`, `Stop`)마다 실행할 Node.js 스크립트를 연결합니다.
    - **⚠️ 핵심 주의사항 (상대 경로)**: Antigravity가 `.agents/hooks.json`에 등록된 명령어를 실행할 때 **현재 작업 디렉토리(`CWD`)는 루트가 아니라 `.agents/` 폴더**입니다. 따라서 명령어는 반드시 `"node ../scripts/<스크립트명>.mjs"`처럼 상위 폴더(`../`)를 가리켜야 합니다.
 3. **하네스 및 워크스페이스 스크립트 (`scripts/*.mjs`)**:
-   - [`inject-context.mjs`](../../scripts/inject-context.mjs): `SessionStart`(`systemMessage`) 및 매 턴 `PreInvocation`(`ephemeralMessage`)에서 현재 스코프, TDD 단계별 권장 모델(`Argon High` ↔ `Argon Medium`) 전환 배너, `todo.md` 요약 및 `docs/service-registry.md` 안내를 에이전트에게 자동 주입합니다.
+   - [`inject-context.mjs`](../../scripts/inject-context.mjs): `SessionStart`(`systemMessage`) 및 매 턴 `PreInvocation`(`ephemeralMessage`)에서 현재 스코프, TDD 워크플로우 단계별 가이드 배너, `todo.md` 요약 및 `docs/service-registry.md` 안내를 에이전트에게 자동 주입합니다.
    - [`verify-scope.mjs`](../../scripts/verify-scope.mjs): 파일 수정 도구 호출 전 `main`/`master` 브랜치 직접 파일 수정 차단(`Branch Gate`) 및 허용된 스코프 밖의 타 서비스 경로 수정 차단(`Scope Lock`)을 수행합니다.
    - [`verify-todo-before-merge.mjs`](../../scripts/verify-todo-before-merge.mjs): `gh pr create`와 `gh pr merge`(`git merge`) 동시 실행 차단(`PR Gate`), 머지 직전 워킹 트리 미커밋 파일 검사, 루트 `todo.md` 및 활성 앱 `docs/todo.md` 커밋 반영 검증을 수행하며, `Lefthook pre-push`의 `--check-branch` 모드로 `main` 직접 푸시도 차단합니다.
    - [`auto-format.mjs`](../../scripts/auto-format.mjs): 파일 저장 직후 `Biome` 포맷팅을 자동 실행합니다.

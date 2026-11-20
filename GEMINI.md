@@ -17,18 +17,18 @@
 
 ---
 
-## 2. 5단계 TDD 워크플로우 및 단계별 모델(`High` ↔ `Medium`) 운영
-모든 기능 및 DB 작업은 아래 1~5단계 순서를 엄격히 따르며, 단계 전환 시 사용자에게 모델 전환 알림을 안내합니다.
+## 2. 5단계 TDD 워크플로우
+모든 기능 및 DB 작업은 아래 1~5단계 순서를 엄격히 따릅니다.
 
-| 단계 | 핵심 작업 내용 | 권장 모델 | 필수 산출물 및 참조 템플릿/문서 |
-| :---: | :--- | :---: | :--- |
-| **1단계** | **작업 브랜치 선생성·전환** · `.agents/active-scope.json` 설정(`currentStep: 1`) · 루트 [`todo.md`](./todo.md) · [`service-registry.md`](./docs/service-registry.md) 및 앱 `docs/todo.md` 확인 · `Context7` 스펙 선조회 · 기획/설계서 작성 | 🔴 **`Argon High`** | `main` 위 문서 작성 절대 금지 (`verify-scope.mjs` 차단) → [`01-plan-and-design.template.md`](./docs/templates/01-plan-and-design.template.md) 참조 `01-plan-and-design.md` 작성 후 **🟡 `Argon Medium` 전환 알림** |
-| **2단계** | TDD 명세서 작성 및 **사용자 구현 승인 요청** | 🟡 **`Argon Medium`** | [`02-tdd-spec.template.md`](./docs/templates/02-tdd-spec.template.md) 참조 → `02-tdd-spec.md` 작성 → **사용자 구현 승인 전까지 본 코드 작성 금지** |
-| **3단계** | 실패하는 테스트 코드(`Red`) 먼저 작성 (`Vitest`) | 🟡 **`Argon Medium`** | 단위 테스트(`Co-location`) 및 통합 테스트(`__tests__/`) 작성 후 의도된 실패(`Red`) 확인 |
-| **4단계** | 본 코드 · 6대 주석 · 3종 SQL 구현 (`Green & Refactor`) | 🟡 **`Argon Medium`** | [`Study 04`](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md) · [`Study 05`](./docs/study/05-fullstack-service-real-world-issues.md) 방어 설계 적용 → 테스트 통과(`Green`) 후 **🔴 `Argon High` 전환 알림** |
-| **5단계-A** | PR 생성 전 심층 코드 리뷰 문서 작성 · PR 초안 보고 및 **PR 생성 승인만 요청** | 🔴 **`Argon High`** | [`03-code-review.template.md`](./docs/templates/03-code-review.template.md) (`03-code-review.md`) + [`pull-request.template.md`](./docs/templates/pull-request.template.md) 초안 보고 → **⚠️ 머지 동시 승인 요청 절대 금지 (오직 PR 생성 승인만 요청)** |
-| **5단계-B** | 커밋 · 푸시 및 **`gh pr create` 실행 후 반드시 즉시 정지(턴 종료)** | 🟡 **`Argon Medium`** | **PR 생성까지만 수행하고 즉시 멈춤** → 사용자가 GitHub에서 PR을 직접 확인하고 머지 여부를 결정할 때까지 대기 (`gh pr create`와 `gh pr merge` 연속 실행 시 훅으로 즉시 차단) |
-| **5단계-C** | 사용자의 **별도 머지 승인 후** TODO · 레지스트리 커밋·푸시 및 머지 실행 | 🟡 **`Argon Medium`** | 별도 머지 승인을 받은 직후 · 실제 머지 직전에 루트 `todo.md`, 앱 `docs/todo.md`, [`docs/service-registry.md`](./docs/service-registry.md) 업데이트를 먼저 커밋·푸시한 뒤 머지 실행 |
+| 단계 | 핵심 작업 내용 | 필수 산출물 및 참조 템플릿/문서 |
+| :---: | :--- | :--- |
+| **1단계** | **작업 브랜치 선생성·전환** · `.agents/active-scope.json` 설정(`currentStep: 1`) · 루트 [`todo.md`](./todo.md) · [`service-registry.md`](./docs/service-registry.md) 및 앱 `docs/todo.md` 확인 · `Context7` 스펙 선조회 · 기획/설계서 작성 | `main` 위 문서 작성 절대 금지 (`verify-scope.mjs` 차단) → [`01-plan-and-design.template.md`](./docs/templates/01-plan-and-design.template.md) 참조 `01-plan-and-design.md` 작성 |
+| **2단계** | TDD 명세서 작성 및 **사용자 구현 승인 요청** | [`02-tdd-spec.template.md`](./docs/templates/02-tdd-spec.template.md) 참조 → `02-tdd-spec.md` 작성 → **사용자 구현 승인 전까지 본 코드 작성 금지** |
+| **3단계** | 실패하는 테스트 코드(`Red`) 먼저 작성 (`Vitest`) | 단위 테스트(`Co-location`) 및 통합 테스트(`__tests__/`) 작성 후 의도된 실패(`Red`) 확인 |
+| **4단계** | 본 코드 · 6대 주석 · 3종 SQL 구현 (`Green & Refactor`) | [`Study 04`](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md) · [`Study 05`](./docs/study/05-fullstack-service-real-world-issues.md) 방어 설계 적용 → 테스트 통과(`Green`) 확인 |
+| **5단계-A** | PR 생성 전 심층 코드 리뷰 문서 작성 · PR 초안 보고 및 **PR 생성 승인만 요청** | [`03-code-review.template.md`](./docs/templates/03-code-review.template.md) (`03-code-review.md`) + [`pull-request.template.md`](./docs/templates/pull-request.template.md) 초안 보고 → **⚠️ 머지 동시 승인 요청 절대 금지 (오직 PR 생성 승인만 요청)** |
+| **5단계-B** | 커밋 · 푸시 및 **`gh pr create` 실행 후 반드시 즉시 정지(턴 종료)** | **PR 생성까지만 수행하고 즉시 멈춤** → 사용자가 GitHub에서 PR을 직접 확인하고 머지 여부를 결정할 때까지 대기 (`gh pr create`와 `gh pr merge` 연속 실행 시 훅으로 즉시 차단) |
+| **5단계-C** | 사용자의 **별도 머지 승인 후** TODO · 레지스트리 커밋·푸시 및 머지 실행 | 별도 머지 승인을 받은 직후 · 실제 머지 직전에 루트 `todo.md`, 앱 `docs/todo.md`, [`docs/service-registry.md`](./docs/service-registry.md) 업데이트를 먼저 커밋·푸시한 뒤 머지 실행 |
 
 ---
 
