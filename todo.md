@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[학습 가이드 정비 & 확장] 스터디 문서(`Study 01 ~ 09`) 현행 코드베이스 정합성 보정, `Study 04 · 05` 명사형 기술 레퍼런스 포맷 통일 및 MFE 실서비스 프로덕션 배포·운영 가이드(`Study 10`, `Step 1.7`) 신설 완료** (`docs/study/`, `GEMINI.md`, `README.md`, `todo.md`, PR #13)
   - **[Step 1.2/1.3 후속 정리] `remote-products`의 `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(80줄) 완전 제거 및 최신 `@mf-types` 기반 무-Shim 소비 검증 완료** (`apps/remote-products`, `docs/service-registry.md`, `Vitest 7개 파일 / 33건`·루트 전체 `98건` 통과, PR #11 — `Study 09` 로드맵 완결)
   - **[Step 1.2/1.3 후속 정리 및 개선] `remote-shared/ui` 노출 Props 13종 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환으로 `@ark-ui/react` 타입 누출 `0건` 달성), `dev.disableDynamicRemoteTypeHints: true` 적용 및 `src/**` `.js` 확장자 일괄 제거 완료** (`apps/remote-shared`, `GEMINI.md`, `docs/service-registry.md`, `Vitest 18개 파일 / 35건`·루트 전체 `97건` 통과, PR #10)
   - **[Phase 1 - Step 1.3] 상품 목록 원격 앱(`./ProductList`), `Mode A vs Mode B` 상태 동기화, 비인증 3중 방어, UI 책임 분리 및 단독 실행 쇼케이스 구축 완료** (`apps/remote-products`, `docs/service-registry.md`, `Vitest 7개 파일 / 32건` 통과, PR #7)
@@ -39,11 +40,11 @@
 
 - [x] `docs/study/01-mfe-concepts-and-guide.md` 작성 및 보강 (MFE 개념, Q1~Q10, 6대 프로세스, 3대 디버깅 툴)
 - [x] `docs/study/02-polyrepo-and-architecture-decisions.md` 작성 (물리적 멀티레포 5대 학습 요소, 앱별 `docs/` 응집도, 공통 템플릿 설계 Q&A)
-- [x] `docs/study/03-ai-harness-and-tdd-workflow-guide.md` 작성 (전체 5단계 TDD 워크플로우, **단계별 모델(`High`↔`Medium`) 전환 알림**, 하네스 3계층 및 5대 훅 동작 원리, 멀티레포 자동 동기화)
-- [x] `docs/study/04-mfe-real-world-pitfalls-and-solutions.md` 작성 (MFE 미경험자는 미리 알 수 없는 **14대 실전 고유 이슈와 해결 아키텍처** 총정리)
+- [x] `docs/study/03-ai-harness-and-tdd-workflow-guide.md` 작성 (전체 5단계 TDD 워크플로우, 하네스 3계층 및 5대 훅 동작 원리, 멀티레포 자동 동기화)
+- [x] `docs/study/04-mfe-real-world-pitfalls-and-solutions.md` 작성 (**MFE 14대 실전 고유 이슈와 해결 아키텍처** 총정리)
 - [x] `docs/study/05-fullstack-service-real-world-issues.md` 작성 (풀스택 서비스 구현 **16대 실전 이슈: FE · BE/DB · 공통 모듈 · 디자인** 총정리)
 - [x] `docs/study/06-workspace-and-harness-setup-guide.md` 작성 (빈 폴더부터 따라 하는 워크스페이스·패키지 카탈로그·Lefthook·AI 하네스·GitHub CLI 초기 세팅 명령어 A-to-Z 가이드)
-- [x] 임시 설계서 3종(`02-infra-and-architecture.md`, `03-setup-and-convention.md`, `04-workflow-and-harness.md`) 작성, **단계별 모델 전환 알림 설계 반영** 및 최신화 *(Step 0.3에서 Git 미추적 `temp/` 폴더로 이동하여 참조 후, 전체 프로젝트 구축 완료 시점에 삭제)*
+- [x] 임시 설계서 3종(`02-infra-and-architecture.md`, `03-setup-and-convention.md`, `04-workflow-and-harness.md`) 작성 및 최신화 *(Step 0.3에서 Git 미추적 `temp/` 폴더로 이동하여 참조 후, 전체 프로젝트 구축 완료 시점에 삭제)*
 - [x] `Context7 MCP` 단일 등록 및 기존 미사용 MCP 제거
 - [x] `docs/templates/` 공통 표준 문서·코드 리뷰·PR 템플릿 5종(`todo.template.md`, `01-plan-and-design.template.md`, `02-tdd-spec.template.md`, `03-code-review.template.md`, `pull-request.template.md`) 생성 및 한국어 가독성 원칙 반영
 - [x] **Step 0.1: 각 서비스의 코드 및 테스트 코드 폴더 아키텍처 조사·선정 (`Context7` 활용)**
@@ -90,6 +91,9 @@
 - [ ] **Step 1.6: ★ [필수] Phase 1 실제 Module Federation 런타임 연결 스모크 테스트** (`Scope: root` | `Branch: root/test/phase1-mfe-smoke`)
   - 문서 경로: `docs/features/YYYYMMDD-phase1-mfe-smoke/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - `Vitest`의 로컬 스텁(`stubs/`) 모킹이 잡아내지 못하는 실제 번들러 런타임 연결(`Host(3000/3001) → remoteEntry.js / mf-manifest.json → Remote(3002/3003) → remote-shared(3004) → 싱글톤 협상 및 실제 렌더링`)이 정상 동작하는지 6개 서버를 실제로 띄워 검증하는 얇은 스모크 테스트(`scripts/verify-mfe-smoke.mjs`) 구축 및 통과 확인
+- [ ] **Step 1.7: 실서비스 프로덕션 배포 패키지 정제 및 정적 서빙 통합 검증** (`Scope: root` | `Branch: root/chore/prod-static-deploy-preview`)
+  - 참조 가이드: [`docs/study/10-mfe-production-deployment-and-operations.md`](./docs/study/10-mfe-production-deployment-and-operations.md)
+  - 5개 프론트엔드 앱 빌드 결과물에서 개발·CI 전용 산출물(`@mf-types*`, `mf-stats.json`, `*.map`)을 제거한 클린 정적 배포 패키지(`deploy-preview/`, `.gitignore` 등록) 조립 스크립트 작성 및 서브패스(`base`·`remotes`) 기반 단일 정적 서버(VS Code Live Server / 경량 Node 정적 서버 + `api-server:4000`) 통합 동작·404 0건 검증
 
 ---
 

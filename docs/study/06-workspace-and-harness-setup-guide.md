@@ -104,10 +104,12 @@ catalog:
 
 ### 3.2 루트 [`package.json`](../../package.json) 및 [`turbo.json`](../../turbo.json) 구성
 - **루트 `package.json` 주요 스크립트** (크로스 플랫폼 호환을 위해 `&&` 체이닝 미사용):
-  - `pnpm dev`: `turbo run dev` (6개 마이크로 서비스 동시 기동)
+  - `pnpm dev` / `pnpm dev:menu`: `node scripts/dev-menu.mjs` (대화형 프리셋 메뉴로 서비스 세트를 선택해 `turbo run dev --filter` TUI 모드로 기동)
+  - `pnpm dev:products` / `pnpm dev:cart` / `pnpm dev:shared` / `pnpm dev:api`: 해당 서비스와 필수 런타임 의존성 앱 세트를 즉시 TUI 모드로 기동
+  - `pnpm dev:all`: `turbo run dev` (전체 마이크로 서비스 일괄 동시 기동)
   - `pnpm build`: `turbo run build` (전체 앱 캐시 기반 병렬 빌드)
-  - `pnpm test`: `vitest run` (루트 하네스 단위 테스트 실행)
-  - `pnpm test:apps`: `turbo run test` (하위 마이크로 앱 전체 테스트 실행)
+  - `pnpm test`: `vitest run` (루트 `vitest.config.ts`에 등록된 하네스 테스트 + 전체 구현 앱 단위·통합 테스트 일괄 실행)
+  - `pnpm test:apps`: `turbo run test` (Turborepo 오케스트레이션 기반 하위 마이크로 앱별 테스트 실행)
   - `pnpm typecheck`: `tsc --noEmit -p tsconfig.base.json` (루트 타입 검사)
   - `pnpm typecheck:apps`: `turbo run typecheck` (하위 마이크로 앱 전체 타입 검사)
   - `pnpm check`: `biome check .` (전체 코드 린트·포맷 검사)
@@ -117,7 +119,7 @@ catalog:
 - **[`turbo.json`](../../turbo.json) 주의사항 및 대화형 TUI 로그 확인법**:
   - `Turborepo v2`부터는 구버전의 `"pipeline"` 키 대신 반드시 **`"tasks"`** 키(`build`, `dev`, `test`, `check`, `typecheck`)를 사용해야 합니다.
   - `dev` 태스크는 개발 서버가 종료되지 않고 계속 떠 있어야 하므로 `"cache": false, "persistent": true` 옵션을 필수로 줍니다.
-  - `"ui": "tui"` 옵션이 활성화되어 있으므로, 루트에서 `pnpm dev`를 실행하면 일반 터미널처럼 6개 서비스의 로그가 뒤섞이지 않고 **대화형 대시보드(TUI)**가 열립니다. 키보드 방향키(`↑`/`↓`)로 원하는 서비스(`api-server`, `remote-shared`, `remote-products` 등)를 선택해 **해당 앱의 로그만 독립적으로 확인**할 수 있으며, `r` 키로 선택한 서비스만 즉시 재시작할 수 있습니다.
+  - `"ui": "tui"` 옵션이 활성화되어 있으므로, 루트에서 `pnpm dev`(프리셋 선택) 또는 `pnpm dev:all`을 실행하면 일반 터미널처럼 여러 서비스의 로그가 뒤섞이지 않고 **대화형 대시보드(TUI)**가 열립니다. 키보드 방향키(`↑`/`↓`)로 원하는 서비스(`api-server`, `remote-shared`, `remote-products` 등)를 선택해 **해당 앱의 로그만 독립적으로 확인**할 수 있으며, `r` 키로 선택한 서비스만 즉시 재시작할 수 있습니다.
 
 ### 3.3 패키지 설치 실행 명령어
 ```powershell
@@ -243,13 +245,14 @@ AI 에이전트가 헌법([`GEMINI.md`](../../GEMINI.md))을 잊어버리지 않
 2. **[`.agents/hooks.json`](../../.agents/hooks.json)**:
    - Antigravity 에이전트의 5대 생명주기(`SessionStart`, `PreInvocation`, `PreToolUse`, `PostToolUse`, `Stop`)마다 실행할 Node.js 스크립트를 연결합니다.
    - **⚠️ 핵심 주의사항 (상대 경로)**: Antigravity가 `.agents/hooks.json`에 등록된 명령어를 실행할 때 **현재 작업 디렉토리(`CWD`)는 루트가 아니라 `.agents/` 폴더**입니다. 따라서 명령어는 반드시 `"node ../scripts/<스크립트명>.mjs"`처럼 상위 폴더(`../`)를 가리켜야 합니다.
-3. **하네스 스크립트 (`scripts/*.mjs`)**:
-   - [`inject-context.mjs`](../../scripts/inject-context.mjs): 매 턴마다 현재 스코프, TDD 단계별 권장 모델(`Argon High` ↔ `Argon Medium`), `todo.md` 요약을 에이전트에게 자동 주입(`ephemeralMessage`)합니다.
-   - [`verify-scope.mjs`](../../scripts/verify-scope.mjs): 파일 수정 도구 호출 전 허용된 스코프 밖의 경로 수정을 차단합니다.
-   - [`verify-todo-before-merge.mjs`](../../scripts/verify-todo-before-merge.mjs): `git merge` 실행 전 `todo.md`가 업데이트되었는지 확인합니다.
+3. **하네스 및 워크스페이스 스크립트 (`scripts/*.mjs`)**:
+   - [`inject-context.mjs`](../../scripts/inject-context.mjs): `SessionStart`(`systemMessage`) 및 매 턴 `PreInvocation`(`ephemeralMessage`)에서 현재 스코프, TDD 워크플로우 단계별 가이드 배너, `todo.md` 요약 및 `docs/service-registry.md` 안내를 에이전트에게 자동 주입합니다.
+   - [`verify-scope.mjs`](../../scripts/verify-scope.mjs): 파일 수정 도구 호출 전 `main`/`master` 브랜치 직접 파일 수정 차단(`Branch Gate`) 및 허용된 스코프 밖의 타 서비스 경로 수정 차단(`Scope Lock`)을 수행합니다.
+   - [`verify-todo-before-merge.mjs`](../../scripts/verify-todo-before-merge.mjs): `gh pr create`와 `gh pr merge`(`git merge`) 동시 실행 차단(`PR Gate`), 머지 직전 워킹 트리 미커밋 파일 검사, 루트 `todo.md` 및 활성 앱 `docs/todo.md` 커밋 반영 검증을 수행하며, `Lefthook pre-push`의 `--check-branch` 모드로 `main` 직접 푸시도 차단합니다.
    - [`auto-format.mjs`](../../scripts/auto-format.mjs): 파일 저장 직후 `Biome` 포맷팅을 자동 실행합니다.
-   - [`verify-sql-sync.mjs`](../../scripts/verify-sql-sync.mjs): 백엔드 3종 SQL 파일의 해시 일치 여부와 인메모리 SQLite(`node:sqlite`) 순차 실행(`01 -> 02 -> 03 -> 01`)을 검증합니다.
-   - [`verify-stop-gate.mjs`](../../scripts/verify-stop-gate.mjs): 에이전트가 턴을 종료하기 전 `Biome`, `tsc`, `Vitest`, `SQL` 검증을 통과했는지 최종 점검합니다.
+   - [`verify-sql-sync.mjs`](../../scripts/verify-sql-sync.mjs): 백엔드 3종 SQL 파일의 해시 일치 여부와 인메모리 SQLite(`node:sqlite`) 순차 실행(`01 -> 02 -> 03 -> 01 -> 02`) 멱등성 및 `_schema_comments` 등록 여부를 검증합니다.
+   - [`verify-stop-gate.mjs`](../../scripts/verify-stop-gate.mjs): 에이전트가 4~5단계에서 턴을 종료하기 전 `Biome`, 3종 `SQL`, `Vitest` 통과 여부를 최종 점검합니다. *(1~3단계 및 `isDocsOnly: true` 브랜치는 데드락 방지를 위해 자동 통과)*
+   - [`harness-utils.mjs`](../../scripts/harness-utils.mjs) · [`dev-menu.mjs`](../../scripts/dev-menu.mjs) · [`verify-mfe-smoke.mjs`](../../scripts/verify-mfe-smoke.mjs): 훅 공통 입출력 유틸리티, `pnpm dev` 대화형 TUI 프리셋 메뉴, 그리고 Phase 1 6개 서버 런타임 연결 스모크 검증 스크립트입니다.
 
 ---
 
@@ -337,7 +340,7 @@ git push -u origin main
    // apps/api-server/package.json (단일 앱 전용 패키지 예시 — 여기에만 직접 버전을 적음)
    {
      "dependencies": {
-       "express": "^4.21.2",
+       "express": "^5.1.0",
        "cors": "^2.8.5"
      }
    }
@@ -433,8 +436,10 @@ pnpm --filter @mfe-study/remote-products typecheck
 pnpm --filter @mfe-study/remote-products build
 
 # 3. 브라우저 단독 쇼케이스(http://localhost:3002) 확인 시
-# - Module Federation 런타임이 http://localhost:3004/mf-manifest.json을 실시간 fetch하므로 루트에서 TUI로 통합 실행합니다.
-pnpm dev
+# - Module Federation 런타임이 http://localhost:3004/mf-manifest.json을 실시간 fetch하므로
+#   루트 대화형 메뉴(pnpm dev) 또는 상품 리모트 전용 세트(pnpm dev:products)로 TUI 통합 실행합니다.
+pnpm dev:products
+# 또는 대화형 프리셋 메뉴에서 선택 실행: pnpm dev
 ```
 
 ### 11.2 공식 `Module Federation DevTools` Chrome 확장 프로그램 설치 및 실무 활용법

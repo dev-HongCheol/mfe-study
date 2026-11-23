@@ -215,7 +215,7 @@ React에서 상태가 바뀌어 리렌더링이 발생하면 다음과 같은 �
 
 ### 2.3 실전 독립 샘플: `ShortcutCounter`로 보는 3단계 진화
 
-키보드 `Enter` 키를 누를 때마다 현재 `step`(증가 폭)만큼 카운트를 증가시키거나 현재 `count`를 알림으로 출력하는 간단한 독립 컴포넌트를 예로 들어보겠습니다.
+버튼을 눌러 `count`를 증가시키고, 키보드 `Enter` 키를 누를 때마다 현재 `count`를 콘솔에 출력하는 간단한 독립 컴포넌트를 예로 들어보겠습니다.
 
 #### ❌ 안티패턴 A: `useEffect` 의존성에 `handler`를 그대로 넣기
 
@@ -383,7 +383,7 @@ export function ShortcutCounter() {
     savedHandlerRef.current = handler;
   }); // 의존성 배열 생략 시 커밋 직후마다 안전하게 최신화
   ```
-- **주의**: 만약 `useEffect` 안에서(마운트 직후가 아니라) 다른 `useLayoutEffect`가 즉시 그 콜백을 호출해야 한다면 `useLayoutEffect`에 넣거나 `useInsertionEffect`를 사용합니다. (일반 DOM/브라우저 이벤트 리스너는 커밋 이후 사용자 조작으로 발생하므로 `useEffect`로도 충분합니다.)
+- **주의**: 만약 부모·형제 컴포넌트의 `useLayoutEffect` 실행 시점에 이미 최신 콜백이 반영되어 있어야 한다면, `useEffect` 대신 `useLayoutEffect`(또는 `useInsertionEffect`) 안에서 `.current`를 갱신합니다. (일반 DOM/브라우저 이벤트 리스너는 커밋 이후 사용자 조작으로 발생하므로 `useEffect`로도 충분합니다.)
 
 #### ② 그럼 `useCallback`은 언제 쓰나요?
 | 상황 | 권장 도구 | 이유 |
@@ -392,6 +392,6 @@ export function ShortcutCounter() {
 | **커스텀 훅 내부에서 외부 콜백을 `useEffect`로 구독할 때** | **`useRef` (Latest Ref Pattern)** | 훅을 호출하는 쪽에 "`useCallback`으로 꼭 감싸서 넘기세요"라고 강제하지 않아도 안전하게 동작함 (API 사용성 극대화) |
 | **타이머(`setInterval`) 내부에서 최신 `state`를 읽어야 할 때** | **`useRef` 또는 `setState(prev => ...)`** | 인터벌을 껐다 켜지 않고도 최신 상태를 읽어 타이머 주기가 깨지지 않음 |
 
-#### ③ React 19의 `useEffectEvent`와의 관계
-- React 팀도 이 패턴(`Latest Ref Pattern`)이 너무 자주 쓰이고 실수하기 쉽다는 점을 인지하여, 실험적/차기 훅인 **`useEffectEvent`**를 설계했습니다.
-- `useEffectEvent`는 내부적으로 바로 이 **`savedHandlerRef` 패턴을 React 엔진 차원에서 추상화**해 제공하는 기능입니다. 따라서 `useRef` 기반 패턴의 동작 원리를 이해해 두면 React의 이펙트 모델 전체를 꿰뚫어 볼 수 있습니다.
+#### ③ React 19.2+ `useEffectEvent`와의 관계
+- React 팀도 이 패턴(`Latest Ref Pattern`)이 너무 자주 쓰이고 실수하기 쉽다는 점을 인지하여, **React 19.2부터 정식(`Stable`) 훅인 `useEffectEvent`**를 공식 도입했습니다(본 워크스페이스에 설치된 `react@19.3.x`에서도 사용 가능).
+- `useEffectEvent`는 내부적으로 바로 이 **`savedHandlerRef` 패턴을 React 엔진 차원에서 추상화**해 제공하는 기능입니다. 따라서 `useRef` 기반 패턴의 동작 원리를 이해해 두면 React의 이펙트 모델 전체와 `useEffectEvent`의 내부 동작까지 꿰뚫어 볼 수 있습니다.

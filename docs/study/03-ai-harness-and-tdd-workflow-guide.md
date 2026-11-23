@@ -10,13 +10,13 @@
 
 ```mermaid
 flowchart TD
-    S1["1단계 [🔴 Argon High]: 브랜치 선생성·전환 & 스코프 잠금 후 기획·설계서 작성<br/>- main에서 먼저 작업 브랜치 생성·전환 및 .agents/active-scope.json 설정<br/>- 루트 todo.md, service-registry.md, 앱 docs/todo.md 확인 및 Context7 조회<br/>- features/YYYYMMDD-작업명/01-plan-and-design.md 작성<br/>🔔 완료 후 Argon Medium 전환 알림"]
-    S2["2단계 [🟡 Argon Medium]: TDD 명세서 작성 및 사용자 구현 승인 게이트<br/>- features/YYYYMMDD-작업명/02-tdd-spec.md 작성<br/>- 사용자 구현 승인 전까지 본 코드 작성 금지"]
-    S3["3단계 [🟡 Argon Medium]: 실패하는 테스트 코드 먼저 작성 (Red)<br/>- 승인된 02-tdd-spec.md 기반으로 Vitest 테스트 작성<br/>- 테스트 실행 후 의도된 실패(Red) 확인"]
-    S4["4단계 [🟡 Argon Medium]: 본 코드 및 3종 SQL 구현 (Green & Refactor)<br/>- 테스트를 통과(Green)하는 코드 및 SQL 구현<br/>- 6대 주석 원칙 준수 & PostToolUse 훅으로 Biome 자동 포맷팅<br/>🔔 완료 후 Argon High 전환 알림"]
-    S5A["5단계-A [🔴 Argon High]: 심층 코드 리뷰 및 PR 초안 보고<br/>- 03-code-review.md 작성 및 PR 초안·커밋 메시지 보고<br/>- ⚠️ 머지 동시 요청 금지 (오직 'PR 생성 승인'만 요청)"]
-    S5B["5단계-B [🟡 Argon Medium]: 커밋·푸시 및 PR 생성 후 즉시 정지 (STOP)<br/>- gh pr create 실행까지만 수행 후 반드시 턴 종료<br/>- 사용자가 GitHub에서 PR을 직접 확인하고 머지 여부를 결정할 때까지 대기"]
-    S5C["5단계-C [🟡 Argon Medium]: 별도 머지 승인 후 TODO·레지스트리 커밋 및 머지<br/>- 별도 머지 승인 직후 todo.md, 앱 docs/todo.md, service-registry.md 커밋·푸시<br/>- gh pr merge 실행 후 로컬 main 브랜치 동기화"]
+    S1["1단계: 브랜치 선생성·전환 & 스코프 잠금 후 기획·설계서 작성<br/>- main에서 먼저 작업 브랜치 생성·전환 및 .agents/active-scope.json 설정<br/>- 루트 todo.md, service-registry.md, 앱 docs/todo.md 확인 및 Context7 조회<br/>- features/YYYYMMDD-작업명/01-plan-and-design.md 작성"]
+    S2["2단계: TDD 명세서 작성 및 사용자 구현 승인 게이트<br/>- features/YYYYMMDD-작업명/02-tdd-spec.md 작성<br/>- 사용자 구현 승인 전까지 본 코드 작성 금지"]
+    S3["3단계: 실패하는 테스트 코드 먼저 작성 (Red)<br/>- 승인된 02-tdd-spec.md 기반으로 Vitest 테스트 작성<br/>- 테스트 실행 후 의도된 실패(Red) 확인"]
+    S4["4단계: 본 코드 및 3종 SQL 구현 (Green & Refactor)<br/>- 테스트를 통과(Green)하는 코드 및 SQL 구현<br/>- 6대 주석 원칙 준수 & PostToolUse 훅으로 Biome 자동 포맷팅"]
+    S5A["5단계-A: 심층 코드 리뷰 및 PR 초안 보고<br/>- 03-code-review.md 작성 및 PR 초안·커밋 메시지 보고<br/>- ⚠️ 머지 동시 요청 금지 (오직 'PR 생성 승인'만 요청)"]
+    S5B["5단계-B: 커밋·푸시 및 PR 생성 후 즉시 정지 (STOP)<br/>- gh pr create 실행까지만 수행 후 반드시 턴 종료<br/>- 사용자가 GitHub에서 PR을 직접 확인하고 머지 여부를 결정할 때까지 대기"]
+    S5C["5단계-C: 별도 머지 승인 후 TODO·레지스트리 커밋 및 머지<br/>- 별도 머지 승인 직후 todo.md, 앱 docs/todo.md, service-registry.md 커밋·푸시<br/>- gh pr merge 실행 후 로컬 main 브랜치 동기화"]
 
     S1 --> S2 --> S3 --> S4 --> S5A --> S5B --> S5C
 ```
@@ -29,10 +29,6 @@ flowchart TD
    - 에이전트가 PR 생성과 머지를 한 번에 묶어서 실행해 버리면, 승인자(사용자)가 GitHub PR 화면에서 전체 변경분(Diff)과 리뷰 문서를 직접 검토하고 반려·보완을 지시할 기회가 사라집니다.
    - 따라서 **5단계-B에서는 반드시 `gh pr create`(PR 생성)까지만 수행하고 즉시 턴을 종료**하며, `verify-todo-before-merge.mjs` 훅이 `gh pr create`와 `gh pr merge`를 한 명령줄에 묶어 실행하는 시도를 기계적으로 차단합니다.
    - 이후 사용자가 PR을 검토하고 **별도로 머지를 승인했을 때(`5단계-C`)에만** 루트 `todo.md`, 앱 `docs/todo.md`, `docs/service-registry.md`를 업데이트해 먼저 커밋·푸시한 뒤 실제 머지를 수행합니다.
-4. **왜 단계별로 `Argon High`와 `Argon Medium` 모델을 번갈아 사용하며, 어떻게 훅으로 알림을 받나요?**
-   - 실제 작업에서 **토큰 소모량의 약 70% 이상은 긴 테스트 코드, 본 코드, JSDoc 주석을 타이핑하는 2~4단계**에서 발생합니다. 이 구간은 이미 1단계에서 완성된 설계서를 보고 구현하는 정형화된 작업이므로 `Argon Medium`으로 진행하면 품질 저하 없이 토큰을 절반 이하로 절약할 수 있습니다.
-   - 반면 **깊은 추론과 비판적 검증이 필요한 1단계(기획·설계)와 5단계 전반부(`03-code-review.md` 보안·실전 이슈 정밀 감사)**에만 `Argon High`를 집중 투입합니다.
-   - 사용자가 모델 변경 타이밍을 놓치지 않도록 `.agents/active-scope.json`에 현재 단계(`currentStep`)를 기록하고, `PreInvocation` 및 `Stop` 훅이 단계 전환 시점(1단계 완료 직후 → `Medium` 권장 / 4단계 완료 직후 → `High` 권장)마다 화면에 **모델 전환 알림 배너**를 자동으로 띄워줍니다.
 
 ---
 

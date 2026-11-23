@@ -70,12 +70,14 @@ pnpm dev
 ### 📚 핵심 학습 문서 시리즈 (`docs/study/`)
 1. **[Study 01. MFE 개념 및 핵심 원리 가이드](./docs/study/01-mfe-concepts-and-guide.md)**: MFE 기본 원칙, 4대 통합 패턴, Q1~Q8(`Mode A` vs `Mode B` 상태 동기화 비교), 6대 실습 프로세스, 3대 디버깅 툴
 2. **[Study 02. 물리적 멀티레포 전환과 아키텍처 의사결정 노트](./docs/study/02-polyrepo-and-architecture-decisions.md)**: 멀티레포 5대 엔지니어링 과제, 경량 FSD(`exposed/` + `features/{ui,api,model}`), 하이브리드 테스트 배치, SSOT 정본 참조 원칙, 선정 라이브러리 역할
-3. **[Study 03. TDD 워크플로우 및 AI 하네스 가이드](./docs/study/03-ai-harness-and-tdd-workflow-guide.md)**: 5단계 TDD 사이클, 단계별 모델(`Argon High` ↔ `Argon Medium`) 전환 전략, 하네스 3계층 및 5대 훅 동작 원리
-4. **[Study 04. MFE 미경험자는 미리 알 수 없는 14대 실전 이슈와 해결 아키텍처](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md)**: 싱글톤 `eager` 에러, 에셋 404, 다중 포트 `CORS`, 전역 CSS Reset 참사, `z-index` 전쟁, 좀비 이벤트 리스너, 런타임 MF 스모크 테스트 등
+3. **[Study 03. TDD 워크플로우 및 AI 하네스 가이드](./docs/study/03-ai-harness-and-tdd-workflow-guide.md)**: 5단계 TDD 사이클, 하네스 3계층 및 5대 훅 동작 원리
+4. **[Study 04. MFE 14대 실전 고유 이슈와 해결 아키텍처](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md)**: 싱글톤 `eager` 에러, 에셋 404, 다중 포트 `CORS`, 전역 CSS Reset 참사, `z-index` 전쟁, 좀비 이벤트 리스너, 런타임 MF 스모크 테스트 등
 5. **[Study 05. 풀스택 서비스 구현 16대 실전 이슈와 해결 아키텍처](./docs/study/05-fullstack-service-real-world-issues.md)**: `Race Condition`(`ky` + `AbortSignal`), `Waterfall` 방지, `node:sqlite` 외래키 `PRAGMA`, 원자적 `UPSERT`, `Zod` + `React Hook Form` 경계 검증, `CLS` 방지 등
 6. **[Study 06. 루트 워크스페이스 및 AI 하네스 초기 세팅 A-to-Z 가이드](./docs/study/06-workspace-and-harness-setup-guide.md)**: 빈 폴더부터 따라 치는 명령어(`Corepack`, `Git`, `pnpm catalog:`, `Biome`, `Lefthook`, `Antigravity Hooks`, `gh CLI`) 및 설정 옵션 상세 해설
 7. **[Study 07. JavaScript 클로저·참조 동일성과 React `useRef` 최신 핸들러 패턴](./docs/study/07-js-and-react-closure-ref-patterns.md)**: 프로젝트 비의존 순수 JS·React 샘플 코드로 배우는 함수 참조 동일성, Stale Closure 재현 및 해결, `useState` vs `useRef`, Latest Ref Pattern 완벽 가이드
 8. **[Study 08. JavaScript `AbortController` · `AbortSignal`과 React 비동기 취소 패턴](./docs/study/08-abort-signal-and-async-cancellation.md)**: 순수 JS·React 독립 샘플로 배우는 `AbortController` vs `AbortSignal` 구조, `'abort'` 이벤트 기반 즉시 취소(`delayWithSignal`), `useEffect` Race Condition 방지 및 TanStack Query `signal` 연동 원리
+9. **[Study 09. MFE 원격 타입(`@mf-types`) 전이 의존성과 디자인 시스템 경계 캡슐화](./docs/study/09-mfe-shared-types-and-design-system-encapsulation.md)**: `vite-env.d.ts`와 `.d.ts` 로드 규약, 서드파티(`@ark-ui/react`) 타입 누출 원인 및 경계 캡슐화 해결 아키텍처
+10. **[Study 10. MFE 실서비스 프로덕션 배포 · 정적 서빙 테스트 · 운영 가이드](./docs/study/10-mfe-production-deployment-and-operations.md)**: `@mf-types.zip` 제외·차단 전략, 단일 정적 서버(서브패스·VS Code Live Server) vs 멀티 도메인 배포, `Cache-Control`·`ChunkLoadError`·롤백 전략
 
 ### 📝 표준 작업 템플릿 (`docs/templates/`)
 - **[todo.template.md](./docs/templates/todo.template.md)**: 마이크로 앱별 `docs/todo.md` 생성 템플릿

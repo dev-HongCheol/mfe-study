@@ -2,7 +2,7 @@
  * @file harness.test.ts
  * @app mfe-study-root (Scope: root)
  * @exposed false
- * @description AI 워크플로우 하네스 훅 스크립트(스코프 검증, TODO 주입 및 모델 전환 알림, 머지 전 TODO 검증, 3종 SQL 해시/인메모리 검증, 종료 게이트)를 검증하는 TDD 테스트 스위트입니다.
+ * @description AI 워크플로우 하네스 훅 스크립트(스코프 검증, TODO 주입 및 단계별 가이드, 머지 전 TODO 검증, 3종 SQL 해시/인메모리 검증, 종료 게이트)를 검증하는 TDD 테스트 스위트입니다.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -82,15 +82,15 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
     });
   });
 
-  describe('TC-02: 단계별 모델 전환 알림 및 TODO 컨텍스트 주입 (inject-context.mjs)', () => {
-    it('TC-02: currentStep이 2일 때는 Argon Medium 전환 안내를, 5일 때는 Argon High 전환 안내를 포함해야 한다', () => {
+  describe('TC-02: TDD 단계별 가이드 및 TODO 컨텍스트 주입 (inject-context.mjs)', () => {
+    it('TC-02: currentStep이 2일 때는 TDD 명세·승인 게이트 안내를, 5일 때는 코드 리뷰 및 PR 생성 정지 안내를 포함해야 한다', () => {
       writeFileSync(
         join(tempRoot, 'todo.md'),
         '# 마스터 TODO\n- **다음 진행 예정 작업 (Next Up)**:\n  - Step 0.3 구축',
         'utf-8',
       );
 
-      // Step 2 (TDD 명세 -> Argon Medium 권장)
+      // Step 2 (TDD 명세 및 사용자 구현 승인 게이트)
       const step2Output = buildContextInjection({
         workspaceRoot: tempRoot,
         eventType: 'PreInvocation',
@@ -103,10 +103,11 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
         },
       });
       const step2Msg = step2Output.injectSteps?.[0]?.ephemeralMessage ?? '';
-      expect(step2Msg).toContain('Argon Medium');
+      expect(step2Msg).toContain('현재 2단계');
+      expect(step2Msg).toContain('02-tdd-spec.md');
       expect(step2Msg).toContain('Step 0.3 구축');
 
-      // Step 5 (PR 전 심층 코드 리뷰 -> Argon High 권장)
+      // Step 5 (PR 전 심층 코드 리뷰 및 PR 생성 정지)
       const step5Output = buildContextInjection({
         workspaceRoot: tempRoot,
         eventType: 'PreInvocation',
@@ -119,7 +120,7 @@ describe('AI 워크플로우 하네스 훅 TDD 검증 스위트', () => {
         },
       });
       const step5Msg = step5Output.injectSteps?.[0]?.ephemeralMessage ?? '';
-      expect(step5Msg).toContain('Argon High');
+      expect(step5Msg).toContain('현재 5단계');
       expect(step5Msg).toContain('PR 생성까지만');
     });
   });
