@@ -335,9 +335,16 @@ describe('CartWidget & App 통합 테스트 (TC-05, TC-06, EC-01~EC-04)', () => 
     expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
     unmount();
 
-    // 단독 실행 쇼케이스 렌더링 검증
+    // 단독 실행 쇼케이스 렌더링 및 [샘플 상품 담기 (POST /api/cart)] 반복 테스트 검증
+    const user = userEvent.setup();
     render(<App />);
     expect(screen.getByText(/장바구니 원격 앱/i)).toBeInTheDocument();
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /샘플 상품 담기/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/단가 129,000원 × 2개/)).toBeInTheDocument();
+    });
 
     // 정적 아키텍처 무결성 5대 검증
     const pkgJson = JSON.parse(readFileSync(resolve(APP_ROOT, 'package.json'), 'utf-8')) as {

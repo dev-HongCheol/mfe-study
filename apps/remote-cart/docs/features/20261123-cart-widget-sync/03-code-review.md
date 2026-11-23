@@ -90,6 +90,7 @@
 1. **구버전 `@module-federation/rsbuild-plugin@0.18.4`와 `Rsbuild v1.7.6` 간 `mf-manifest.json` 중복 출력 충돌 및 `@mf-types.zip` 다운로드 실패** → 최신 호환 버전인 `@module-federation/rsbuild-plugin@^2.9.3`으로 업그레이드하여 `rsbuild build`(`3.15s`) + `@mf-types.zip` 양방향 동기화 + 무-Shim `tsc --noEmit` 100% 통과 확인 (해결 완료)
 2. **`CartWidget.integration.test.tsx` 내 Biome `noNonNullAssertion` 경고 3건 및 `CartHeaderBar.test.tsx` 중복 텍스트 매칭 2건** → 구조 분해 + 존재 검증(`expect(...).toBeDefined()`) 및 정확한 배지 텍스트 매칭으로 정리하여 `Biome` 에러 `0건` 및 `Vitest` `42개 파일 / 126건` 전원 통과 확인 (해결 완료)
 3. **`Vite dev`(`remote-shared:3004`) ↔ `Rsbuild dev`(`remote-cart:3003`) 새로고침 시 `jsxDEV is not a function` 흰 화면 경합** → `rsbuild.config.ts`의 `shared`에 `'react/jsx-runtime'`, `'react/jsx-dev-runtime'`, `'react-dom/client'` 3개 서브패스를 싱글톤으로 명시 추가(`shareStrategy` 기본값 유지, `eager: true` 미사용)하고 정적 회귀 테스트 보강 완료 (해결 완료)
+4. **`use-cart-queries.ts` 내 중복 모드 분기·불필요한 `onSuccess` `if (!validUserId)` 가드 및 단독 쇼케이스 빈 장바구니 재테스트 불편** → `activeQueryClient` 기반 공통 헬퍼 `syncCartAfterMutation` 추출 및 `updatedItem.userId`/확정 `userId` 사용으로 중복 제거, 단독 쇼케이스(`App.tsx`)에 `[샘플 상품 담기 (POST /api/cart)]` 버튼과 통합 테스트 추가 완료 (해결 완료)
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
 1. **프로젝트 최초 `Rspack (Rsbuild)` ↔ `Vite` 이종 번들러 MF 2.0 연동 실증**: `Vite 7`로 빌드된 `remote-shared(3004)`의 `mf-manifest.json`과 `@mf-types.zip`을 `Rsbuild(Rspack)` 앱(`remote-cart:3003`)이 임시 타입 Shim `0줄` 상태로 자동 수신·빌드·타입체크하는 전체 파이프라인을 검증했습니다.

@@ -22,11 +22,16 @@ import {
   MFE_EVENTS,
   type SyncMode,
   mfeEventBus,
+  normalizeError,
   sharedQueryClient,
   useMfeEvent,
 } from 'remote_shared/utils';
 import { CartWidget } from './exposed/CartWidget';
+import { postIncrementCartItem } from './features/cart/api/cart-api';
 import { loadCartPreferences, saveCartPreferences } from './features/cart/model/cart-schema';
+
+/** 단독 실행에서 장바구니가 비어 있을 때 순환 담기 테스트에 사용하는 시드 상품 ID 목록 (재고 보유 상품 1~5번) */
+const SAMPLE_PRODUCT_IDS: readonly number[] = [1, 2, 3, 4, 5] as const;
 
 /** 단독 실행 테스트용 사용자 선택 옵션 상수 */
 const USER_SELECT_OPTIONS: SelectOptionItem[] = [
@@ -70,6 +75,12 @@ export function App() {
   /** 최근 발생한 MFE 이벤트 로그 목록 상태 (최대 5건 유지) */
   const [eventLogs, setEventLogs] = useState<string[]>([]);
 
+  /** 단독 실행 샘플 상품 담기 요청 진행 여부 상태 */
+  const [isAddingSample, setIsAddingSample] = useState<boolean>(false);
+
+  /** 다음 샘플 상품 담기 시 사용할 순환 인덱스 상태 */
+  const [sampleCursor, setSampleCursor] = useState<number>(0);
+
   useMfeEvent(MFE_EVENTS.CART_UPDATED, (payload) => {
     const entry = `[${payload.action}] user=${payload.userId} product=${payload.productName ?? payload.productId ?? 'all'} (${payload.sourceHost})`;
     setEventLogs((prev) => [entry, ...prev].slice(0, 5));
@@ -89,6 +100,57 @@ export function App() {
       cssIsolated: nextIsolated,
       timestamp: new Date().toISOString(),
     });
+  };
+
+  /**
+   * 단독 실행 화면에서 실제 POST /api/cart를 호출해 샘플 상품 1개를 담고 현재 syncMode로 동기화합니다.
+   * 장바구니를 비운 뒤에도 DB 리셋 없이 Port 3003 단독으로 반복 테스트할 수 있게 돕습니다.
+   */
+  const handleAddSampleItem = async () => {
+    // [분기 설명] 비로그인 상태이거나 이미 요청 중이면 중복 호출을 차단합니다.
+    if (!effectiveUserId || isAddingSample) {
+      return;
+    }
+
+    const targetProductId = SAMPLE_PRODUCT_IDS[sampleCursor % SAMPLE_PRODUCT_IDS.length] ?? 1;
+    setIsAddingSample(true);
+    try {
+      const added = await postIncrementCartItem({
+        userId: effectiveUserId,
+        productId: targetProductId,
+        quantity: 1,
+        addedFromHost: 'standalone',
+      });
+      setSampleCursor((prev) => (prev + 1) % SAMPLE_PRODUCT_IDS.length);
+
+      // [분기 설명] 실제 DB 저장 후 현재 선택된 모드에 맞춰 Mode A는 이벤트 발행, Mode B는 공유 캐시 무효화를 수행합니다.
+      if (syncMode === 'mode-b-query') {
+        await sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+        setEventLogs((prev) =>
+          [
+            `[샘플 담기 · Mode B] ${added.productName} (+1) → sharedQueryClient 무효화`,
+            ...prev,
+          ].slice(0, 5),
+        );
+      } else {
+        mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, {
+          action: 'add',
+          userId: added.userId,
+          productId: added.productId,
+          productName: added.productName,
+          quantity: 1,
+          sourceHost: 'standalone',
+          timestamp: added.createdAt || new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      const normalized = normalizeError(err);
+      setEventLogs((prev) =>
+        [`[샘플 담기 실패] [${normalized.code}] ${normalized.message}`, ...prev].slice(0, 5),
+      );
+    } finally {
+      setIsAddingSample(false);
+    }
   };
 
   /**
@@ -173,6 +235,17 @@ export function App() {
                 </Button>
                 <Button
                   variant="primary"
+                  size="sm"
+                  isLoading={isAddingSample}
+                  disabled={!effectiveUserId || isAddingSample}
+                  onClick={() => {
+                    void handleAddSampleItem();
+                  }}
+                >
+                  샘플 상품 담기 (POST /api/cart)
+                </Button>
+                <Button
+                  variant="secondary"
                   size="sm"
                   disabled={!effectiveUserId}
                   onClick={handleSimulateRemoteSync}

@@ -4,15 +4,9 @@
  * @exposed false
  * @description 장바구니 조회(useCartQuery), 수량 증가(useIncrementCartMutation), 단건·전체 삭제(useDeleteCartMutation) 및 Mode A vs Mode B 상태 동기화 훅입니다 ([Study 01, Study 05 #01]).
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CartUpdatedEventPayload, HostOriginType, SyncMode } from 'remote_shared/utils';
-import {
-  CART_QUERY_KEY,
-  DEFAULT_API_BASE_URL,
-  MFE_EVENTS,
-  mfeEventBus,
-  sharedQueryClient,
-} from 'remote_shared/utils';
+import { CART_QUERY_KEY, DEFAULT_API_BASE_URL, MFE_EVENTS, mfeEventBus } from 'remote_shared/utils';
 import {
   DEFAULT_SIMULATE_DELAY_MS,
   deleteCartItemApi,
@@ -67,6 +61,40 @@ export interface DeleteCartVariables {
 
   /** 삭제된 상품명 (단건 삭제 시 이벤트 로그용) */
   productName?: string;
+}
+
+/**
+ * @description 삭제 뮤테이션 성공 시 삭제 결과와 요청 당시 확정된 사용자 ID를 함께 전달하는 내부 결과 인터페이스
+ */
+interface DeleteCartMutationResult {
+  /** 백엔드 DELETE /api/cart/:id 응답 객체 */
+  result: DeleteCartResult;
+
+  /** 실제 삭제가 수행된 확정 사용자 ID */
+  userId: string;
+}
+
+/**
+ * 장바구니 쓰기 뮤테이션 성공 직후 활성 QueryClient 캐시를 무효화하고, Mode A에서는 mfe:cart-updated 이벤트를 발행합니다.
+ * CartWidget이 이미 모드별 QueryClient(Mode A: 독립 캐시, Mode B: 싱글톤 sharedQueryClient)를 주입하므로
+ * invalidateQueries는 공통으로 호출하고 CustomEvent 발행만 Mode A로 분기합니다.
+ *
+ * @param queryClient - 현재 활성 QueryClient 인스턴스
+ * @param syncMode - 상태 동기화 비교 학습 모드
+ * @param eventPayload - Mode A에서 발행할 장바구니 변경 이벤트 페이로드
+ * @returns 캐시 무효화 완료 Promise
+ */
+async function syncCartAfterMutation(
+  queryClient: QueryClient,
+  syncMode: SyncMode,
+  eventPayload: CartUpdatedEventPayload,
+): Promise<void> {
+  await queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
+
+  // [분기 설명] Mode A에서만 CustomEvent 신호를 발행하고, Mode B는 싱글톤 sharedQueryClient 무효화만으로 동기화합니다.
+  if (syncMode === 'mode-a-event') {
+    mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, eventPayload);
+  }
 }
 
 /**
@@ -145,35 +173,19 @@ export function useIncrementCartMutation(options: UseCartMutationOptions) {
       });
     },
     onMutate: async () => {
-      // [분기 설명] 수정 요청 출발 전 진행 중인 구버전 GET /api/cart 요청을 취소해 응답 역전(Race Condition)을 차단합니다 (Study 05 #01).
-      if (syncMode === 'mode-b-query') {
-        await sharedQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
-      } else {
-        await activeQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
-      }
+      // [분기 설명] 활성 QueryClient(Mode A: 독립 캐시, Mode B: sharedQueryClient)에서 진행 중인 구버전 GET을 취소해 응답 역전을 방지합니다 (Study 05 #01).
+      await activeQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
     },
     onSuccess: async (updatedItem) => {
-      if (!validUserId) {
-        return;
-      }
-
-      // [분기 설명] Mode B에서는 CustomEvent 발송 없이 싱글톤 sharedQueryClient만 무효화하고,
-      // Mode A에서는 독립 QueryClient 재조회와 함께 mfe:cart-updated 이벤트를 발행합니다.
-      if (syncMode === 'mode-b-query') {
-        await sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
-      } else {
-        await activeQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
-        const payload: CartUpdatedEventPayload = {
-          action: 'add',
-          userId: validUserId,
-          productId: updatedItem.productId,
-          productName: updatedItem.productName,
-          quantity: 1,
-          sourceHost: hostType,
-          timestamp: updatedItem.createdAt || new Date().toISOString(),
-        };
-        mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, payload);
-      }
+      await syncCartAfterMutation(activeQueryClient, syncMode, {
+        action: 'add',
+        userId: updatedItem.userId,
+        productId: updatedItem.productId,
+        productName: updatedItem.productName,
+        quantity: 1,
+        sourceHost: hostType,
+        timestamp: updatedItem.createdAt || new Date().toISOString(),
+      });
     },
   });
 }
@@ -189,7 +201,7 @@ export function useDeleteCartMutation(options: UseCartMutationOptions) {
   const activeQueryClient = useQueryClient();
   const validUserId = normalizeUserId(userId);
 
-  return useMutation<DeleteCartResult, unknown, DeleteCartVariables>({
+  return useMutation<DeleteCartMutationResult, unknown, DeleteCartVariables>({
     mutationFn: async ({ targetId }) => {
       // [분기 설명] 비인증 상태에서는 삭제 API 호출을 원천 차단합니다 (SSOT § 5.4.3).
       if (!validUserId) {
@@ -200,40 +212,26 @@ export function useDeleteCartMutation(options: UseCartMutationOptions) {
           originalError: null,
         };
       }
-      return deleteCartItemApi({
+      const result = await deleteCartItemApi({
         targetId,
         userId: validUserId,
         apiBaseUrl,
       });
+      return { result, userId: validUserId };
     },
     onMutate: async () => {
-      // [분기 설명] 삭제 요청 출발 전 진행 중이던 조회 요청을 취소해 응답 역전을 방지합니다 (Study 05 #01).
-      if (syncMode === 'mode-b-query') {
-        await sharedQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
-      } else {
-        await activeQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
-      }
+      // [분기 설명] 삭제 요청 출발 전 활성 QueryClient의 진행 중 조회를 취소해 응답 역전을 차단합니다 (Study 05 #01).
+      await activeQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
     },
-    onSuccess: async (_result, variables) => {
-      if (!validUserId) {
-        return;
-      }
-
-      // [분기 설명] Mode B는 싱글톤 sharedQueryClient 무효화만 수행하고, Mode A는 독립 캐시 갱신 + CustomEvent 발행만 수행합니다.
-      if (syncMode === 'mode-b-query') {
-        await sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
-      } else {
-        await activeQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
-        const payload: CartUpdatedEventPayload = {
-          action: variables.targetId === 'all' ? 'clear' : 'remove',
-          userId: validUserId,
-          productId: variables.productId,
-          productName: variables.productName,
-          sourceHost: hostType,
-          timestamp: new Date().toISOString(),
-        };
-        mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, payload);
-      }
+    onSuccess: async ({ userId: deletedUserId }, variables) => {
+      await syncCartAfterMutation(activeQueryClient, syncMode, {
+        action: variables.targetId === 'all' ? 'clear' : 'remove',
+        userId: deletedUserId,
+        productId: variables.productId,
+        productName: variables.productName,
+        sourceHost: hostType,
+        timestamp: new Date().toISOString(),
+      });
     },
   });
 }
