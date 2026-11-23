@@ -31,6 +31,7 @@
 ## 📝 3. 예정된 작업 목록 (백로그)
 > 앞으로 이 서비스 스코프에서 진행할 작업 목록입니다. 작업 시작 시 `features/YYYYMMDD-<작업명>/` 폴더를 생성하고 위 섹션으로 이동합니다.
 
+- [ ] **[Phase 1 - Step 1.4 후속 개선] `Mode A` 자기 에코(Self-Echo) 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** (`Branch: cart/refactor/queryclient-sync-channel`, 참조: [`Study 12`](../../../docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)): `Symbol.for` `WeakMap<QueryClient, Channel>` + `selfEchoTokens` 1회 소비 스택 + `useSyncExternalStore` 사용자별 수신 카운터 도입, 쿼리 키 `['cart', userId, { ... }]` 정렬, `emit` 선행(`try/catch` 격리) → `await invalidateQueries` 1회 적용 및 3지표(수신 수/`invalidateQueries`/실제 `GET`) 8대 회귀 테스트 구축
 - [ ] **[Phase 2 - Step 2.1] 장바구니 전용 라우트(`/cart`) 및 호스트 라우터 동기화**: 단독 실행과 호스트 결합 시 `MemoryHistory` 격리 라우팅 연동
 - [ ] **[Phase 3 - Step 3.2] `Rsdoctor` (`@rsdoctor/rspack-plugin`) 번들·공유 의존성 진단 연동**: `Rspack` 공유 싱글톤 및 청크 크기 시각화 대시보드 연결
 

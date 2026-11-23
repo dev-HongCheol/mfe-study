@@ -27,8 +27,9 @@
   - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료
   - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 승인 완료
 - **다음 진행 예정 작업 (Next Up)**:
-  1. **[다음 대기 | `Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`] [Phase 1 - Step 1.5] 공통 껍데기 호스트 2종(`apps/host-vite:3000`, `apps/host-rspack:3001`) 구축**
-  2. **[다음 대기 | `Scope: root` | `Branch: root/test/phase1-mfe-smoke`] [Phase 1 - Step 1.6] Phase 1 실제 Module Federation 6개 서버 런타임 스모크 테스트 구축**
+  1. **[다음 대기 | `Scope: cart` | `Branch: cart/refactor/queryclient-sync-channel`] [Phase 1 - Step 1.4 후속 개선] `remote-cart` `Mode A` 자기 에코(Self-Echo) 중복 `invalidateQueries` 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** ([`Study 12`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md))
+  2. **[다음 대기 | `Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`] [Phase 1 - Step 1.5] 공통 껍데기 호스트 2종(`apps/host-vite:3000`, `apps/host-rspack:3001`) 구축**
+  3. **[다음 대기 | `Scope: root` | `Branch: root/test/phase1-mfe-smoke`] [Phase 1 - Step 1.6] Phase 1 실제 Module Federation 6개 서버 런타임 스모크 테스트 구축**
 
 ---
 
@@ -86,6 +87,9 @@
 - [x] **Step 1.4: 장바구니 원격 앱 구축** (`Scope: cart` | `Branch: cart/feat/cart-widget-sync`, PR #14)
   - 문서 경로: `apps/remote-cart/docs/todo.md` 및 `apps/remote-cart/docs/features/20261123-cart-widget-sync/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - 프로젝트 최초 `Rsbuild(Rspack)` + `@module-federation/rsbuild-plugin(^2.9.3)` 리모트 앱(`Port 3003`) 구축: `./CartWidget` 컴포넌트, **비교 학습 모드(`Mode A: CustomEvent 수신 후 독립 QueryClient 재조회` vs `Mode B: sharedQueryClient 캐시 무효화 자동 감지`)**, 비인증 3중 차단, CSS 스타일 충돌/격리 토글(`cssIsolated`), React 서브패스 3종(`jsx-runtime`/`jsx-dev-runtime`/`react-dom/client`) 명시 공유, `syncCartAfterMutation` 공통 헬퍼 리팩토링 및 단독 실행(`샘플 상품 담기` 포함) 쇼케이스 TDD 구현·머지 완료 (`Vitest 8개 파일 / 28건`·루트 전체 `42개 파일 / 126건`·`rsbuild build`·무-Shim `typecheck`·`Biome` 통과, `docs/service-registry.md` 반영)
+- [ ] **Step 1.4 후속 개선: `remote-cart` `Mode A` 자기 에코(Self-Echo) 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** (`Scope: cart` | `Branch: cart/refactor/queryclient-sync-channel`)
+  - 참조 가이드: [`docs/study/12-mfe-event-self-echo-and-queryclient-sync.md`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)
+  - 공통 Zod 스키마(`remote-shared`) 변경 없이 `apps/remote-cart` 내부에 `Symbol.for` `WeakMap<QueryClient, Channel>` + `selfEchoTokens` 1회 소비 스택 + `useSyncExternalStore` 사용자별 수신 카운터를 도입하고, 쿼리 키 `['cart', userId, { apiBaseUrl, simulateDelay }]` 정렬, `emit` 선행(`try/catch` 격리) → `await invalidateQueries` 1회 적용 및 3지표(`receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`) 8대 회귀 테스트 구축
 - [ ] **Step 1.5: 공통 껍데기 호스트 2종 구축** (`Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`)
   - 문서 경로: `apps/host-vite/docs/todo.md`, `apps/host-vite/docs/features/YYYYMMDD-dashboard/` 및 `apps/host-rspack/docs/todo.md`, `apps/host-rspack/docs/features/YYYYMMDD-dashboard/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - 원격 모듈 통합 대시보드, `Suspense` + `Skeleton` (1.5초 지연 시뮬레이션 토글), `RemoteErrorBoundary` 장애 격리, 실시간 MFE 학습 모니터(`MfeInspector` — **`Mode A: CustomEvent` ↔ `Mode B: sharedQueryClient` 비교 관찰 토글** 포함) TDD 구현 (`Port 3000`, `Port 3001`)

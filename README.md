@@ -79,6 +79,7 @@ pnpm dev
 9. **[Study 09. MFE 원격 타입(`@mf-types`) 전이 의존성과 디자인 시스템 경계 캡슐화](./docs/study/09-mfe-shared-types-and-design-system-encapsulation.md)**: `vite-env.d.ts`와 `.d.ts` 로드 규약, 서드파티(`@ark-ui/react`) 타입 누출 원인 및 경계 캡슐화 해결 아키텍처
 10. **[Study 10. MFE 실서비스 프로덕션 배포 · 정적 서빙 테스트 · 운영 가이드](./docs/study/10-mfe-production-deployment-and-operations.md)**: `@mf-types.zip` 제외·차단 전략, 단일 정적 서버(서브패스·VS Code Live Server) vs 멀티 도메인 배포, `Cache-Control`·`ChunkLoadError`·롤백 전략
 11. **[Study 11. 실무 웹 서비스 필수 CSS 폰트 · 타이포그래피 설정 가이드](./docs/study/11-css-typography-and-font-essentials.md)**: `font: inherit` 폼 상속, `font-display`·`size-adjust`·`unicode-range` CLS 방어, `font-variant-numeric`(`tabular-nums`·`slashed-zero`), 한글 줄바꿈(`keep-all` + `break-word`), `text-wrap: balance/pretty` 및 MFE 폰트 관리 원칙
+12. **[Study 12. MFE `Mode A` 이벤트 자기 에코(Self-Echo)와 `QueryClient` 단위 상태 동기화 아키텍처](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)**: 동기 `CustomEvent` 자기 에코 중복 `GET` 원인 분석, `WeakMap<QueryClient, Channel>` + `selfEchoTokens` 1회 소비 + `Symbol.for` 레지스트리 + `useSyncExternalStore` 설계, 공식 스펙 검증 및 8대 회귀 테스트 매트릭스
 
 ### 📝 표준 작업 템플릿 (`docs/templates/`)
 - **[todo.template.md](./docs/templates/todo.template.md)**: 마이크로 앱별 `docs/todo.md` 생성 템플릿
