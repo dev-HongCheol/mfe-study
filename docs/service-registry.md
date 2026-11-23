@@ -15,7 +15,7 @@
 | **`api`** | `@mfe-study/api-server` | `apps/api-server` | `4000` | `Express 5`, `node:sqlite`, `Zod`, `Supertest` | ✅ 구현 완료 (`Step 1.1`) |
 | **`shared`** | `@mfe-study/remote-shared` | `apps/remote-shared` | `3004` | `Vite 7`, `React 19`, `@ark-ui/react v5`, `clsx` | ✅ 구현 완료 (`Step 1.2` · UI Props 캡슐화 완료) |
 | **`products`** | `@mfe-study/remote-products` | `apps/remote-products` | `3002` | `Vite 7`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.3` · 무-Shim 검증 완료) |
-| **`cart`** | `@mfe-study/remote-cart` | `apps/remote-cart` | `3003` | `Rspack (Rsbuild)`, `React 19`, `TanStack Query` | ⏳ 대기 (`Step 1.4`) |
+| **`cart`** | `@mfe-study/remote-cart` | `apps/remote-cart` | `3003` | `Rsbuild (Rspack 1.7)`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.4` · 최초 Rspack/무-Shim 검증 완료) |
 | **`host-vite`** | `@mfe-study/host-vite` | `apps/host-vite` | `3000` | `Vite`, `React 19`, `@module-federation/vite` | ⏳ 대기 (`Step 1.5`) |
 | **`host-rspack`** | `@mfe-study/host-rspack` | `apps/host-rspack` | `3001` | `Rspack (Rsbuild)`, `React 19`, `@module-federation/rsbuild-plugin` | ⏳ 대기 (`Step 1.5`) |
 
@@ -135,7 +135,32 @@
 
 ---
 
-## 6. 장바구니 원격 앱(`cart`) 및 호스트(`host-*`) 현황 *(Step 1.4 ~ 1.5 진행 시 누적 기록)*
+## 6. 장바구니 원격 앱 정본 (`Scope: cart` | `Port 3003` | `name: 'remote_cart'`)
 
-- **`remote-cart` (`Scope: cart` | `Port 3003`)**: *Step 1.4에서 `./CartWidget` 노출 시그니처 및 명령어 등록 예정* ([계약 정본 `§ 5.4.3`](./features/20261027-phase1-service-contracts/01-plan-and-design.md))
+### 6.1 `remote-cart` 전용 실행·테스트·빌드 명령어
+| 목적 | 실행 명령어 (루트에서 실행 기준) | 동작 설명 |
+| :--- | :--- | :--- |
+| **개발 서버 기동** | `pnpm --filter @mfe-study/remote-cart dev` | `rsbuild dev` (`Port 3003`, `strictPort: true`, `cors: { origin: '*' }`)로 `http://localhost:3003` 단독 쇼케이스, MF 컨테이너 및 `@mf-types.zip` 실시간 서빙 기동 *(사전에 `api-server:4000` 및 `remote-shared:3004` 기동 권장 — 루트 `pnpm dev:cart`로 일괄 기동 가능)* |
+| **단독 TDD 테스트** | `pnpm --filter @mfe-study/remote-cart test` | `Vitest` (`jsdom` + `MSW` + 로컬 `remote_shared/*` 스텁) 기반 단위·통합 테스트 `8`개 파일 / `28`건 실행 (무-Shim 및 React 서브패스 공유 정적 회귀 검증 포함) |
+| **타입 검사 / 빌드** | `pnpm --filter @mfe-study/remote-cart typecheck`<br>`pnpm --filter @mfe-study/remote-cart build` | `tsc --noEmit` 무-Shim 검사 및 `dist/remoteEntry.js` · `dist/mf-manifest.json` · `dist/@mf-types.zip` (`Rsbuild v1.7.6` + `@module-federation/rsbuild-plugin@^2.9.3`) 프로덕션 번들링 |
+| **프로덕션 프리뷰** | `pnpm --filter @mfe-study/remote-cart preview` | 빌드된 `dist/` 산출물을 `Port 3003`에서 서빙 |
+
+### 6.2 Module Federation 노출(`exposes`) 및 소비(`remotes`) 시그니처 요약
+> 상세 계약은 [루트 계약 정본 `§ 5.4.3`](./features/20261027-phase1-service-contracts/01-plan-and-design.md) 및 [`apps/remote-cart` 설계서 `§ 5 ~ § 6`](../apps/remote-cart/docs/features/20261123-cart-widget-sync/01-plan-and-design.md)를 참조합니다.
+
+| 구분 | 경로 / 매니페스트 | 핵심 시그니처 및 동작 요약 |
+| :--- | :--- | :--- |
+| **노출 (`exposes`)** | **`remote_cart/CartWidget`**<br>(`src/exposed/CartWidget.tsx`) | - **Export**: `CartWidget` (named + default), `type CartWidgetProps`<br>- **`CartWidgetProps`**:<br>  - `userId?: string \| null` — 현재 로그인 사용자 ID (미지정·`null`·공백 시 임의 유저 폴백 없이 `GET /api/cart` 호출 `0회` 차단 + 로그인 안내 렌더링, 생략 시 `mfe:auth-changed` 구독)<br>  - `hostType?: 'vite' \| 'rspack' \| 'standalone'` (기본값: `'standalone'`)<br>  - `syncMode?: 'mode-a-event' \| 'mode-b-query'` (미지정 시 `mfe:sync-mode-changed` 구독, 초기값 `'mode-a-event'`)<br>  - `simulateDelay?: boolean` (기본값: `false`), `delayMs?: number` (기본값: `1500`)<br>  - `cssIsolated?: boolean` (미지정 시 `mfe:css-isolation-changed` 구독, 기본값: `true`)<br>  - `apiBaseUrl?: string` (기본값: `http://localhost:4000/api`) |
+| **소비 (`remotes`)** | `remote_shared`<br>(`http://localhost:3004/mf-manifest.json`) | `Vite 7` 공급자(`remote_shared/ui`, `./theme`, `./utils`)를 `Rsbuild(Rspack)`에서 이종 번들러 런타임 소비 (`@ark-ui/react`·`clsx` 미설치, `src/rsbuild-env.d.ts` 임시 Shim `0줄`, `shared`에 `'react/jsx-runtime'`·`'react/jsx-dev-runtime'`·`'react-dom/client'` 명시 공유, `watchOptions.ignored`에 `@mf-types` 제외, `dev.disableDynamicRemoteTypeHints: true` 적용) |
+| **API 소비** | `api-server`<br>(`http://localhost:4000/api`) | `GET /api/cart` (비인증 시 `enabled: false` 차단 + `AbortSignal` 연동), `POST /api/cart` (수량 `+1` UPSERT), `DELETE /api/cart/:id` (단건 삭제 및 `'all'` 전체 비우기) |
+
+### 6.3 상위 호스트(`host-vite`, `host-rspack`) 필수 소비 규칙
+1. **원격 타입 자동 동기화 및 React 서브패스 3종 명시 공유**: 호스트의 MF 설정에서 `remote_cart` 엔트리로 `http://localhost:3003/mf-manifest.json`을 등록하고, `Vite` ↔ `Rspack` 이종 번들러 간 `jsxDEV` 경합 방지를 위해 `shared`에 `'react'`, `'react/jsx-runtime'`, `'react/jsx-dev-runtime'`, `'react-dom'`, `'react-dom/client'`, `'@tanstack/react-query'`를 싱글톤으로 통일합니다.
+2. **비인증(`userId: null`) 및 상태 동기화 모드 전달**: `syncMode="mode-a-event"`에서는 `mfe:cart-updated` 이벤트 수신 시 독립 `QueryClient`를 재조회하며, `syncMode="mode-b-query"`에서는 이벤트 리스너에 의존하지 않고 싱글톤 `sharedQueryClient`의 `['cart']` 캐시 무효화를 자동 감지합니다.
+3. **장애 격리 래핑**: 호스트 마운트 시 반드시 `<RemoteErrorBoundary>`와 `<Suspense>`로 감싸 `remote-cart(3003)` 서버 장애가 전체 대시보드로 전파되지 않도록 격리합니다.
+
+---
+
+## 7. 호스트(`host-vite`, `host-rspack`) 현황 *(Step 1.5 진행 시 누적 기록)*
+
 - **`host-vite` (`Port 3000`) & `host-rspack` (`Port 3001`)**: *Step 1.5에서 대시보드 및 `MfeInspector` 명령어 등록 예정*

@@ -140,10 +140,10 @@
 
 ## 5. [조건부 A] 프론트엔드 및 MFE 통합 검증 (`cart` 전용)
 - **적용 여부**: `적용`
-- [ ] **단독 실행(Standalone) 렌더링 검증**: 호스트 없이 `src/App.tsx` 단독 엔트리 마운트 시 유저·모드·CSS 격리·테마·지연·이벤트 시뮬레이터가 정상 동작하는가?
-- [ ] **이종 번들러(`Rspack` ↔ `Vite`) 빌드 및 무-Shim `@mf-types` 검증**: `rsbuild build` 및 `tsc --noEmit`가 `@ark-ui/react` 임시 Shim `0줄` 상태로 에러 없이 통과하고 `dist/remoteEntry.js` · `dist/mf-manifest.json` · `dist/@mf-types.zip`을 정상 생성하는가?
-- [ ] **이벤트 버스 및 쿼리 캐시 연동**: `Mode A`(`useMfeEvent` + 독립 `QueryClient`)와 `Mode B`(싱글톤 `sharedQueryClient` + `cancelQueries`/`invalidateQueries`)가 서로의 메커니즘을 침범하지 않고 대칭 동작하는가?
-- [ ] **접근성(A11y) 및 역할 검증**: 로딩 중 `aria-busy="true"`, 에러 배너 `role="alert"`, 비로그인 안내 및 버튼 비활성화 속성이 정상 렌더링되는가?
+- [x] **단독 실행(Standalone) 렌더링 검증**: 호스트 없이 `src/App.tsx` 단독 엔트리 마운트 시 유저·모드·CSS 격리·테마·지연·샘플 상품 담기·이벤트 시뮬레이터가 정상 동작하는가?
+- [x] **이종 번들러(`Rspack` ↔ `Vite`) 빌드 및 무-Shim `@mf-types` 검증**: `rsbuild build` 및 `tsc --noEmit`가 `@ark-ui/react` 임시 Shim `0줄` 상태로 에러 없이 통과하고 `dist/remoteEntry.js` · `dist/mf-manifest.json` · `dist/@mf-types.zip`을 정상 생성하는가?
+- [x] **이벤트 버스 및 쿼리 캐시 연동**: `Mode A`(`useMfeEvent` + 독립 `QueryClient`)와 `Mode B`(싱글톤 `sharedQueryClient` + `cancelQueries`/`invalidateQueries`)가 서로의 메커니즘을 침범하지 않고 대칭 동작하는가?
+- [x] **접근성(A11y) 및 역할 검증**: 로딩 중 `aria-busy="true"`, 에러 배너 `role="alert"`, 비로그인 안내 및 버튼 비활성화 속성이 정상 렌더링되는가?
 
 ---
 
@@ -153,7 +153,7 @@
 ---
 
 ## 7. 최종 완료 및 머지 전 체크리스트 — `[공통 필수]`
-- [ ] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가?
-- [ ] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
-- [ ] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
-- [ ] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-cart/docs/todo.md` 및 `docs/service-registry.md`를 최신 상태로 업데이트했는가?
+- [x] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가? (`remote-cart 8개 파일 / 28건`, 루트 전체 `42개 파일 / 126건`)
+- [x] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
+- [x] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
+- [x] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-cart/docs/todo.md` 및 `docs/service-registry.md`를 최신 상태로 업데이트했는가?

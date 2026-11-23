@@ -454,3 +454,37 @@ pnpm dev:products
      - `react`, `react-dom`, `@tanstack/react-query`가 호스트와 리모트 간에 단 하나의 싱글톤 인스턴스로 공유되고 있는지, 버전 불일치 경고가 없는지 실시간으로 확인합니다.
    - **Dependency Graph & Loading Trace**:
      - 현재 페이지에 마운트된 호스트-리모트 간 노출 모듈(`exposes`) 소비 구조와 네트워크 로딩 상태를 시각적으로 점검합니다.
+
+---
+
+## 12. [Step 1.4] 장바구니 원격 앱(`apps/remote-cart`, `Rsbuild / Rspack`, `Port 3003`) 세팅 가이드
+
+프로젝트 최초의 **`Rsbuild (Rspack)` + `@module-federation/rsbuild-plugin`** 기반 마이크로 앱 세팅 및 실행 명령어입니다.
+
+### 12.1 초기 세팅 참고 (CLI 스캐폴딩 vs 워크스페이스 직접 구성)
+```powershell
+# [참고] 독립 프로젝트에서 Rsbuild 앱 기본 뼈대를 CLI로 생성할 때
+pnpm create rsbuild@latest remote-cart --template react-ts
+
+# 본 워크스페이스에서는 pnpm catalog:, tsconfig.base.json 상속, 전역 CSS 오염 방지를 위해
+# apps/remote-cart/package.json 및 rsbuild.config.ts 작성 후 루트에서 의존성 일괄 설치:
+pnpm install
+```
+- **핵심 패키지 및 버전 정합성**: `@rsbuild/core`, `@rsbuild/plugin-react`, `@module-federation/rsbuild-plugin@^2.9.3` (`Rsbuild v1.7+` 호환 안정판)
+- **이종 번들러(`Rspack` ↔ `Vite`) 핵심 설정 (`apps/remote-cart/rsbuild.config.ts`)**:
+  - `server: { port: 3003, strictPort: true, cors: { origin: '*' } }`, `output: { assetPrefix: 'auto' }`
+  - `tools.rspack.watchOptions.ignored`: `['**/node_modules/**', '**/@mf-types/**', '**/.mf/**']` (실시간 타입 갱신 시 무한 재컴파일 루프 방어)
+  - `shared`: `react`, `'react/jsx-runtime'`, `'react/jsx-dev-runtime'`, `react-dom`, `'react-dom/client'`, `@tanstack/react-query` 모두 `singleton: true` 명시 (Vite Dev ↔ Rspack 간 `jsxDEV` 경합 방어)
+  - `dev: { disableDynamicRemoteTypeHints: true }` 및 양방향 `dts` (`generateTypes` + `consumeTypes`)
+
+### 12.2 실행 · 테스트 · 빌드 명령어
+```powershell
+# 1. 장바구니 리모트 개발 세트 일괄 기동 (api:4000 + remote-shared:3004 + remote-cart:3003 TUI)
+pnpm dev:cart
+
+# 2. 단독 TDD 테스트 (MSW + 로컬 스텁, 타 서버 없이 독립 실행), 무-Shim 타입 검사 및 프로덕션 빌드
+pnpm --filter @mfe-study/remote-cart test
+pnpm --filter @mfe-study/remote-cart typecheck
+pnpm --filter @mfe-study/remote-cart build
+pnpm --filter @mfe-study/remote-cart preview
+```

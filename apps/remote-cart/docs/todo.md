@@ -24,10 +24,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- [-] **[`20261123-cart-widget-sync`](./features/20261123-cart-widget-sync/01-plan-and-design.md)**: [Phase 1 - Step 1.4] 장바구니 원격 앱(`./CartWidget`, `Port 3003`, `Rspack/Rsbuild`), `Mode A vs Mode B` 상태 동기화, CSS 격리/오염 비교 토글 및 단독 실행 쇼케이스 TDD 구축
-  - **작업 브랜치**: `cart/feat/cart-widget-sync`
-  - **설계 문서**: [01-plan-and-design.md](./features/20261123-cart-widget-sync/01-plan-and-design.md)
-  - **TDD 명세**: [02-tdd-spec.md](./features/20261123-cart-widget-sync/02-tdd-spec.md)
+- *현재 진행 중인 작업이 없습니다.*
 
 ---
 
@@ -42,4 +39,7 @@
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
 
-- *아직 머지 완료된 작업이 없습니다.*
+- [x] **[`20261123-cart-widget-sync`](./features/20261123-cart-widget-sync/01-plan-and-design.md)**: [Phase 1 - Step 1.4] 프로젝트 최초 `Rsbuild(Rspack)` 장바구니 원격 앱(`./CartWidget`, `Port 3003`), `Mode A vs Mode B` 대칭 동기화, CSS 격리/오염 비교 토글 및 단독 실행 쇼케이스 구축 — **완료일: `2026-11-23`** (PR #14)
+  - **작업 브랜치**: `cart/feat/cart-widget-sync` (`Scope: cart`)
+  - **관련 문서**: [01-plan-and-design.md](./features/20261123-cart-widget-sync/01-plan-and-design.md) | [02-tdd-spec.md](./features/20261123-cart-widget-sync/02-tdd-spec.md) | [03-code-review.md](./features/20261123-cart-widget-sync/03-code-review.md)
+  - **핵심 성과**: `@module-federation/rsbuild-plugin@^2.9.3` 기반 `Rspack` ↔ `Vite(remote-shared:3004)` 이종 번들러 양방향 `@mf-types.zip` 무-Shim 연동, React 서브패스 3종(`jsx-runtime`/`jsx-dev-runtime`/`react-dom/client`) 명시 공유, `Mode A`(독립 캐시 + `useMfeEvent` 재조회) vs `Mode B`(싱글톤 `sharedQueryClient` 자동 감지) 대칭 구현 및 `syncCartAfterMutation` 공통 헬퍼 추출, 비인증 3중 차단, CSS 격리/오염 실험 토글, 단독 실행 쇼케이스(`[샘플 상품 담기]` 포함), `Vitest 8개 파일 / 28건`(루트 전체 `126건`)·`rsbuild build`·무-Shim `typecheck`·`Biome` 전원 통과 (`docs/service-registry.md` 등록 완료)
