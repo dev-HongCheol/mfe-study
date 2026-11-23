@@ -40,7 +40,7 @@
 - [x] `docs/study/01-mfe-concepts-and-guide.md` 작성 및 보강 (MFE 개념, Q1~Q10, 6대 프로세스, 3대 디버깅 툴)
 - [x] `docs/study/02-polyrepo-and-architecture-decisions.md` 작성 (물리적 멀티레포 5대 학습 요소, 앱별 `docs/` 응집도, 공통 템플릿 설계 Q&A)
 - [x] `docs/study/03-ai-harness-and-tdd-workflow-guide.md` 작성 (전체 5단계 TDD 워크플로우, 하네스 3계층 및 5대 훅 동작 원리, 멀티레포 자동 동기화)
-- [x] `docs/study/04-mfe-real-world-pitfalls-and-solutions.md` 작성 (MFE 미경험자는 미리 알 수 없는 **14대 실전 고유 이슈와 해결 아키텍처** 총정리)
+- [x] `docs/study/04-mfe-real-world-pitfalls-and-solutions.md` 작성 (**MFE 14대 실전 고유 이슈와 해결 아키텍처** 총정리)
 - [x] `docs/study/05-fullstack-service-real-world-issues.md` 작성 (풀스택 서비스 구현 **16대 실전 이슈: FE · BE/DB · 공통 모듈 · 디자인** 총정리)
 - [x] `docs/study/06-workspace-and-harness-setup-guide.md` 작성 (빈 폴더부터 따라 하는 워크스페이스·패키지 카탈로그·Lefthook·AI 하네스·GitHub CLI 초기 세팅 명령어 A-to-Z 가이드)
 - [x] 임시 설계서 3종(`02-infra-and-architecture.md`, `03-setup-and-convention.md`, `04-workflow-and-harness.md`) 작성 및 최신화 *(Step 0.3에서 Git 미추적 `temp/` 폴더로 이동하여 참조 후, 전체 프로젝트 구축 완료 시점에 삭제)*

@@ -71,7 +71,7 @@ pnpm dev
 1. **[Study 01. MFE 개념 및 핵심 원리 가이드](./docs/study/01-mfe-concepts-and-guide.md)**: MFE 기본 원칙, 4대 통합 패턴, Q1~Q8(`Mode A` vs `Mode B` 상태 동기화 비교), 6대 실습 프로세스, 3대 디버깅 툴
 2. **[Study 02. 물리적 멀티레포 전환과 아키텍처 의사결정 노트](./docs/study/02-polyrepo-and-architecture-decisions.md)**: 멀티레포 5대 엔지니어링 과제, 경량 FSD(`exposed/` + `features/{ui,api,model}`), 하이브리드 테스트 배치, SSOT 정본 참조 원칙, 선정 라이브러리 역할
 3. **[Study 03. TDD 워크플로우 및 AI 하네스 가이드](./docs/study/03-ai-harness-and-tdd-workflow-guide.md)**: 5단계 TDD 사이클, 하네스 3계층 및 5대 훅 동작 원리
-4. **[Study 04. MFE 미경험자는 미리 알 수 없는 14대 실전 이슈와 해결 아키텍처](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md)**: 싱글톤 `eager` 에러, 에셋 404, 다중 포트 `CORS`, 전역 CSS Reset 참사, `z-index` 전쟁, 좀비 이벤트 리스너, 런타임 MF 스모크 테스트 등
+4. **[Study 04. MFE 14대 실전 고유 이슈와 해결 아키텍처](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md)**: 싱글톤 `eager` 에러, 에셋 404, 다중 포트 `CORS`, 전역 CSS Reset 참사, `z-index` 전쟁, 좀비 이벤트 리스너, 런타임 MF 스모크 테스트 등
 5. **[Study 05. 풀스택 서비스 구현 16대 실전 이슈와 해결 아키텍처](./docs/study/05-fullstack-service-real-world-issues.md)**: `Race Condition`(`ky` + `AbortSignal`), `Waterfall` 방지, `node:sqlite` 외래키 `PRAGMA`, 원자적 `UPSERT`, `Zod` + `React Hook Form` 경계 검증, `CLS` 방지 등
 6. **[Study 06. 루트 워크스페이스 및 AI 하네스 초기 세팅 A-to-Z 가이드](./docs/study/06-workspace-and-harness-setup-guide.md)**: 빈 폴더부터 따라 치는 명령어(`Corepack`, `Git`, `pnpm catalog:`, `Biome`, `Lefthook`, `Antigravity Hooks`, `gh CLI`) 및 설정 옵션 상세 해설
 7. **[Study 07. JavaScript 클로저·참조 동일성과 React `useRef` 최신 핸들러 패턴](./docs/study/07-js-and-react-closure-ref-patterns.md)**: 프로젝트 비의존 순수 JS·React 샘플 코드로 배우는 함수 참조 동일성, Stale Closure 재현 및 해결, `useState` vs `useRef`, Latest Ref Pattern 완벽 가이드

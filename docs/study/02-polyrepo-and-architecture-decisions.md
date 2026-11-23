@@ -124,9 +124,9 @@
 
 ---
 
-## 4. MFE 미경험자가 실무에서 마주치는 14대 기술적 함정과 해결 아키텍처 안내
+## 4. MFE 14대 실전 고유 이슈와 해결 아키텍처 안내
 
-단일 프로젝트(모놀리식)에서는 겪지 않지만 MFE와 물리적 멀티레포 구조이기 때문에 발생하는 **14가지 실전 고유 이슈**(싱글톤 `eager` 에러, 에셋 404, 다중 포트 `CORS`, 전역 CSS Reset 덮어쓰기 참사, `z-index` 전쟁, 침묵의 Context 단절, 라우터 히스토리 충돌, 좀비 이벤트 리스너, `localStorage` 키 충돌, `Vitest` 리모트 모킹, `ChunkLoadError` 등)의 상세 원리와 해결 코드는 전용 학습 문서인 **[Study 04. MFE 미경험자는 미리 알 수 없는 14대 실전 이슈와 해결 아키텍처](./04-mfe-real-world-pitfalls-and-solutions.md)**에서 집중적으로 다룹니다.
+단일 프로젝트(모놀리식)에서는 겪지 않지만 MFE와 물리적 멀티레포 구조이기 때문에 발생하는 **14가지 실전 고유 이슈**(싱글톤 `eager` 에러, 에셋 404, 다중 포트 `CORS`, 전역 CSS Reset 덮어쓰기 참사, `z-index` 전쟁, 침묵의 Context 단절, 라우터 히스토리 충돌, 좀비 이벤트 리스너, `localStorage` 키 충돌, `Vitest` 리모트 모킹, `ChunkLoadError` 등)의 상세 원리와 해결 코드는 전용 학습 문서인 **[Study 04. MFE 14대 실전 고유 이슈와 해결 아키텍처](./04-mfe-real-world-pitfalls-and-solutions.md)**에서 집중적으로 다룹니다.
 
 ---
 
