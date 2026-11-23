@@ -64,9 +64,6 @@ export const MFE_EVENTS = {
 
   /** 호스트 MfeInspector에서 상태 동기화 학습 모드(Mode A <-> Mode B)를 전환했음을 알리는 이벤트 */
   SYNC_MODE_CHANGED: 'mfe:sync-mode-changed',
-
-  /** 장바구니 앱의 CSS 스타일 충돌/격리 실험 토글 상태가 변경되었음을 알리는 이벤트 */
-  CSS_ISOLATION_CHANGED: 'mfe:css-isolation-changed',
 } as const;
 
 /**
@@ -140,17 +137,6 @@ export interface SyncModeChangedEventPayload {
 }
 
 /**
- * @description [mfe:css-isolation-changed] 장바구니 CSS 스타일 격리 토글 변경 이벤트 페이로드 인터페이스
- */
-export interface CssIsolationChangedEventPayload {
-  /** CSS 스타일 격리 활성화 여부 (true: 격리됨, false: 의도적 스타일 오염 실험) */
-  cssIsolated: boolean;
-
-  /** 이벤트 발생 시각 (ISO-8601 문자열) */
-  timestamp: string;
-}
-
-/**
  * @description 각 MFE 커스텀 이벤트 이름과 페이로드 타입을 1:1로 매핑하는 인터페이스
  */
 export interface MfeEventPayloadMap {
@@ -165,9 +151,6 @@ export interface MfeEventPayloadMap {
 
   /** 상태 동기화 모드 변경 이벤트 매핑 */
   [MFE_EVENTS.SYNC_MODE_CHANGED]: SyncModeChangedEventPayload;
-
-  /** CSS 격리 토글 변경 이벤트 매핑 */
-  [MFE_EVENTS.CSS_ISOLATION_CHANGED]: CssIsolationChangedEventPayload;
 }
 
 /** 호스트 출처 검증용 Zod 스키마 */
@@ -210,13 +193,7 @@ export const syncModeChangedEventSchema: z.ZodType<SyncModeChangedEventPayload> 
   timestamp: z.string().min(1),
 });
 
-/** CSS 격리 토글 변경 이벤트 페이로드 런타임 검증 스키마 */
-export const cssIsolationChangedEventSchema: z.ZodType<CssIsolationChangedEventPayload> = z.object({
-  cssIsolated: z.boolean(),
-  timestamp: z.string().min(1),
-});
-
-/** 이벤트 이름별 Zod 스키마 조회 사전 상수 */
+/** 이벤트 이름별 Zod 스키마 조회 사전 상수 (표준 4종) */
 export const MFE_EVENT_SCHEMAS: {
   [K in MfeEventName]: z.ZodType<MfeEventPayloadMap[K]>;
 } = {
@@ -224,5 +201,4 @@ export const MFE_EVENT_SCHEMAS: {
   [MFE_EVENTS.AUTH_CHANGED]: authChangedEventSchema,
   [MFE_EVENTS.THEME_CHANGED]: themeChangedEventSchema,
   [MFE_EVENTS.SYNC_MODE_CHANGED]: syncModeChangedEventSchema,
-  [MFE_EVENTS.CSS_ISOLATION_CHANGED]: cssIsolationChangedEventSchema,
 };

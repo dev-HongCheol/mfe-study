@@ -2,9 +2,11 @@
  * @file event-bus.test.ts
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed false
- * @description [TC-01 / EC-01] mfeEventBus 커스텀 이벤트 발행·구독 및 오염된 페이로드 Zod 차단 단위 테스트입니다.
+ * @description [TC-01 / EC-01] mfeEventBus 커스텀 이벤트 발행·구독, 표준 4종 계약 정합성 및 오염·폐기 이벤트 Zod/런타임 차단 단위 테스트입니다.
  */
 import { describe, expect, it, vi } from 'vitest';
+import * as exposedUtils from '../../../exposed/utils';
+import { MFE_EVENT_SCHEMAS } from './contracts';
 import { MFE_EVENTS, mfeEventBus } from './event-bus';
 
 describe('mfeEventBus (TC-01 & EC-01)', () => {
@@ -32,6 +34,23 @@ describe('mfeEventBus (TC-01 & EC-01)', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  it('TC-01(계약 정리): MFE_EVENTS와 MFE_EVENT_SCHEMAS는 표준 4종만 유지하고 폐기된 CSS_ISOLATION_CHANGED는 포함하지 않는다', () => {
+    const expectedKeys = ['CART_UPDATED', 'AUTH_CHANGED', 'THEME_CHANGED', 'SYNC_MODE_CHANGED'];
+    const expectedValues = [
+      'mfe:cart-updated',
+      'mfe:auth-changed',
+      'mfe:theme-changed',
+      'mfe:sync-mode-changed',
+    ];
+
+    expect(Object.keys(MFE_EVENTS)).toEqual(expectedKeys);
+    expect(Object.values(MFE_EVENTS)).toEqual(expectedValues);
+    expect(Object.keys(MFE_EVENT_SCHEMAS)).toEqual(expectedValues);
+    expect(Object.keys(MFE_EVENTS)).not.toContain('CSS_ISOLATION_CHANGED');
+    expect(Object.values(MFE_EVENTS)).not.toContain('mfe:css-isolation-changed');
+    expect('cssIsolationChangedEventSchema' in exposedUtils).toBe(false);
+  });
+
   it('EC-01: 오염된 CustomEvent 페이로드가 디스패치되거나 발행될 때 Zod safeParse로 차단하고 핸들러 크래시를 막는다', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const handler = vi.fn();
@@ -55,6 +74,26 @@ describe('mfeEventBus (TC-01 & EC-01)', () => {
     expect(handler).not.toHaveBeenCalled();
 
     unsubscribe();
+    warnSpy.mockRestore();
+  });
+
+  it('EC-01(폐기 이벤트 방어): 미등록 또는 폐기된 이벤트 이름으로 런타임 emit/subscribe를 호출해도 크래시하지 않고 안전하게 차단한다', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const handler = vi.fn();
+
+    const deprecatedEvent = 'mfe:css-isolation-changed' as never;
+    const emitted = mfeEventBus.emit(deprecatedEvent, {
+      cssIsolated: true,
+      timestamp: '2026-11-23T15:00:00.000Z',
+    } as never);
+    const unsubscribe = mfeEventBus.subscribe(deprecatedEvent, handler);
+
+    expect(emitted).toBe(false);
+    expect(typeof unsubscribe).toBe('function');
+    expect(() => unsubscribe()).not.toThrow();
+    expect(handler).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+
     warnSpy.mockRestore();
   });
 });
