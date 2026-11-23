@@ -14,7 +14,7 @@
 - **최종 업데이트**: `2026-11-23`
 - **핵심 역할**: 장바구니 목록 조회(`GET /api/cart`), 수량 추가(`POST /api/cart`), 단건·전체 삭제(`DELETE /api/cart/:id`) 기능을 담당하는 **프로젝트 최초의 `Rspack (Rsbuild)` 기반 도메인 원격 마이크로 앱**입니다 (`Port 3003`). `Vite`로 빌드된 `remote_shared`(`Port 3004`)를 이종 번들러 간 Module Federation 2.0(`mf-manifest.json` + `@mf-types.zip`)으로 런타임 소비하면서, 상위 호스트(`host-vite:3000`, `host-rspack:3001`)에 `./CartWidget` 컴포넌트를 노출합니다.
 - **노출 모듈 (`exposes`)**:
-  - `./CartWidget` (`./src/exposed/CartWidget.tsx`): 장바구니 목록·합계 카드, `Mode A(CustomEvent 수신 재조회)` vs `Mode B(sharedQueryClient 공유 캐시 자동 감지)` 비교 학습, CSS 격리/오염 비교 토글 및 비인증 차단 통합 위젯 (`@mf-types.zip` 원격 타입 생성 포함)
+  - `./CartWidget` (`./src/exposed/CartWidget.tsx`): 장바구니 목록·합계 카드, `Mode A(CustomEvent 수신 재조회)` vs `Mode B(sharedQueryClient 공유 캐시 자동 감지)` 비교 학습 및 비인증 차단 통합 위젯 (`@mf-types.zip` 원격 타입 생성 포함)
 - **소비 모듈 (`remotes`) / 외부 의존성**:
   - `remote_shared` (`http://localhost:3004/mf-manifest.json`): `remote_shared/ui`, `remote_shared/theme`, `remote_shared/utils` 런타임 소비 및 `@mf-types` 자동 동기화 (`@ark-ui/react`, `clsx` 직접 설치 0%, 무-Shim 소비)
   - `api-server` (`http://localhost:4000/api`): `GET /api/cart`, `POST /api/cart`, `DELETE /api/cart/:id` REST API 연동
@@ -40,7 +40,7 @@
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
 
-- [x] **[`20261123-cart-widget-sync`](./features/20261123-cart-widget-sync/01-plan-and-design.md)**: [Phase 1 - Step 1.4] 프로젝트 최초 `Rsbuild(Rspack)` 장바구니 원격 앱(`./CartWidget`, `Port 3003`), `Mode A vs Mode B` 대칭 동기화, CSS 격리/오염 비교 토글 및 단독 실행 쇼케이스 구축 — **완료일: `2026-11-23`** (PR #14)
+- [x] **[`20261123-cart-widget-sync`](./features/20261123-cart-widget-sync/01-plan-and-design.md)**: [Phase 1 - Step 1.4] 프로젝트 최초 `Rsbuild(Rspack)` 장바구니 원격 앱(`./CartWidget`, `Port 3003`), `Mode A vs Mode B` 대칭 동기화 및 단독 실행 쇼케이스 구축 — **완료일: `2026-11-23`** (PR #14)
   - **작업 브랜치**: `cart/feat/cart-widget-sync` (`Scope: cart`)
   - **관련 문서**: [01-plan-and-design.md](./features/20261123-cart-widget-sync/01-plan-and-design.md) | [02-tdd-spec.md](./features/20261123-cart-widget-sync/02-tdd-spec.md) | [03-code-review.md](./features/20261123-cart-widget-sync/03-code-review.md)
-  - **핵심 성과**: `@module-federation/rsbuild-plugin@^2.9.3` 기반 `Rspack` ↔ `Vite(remote-shared:3004)` 이종 번들러 양방향 `@mf-types.zip` 무-Shim 연동, React 서브패스 3종(`jsx-runtime`/`jsx-dev-runtime`/`react-dom/client`) 명시 공유, `Mode A`(독립 캐시 + `useMfeEvent` 재조회) vs `Mode B`(싱글톤 `sharedQueryClient` 자동 감지) 대칭 구현 및 `syncCartAfterMutation` 공통 헬퍼 추출, 비인증 3중 차단, CSS 격리/오염 실험 토글, 단독 실행 쇼케이스(`[샘플 상품 담기]` 포함), `Vitest 8개 파일 / 28건`(루트 전체 `126건`)·`rsbuild build`·무-Shim `typecheck`·`Biome` 전원 통과 (`docs/service-registry.md` 등록 완료)
+  - **핵심 성과**: `@module-federation/rsbuild-plugin@^2.9.3` 기반 `Rspack` ↔ `Vite(remote-shared:3004)` 이종 번들러 양방향 `@mf-types.zip` 무-Shim 연동, React 서브패스 3종(`jsx-runtime`/`jsx-dev-runtime`/`react-dom/client`) 명시 공유, `Mode A`(독립 캐시 + `useMfeEvent` 재조회) vs `Mode B`(싱글톤 `sharedQueryClient` 자동 감지) 대칭 구현 및 `syncCartAfterMutation` 공통 헬퍼 추출, 비인증 3중 차단, `.cart-*` 프리픽스·전역 태그 선택자 금지 정적 검증, 단독 실행 쇼케이스(`[샘플 상품 담기]` 포함), `Vitest 8개 파일 / 26건`(루트 전체 `124건`)·`rsbuild build`·무-Shim `typecheck`·`Biome` 전원 통과 (`docs/service-registry.md` 등록 완료)

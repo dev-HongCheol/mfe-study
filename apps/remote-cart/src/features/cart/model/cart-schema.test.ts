@@ -2,23 +2,20 @@
  * @file cart-schema.test.ts
  * @app remote-cart (Scope: cart | Port: 3003)
  * @exposed false
- * @description [TC-01, EC-02, EC-03] 장바구니 Zod 스키마, 파생 합계 정수 연산, normalizeUserId, 스코프 스토리지 및 DEV/PROD 에러 리포트 이원화 단위 테스트입니다.
+ * @description [TC-01, EC-03] 장바구니 Zod 스키마, 파생 합계 정수 연산, normalizeUserId 및 DEV/PROD 에러 리포트 이원화 단위 테스트입니다.
  */
 import type { NormalizedError } from 'remote_shared/utils';
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 import {
-  DEFAULT_CART_PREFERENCES,
   calculateCartTotals,
   cartItemListSchema,
   deleteCartResultSchema,
   formatCartErrorReport,
-  loadCartPreferences,
   normalizeUserId,
-  saveCartPreferences,
 } from './cart-schema';
 
-describe('cart-schema (TC-01, EC-02, EC-03)', () => {
+describe('cart-schema (TC-01, EC-03)', () => {
   it('TC-01: 유효한 CartItemView 배열과 삭제 응답을 검증하고 파생 합계를 정수 연산으로 산출한다', () => {
     const items = cartItemListSchema.parse([
       {
@@ -64,22 +61,6 @@ describe('cart-schema (TC-01, EC-02, EC-03)', () => {
     expect(normalizeUserId(null)).toBeNull();
     expect(normalizeUserId('')).toBeNull();
     expect(normalizeUserId('   ')).toBeNull();
-  });
-
-  it('TC-01: saveCartPreferences는 mfe:cart:preferences 키로 격리 저장하고 loadCartPreferences가 복원한다', () => {
-    saveCartPreferences({ cssIsolated: false });
-
-    const storedRaw = window.localStorage.getItem('mfe:cart:preferences');
-    expect(storedRaw).not.toBeNull();
-    expect(loadCartPreferences()).toEqual({ cssIsolated: false });
-  });
-
-  it('EC-02: 손상된 로컬 스토리지 JSON이나 잘못된 스키마 값이 저장되어 있으면 기본값으로 안전 복구한다', () => {
-    window.localStorage.setItem('mfe:cart:preferences', '{bad-json');
-    expect(loadCartPreferences()).toEqual(DEFAULT_CART_PREFERENCES);
-
-    window.localStorage.setItem('mfe:cart:preferences', JSON.stringify({ cssIsolated: 'yes' }));
-    expect(loadCartPreferences()).toEqual(DEFAULT_CART_PREFERENCES);
   });
 
   it('EC-03: RESPONSE_SCHEMA_INVALID 에러 리포트는 DEV에서만 실패 필드 좌표를 노출하고 PROD에서는 숨긴다', () => {

@@ -2,7 +2,7 @@
  * @file App.tsx
  * @app remote-cart (Scope: cart | Port: 3003)
  * @exposed false
- * @description http://localhost:3003 단독 실행(Standalone) 쇼케이스 컴포넌트입니다. 유저 전환, Mode A/B 전환, CSS 격리 토글, 테마 전환, 1.5초 지연 및 수동 이벤트 시뮬레이터를 제공합니다.
+ * @description http://localhost:3003 단독 실행(Standalone) 쇼케이스 컴포넌트입니다. 유저 전환, Mode A/B 전환, 테마 전환, 1.5초 지연, 샘플 상품 담기 및 수동 이벤트 시뮬레이터를 제공합니다.
  */
 import { useState } from 'react';
 import { AVAILABLE_THEMES, type ThemeMode, useTheme } from 'remote_shared/theme';
@@ -28,7 +28,6 @@ import {
 } from 'remote_shared/utils';
 import { CartWidget } from './exposed/CartWidget';
 import { postIncrementCartItem } from './features/cart/api/cart-api';
-import { loadCartPreferences, saveCartPreferences } from './features/cart/model/cart-schema';
 
 /** 단독 실행에서 장바구니가 비어 있을 때 순환 담기 테스트에 사용하는 시드 상품 ID 목록 (재고 보유 상품 1~5번) */
 const SAMPLE_PRODUCT_IDS: readonly number[] = [1, 2, 3, 4, 5] as const;
@@ -69,9 +68,6 @@ export function App() {
   /** 1.5초 로딩 지연 시뮬레이션 토글 상태 */
   const [simulateDelay, setSimulateDelay] = useState<boolean>(false);
 
-  /** CSS 격리 vs 오염 비교 토글 상태 (로컬 스토리지 mfe:cart:preferences 복원) */
-  const [cssIsolated, setCssIsolated] = useState<boolean>(() => loadCartPreferences().cssIsolated);
-
   /** 최근 발생한 MFE 이벤트 로그 목록 상태 (최대 5건 유지) */
   const [eventLogs, setEventLogs] = useState<string[]>([]);
 
@@ -88,19 +84,6 @@ export function App() {
 
   /** 실제 CartWidget에 전달할 사용자 ID ('__guest__'인 경우 null로 비로그인 차단 검증) */
   const effectiveUserId = selectedUser === '__guest__' ? null : selectedUser;
-
-  /**
-   * CSS 격리 토글을 전환하고 스코프 스토리지 저장 및 이벤트를 발행합니다.
-   */
-  const handleToggleCssIsolation = () => {
-    const nextIsolated = !cssIsolated;
-    setCssIsolated(nextIsolated);
-    saveCartPreferences({ cssIsolated: nextIsolated });
-    mfeEventBus.emit(MFE_EVENTS.CSS_ISOLATION_CHANGED, {
-      cssIsolated: nextIsolated,
-      timestamp: new Date().toISOString(),
-    });
-  };
 
   /**
    * 단독 실행 화면에서 실제 POST /api/cart를 호출해 샘플 상품 1개를 담고 현재 syncMode로 동기화합니다.
@@ -220,13 +203,6 @@ export function App() {
 
               <Flex align="center" gap="sm" wrap="wrap">
                 <Button
-                  variant={cssIsolated ? 'secondary' : 'danger'}
-                  size="sm"
-                  onClick={handleToggleCssIsolation}
-                >
-                  {cssIsolated ? 'CSS 격리: ON (정상)' : 'CSS 격리: OFF (오염 실험)'}
-                </Button>
-                <Button
                   variant={simulateDelay ? 'primary' : 'secondary'}
                   size="sm"
                   onClick={() => setSimulateDelay((prev) => !prev)}
@@ -265,7 +241,6 @@ export function App() {
             hostType="standalone"
             syncMode={syncMode}
             simulateDelay={simulateDelay}
-            cssIsolated={cssIsolated}
           />
         </Stack>
       </Container>

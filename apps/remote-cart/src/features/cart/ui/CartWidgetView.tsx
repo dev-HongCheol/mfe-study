@@ -42,9 +42,6 @@ export interface CartWidgetViewProps {
   /** 로딩 지연 시간(ms) 오버라이드 */
   delayMs?: number;
 
-  /** CSS 스타일 격리 토글 여부 (true: 격리 활성, false: 비격리 오염 실험) */
-  cssIsolated: boolean;
-
   /** 백엔드 API 기본 URL */
   apiBaseUrl?: string;
 }
@@ -52,7 +49,7 @@ export interface CartWidgetViewProps {
 /**
  * 장바구니 조회, 이벤트 수신 재조회(Mode A), 수량 증가/삭제 뮤테이션 및 상태별 UI를 조합하는 메인 뷰입니다.
  *
- * @param props - 정규화된 사용자 ID, 호스트 출처, 동기화 모드, CSS 격리 여부 및 API 옵션
+ * @param props - 정규화된 사용자 ID, 호스트 출처, 동기화 모드 및 API 옵션
  * @returns 장바구니 위젯 섹션 JSX 엘리먼트
  */
 export function CartWidgetView({
@@ -61,7 +58,6 @@ export function CartWidgetView({
   syncMode,
   simulateDelay,
   delayMs,
-  cssIsolated,
   apiBaseUrl,
 }: CartWidgetViewProps) {
   const activeQueryClient = useQueryClient();
@@ -187,27 +183,13 @@ export function CartWidgetView({
   };
 
   return (
-    <section
-      className="cart-widget-root"
-      data-css-isolated={String(cssIsolated)}
-      aria-label="장바구니 원격 위젯"
-    >
+    <section className="cart-widget-root" aria-label="장바구니 원격 위젯">
       <CartHeaderBar
         syncMode={syncMode}
         hostType={hostType}
-        cssIsolated={cssIsolated}
         receivedEventCount={receivedEventCount}
         userId={userId}
       />
-
-      {/* [분기 설명] Study 04 #05 비교 학습: CSS 격리 해제 시 비격리 스타일 충돌 위험을 경고 배너로 시각화합니다. */}
-      {!cssIsolated ? (
-        <div className="cart-isolation-warning" data-testid="cart-css-warning">
-          <strong>[CSS 비격리 오염 실험 활성화]</strong> 리모트 앱이 전역 스타일이나 충돌 선택자를
-          주입할 때 발생할 수 있는 시각적 오염 상태를 시뮬레이션 중입니다. 실무에서는{' '}
-          <code>.cart-*</code> 프리픽스와 <code>var(--mfe-*)</code> 시맨틱 토큰으로 격리해야 합니다.
-        </div>
-      ) : null}
 
       {mutationErrorReport ? <CartErrorBanner report={mutationErrorReport} /> : null}
 

@@ -2,19 +2,11 @@
  * @file cart-schema.ts
  * @app remote-cart (Scope: cart | Port: 3003)
  * @exposed false
- * @description 장바구니 도메인 엔티티 Zod 스키마, 비인증 방어 정규화, 파생 합계 정수 연산, 지연 초기화 스코프 스토리지 및 DEV/PROD 환경별 에러 리포트 이원화 유틸리티입니다 ([Study 04 #01, #10], [Study 05 #03, #04, #10]).
+ * @description 장바구니 도메인 엔티티 Zod 스키마, 비인증 방어 정규화, 파생 합계 정수 연산 및 DEV/PROD 환경별 에러 리포트 이원화 유틸리티입니다 ([Study 05 #03, #04, #10]).
  */
 import { sumBy } from 'es-toolkit';
-import {
-  type HostOriginType,
-  type NormalizedError,
-  type ScopedStorage,
-  createScopedStorage,
-} from 'remote_shared/utils';
+import type { HostOriginType, NormalizedError } from 'remote_shared/utils';
 import { ZodError, z } from 'zod';
-
-/** 장바구니 환경 설정을 저장할 스코프 스토리지 키 상수 */
-export const CART_PREFERENCES_STORAGE_KEY = 'preferences';
 
 /**
  * @description 단일 장바구니 조인 뷰 항목 인터페이스 (루트 SSOT § 5.1.2 CartItemView 1:1 정합)
@@ -74,14 +66,6 @@ export interface CartTotalsSummary {
 }
 
 /**
- * @description 장바구니 리모트 로컬 스토리지에 보관하는 환경 설정 인터페이스
- */
-export interface CartPreferences {
-  /** CSS 스타일 격리 실험 토글 상태 (true: 격리 활성, false: 비격리 오염 시뮬레이션) */
-  cssIsolated: boolean;
-}
-
-/**
  * @description Zod 스키마 검증 실패 시 개별 필드 불일치 좌표 인터페이스 (Study 05 #10)
  */
 export interface CartSchemaIssueDetail {
@@ -123,11 +107,6 @@ export const HOST_ORIGIN_LABELS: Readonly<Record<HostOriginType, string>> = {
   standalone: 'Standalone',
 };
 
-/** 기본 장바구니 환경 설정 상수 */
-export const DEFAULT_CART_PREFERENCES: CartPreferences = {
-  cssIsolated: true,
-};
-
 /** 단일 장바구니 조인 뷰 항목 런타임 검증용 Zod 스키마 */
 export const cartItemViewSchema: z.ZodType<CartItemView> = z.object({
   id: z.number().int().positive(),
@@ -149,27 +128,6 @@ export const deleteCartResultSchema: z.ZodType<DeleteCartResult> = z.object({
   deletedId: z.union([z.number().int().positive(), z.literal('all')]),
   deletedCount: z.number().int().nonnegative(),
 });
-
-/** 장바구니 로컬 스토리지 환경 설정 검증용 Zod 스키마 */
-export const cartPreferencesSchema: z.ZodType<CartPreferences> = z.object({
-  cssIsolated: z.boolean(),
-});
-
-/** 지연 생성된 cart 스코프 로컬 스토리지 래퍼 캐시 */
-let cachedCartStorage: ScopedStorage | null = null;
-
-/**
- * 원격 모듈 최상단 즉시 호출 경합을 방지하기 위해 호출 시점에 1회 생성·캐싱하는 스코프 스토리지 Getter입니다 ([Study 04 #01]).
- *
- * @returns 'cart' 스코프 프리픽스(mfe:cart:*)가 적용된 ScopedStorage 인스턴스
- */
-export function getCartScopedStorage(): ScopedStorage {
-  // [분기 설명] 최초 호출 시점에만 원격 createScopedStorage 함수를 실행해 모듈 평가 단계의 초기화 경합을 차단합니다.
-  if (!cachedCartStorage) {
-    cachedCartStorage = createScopedStorage('cart');
-  }
-  return cachedCartStorage;
-}
 
 /**
  * Props 또는 이벤트로 전달된 사용자 ID를 정규화합니다.
@@ -208,28 +166,6 @@ export function calculateCartTotals(
     totalQuantity,
     totalPrice,
   };
-}
-
-/**
- * 'mfe:cart:preferences' 키에서 장바구니 UI 환경 설정을 안전하게 복원합니다 ([Study 04 #10]).
- *
- * @returns 검증된 CartPreferences 객체 (손상 시 기본값 폴백)
- */
-export function loadCartPreferences(): CartPreferences {
-  return getCartScopedStorage().getItem(
-    CART_PREFERENCES_STORAGE_KEY,
-    cartPreferencesSchema,
-    DEFAULT_CART_PREFERENCES,
-  );
-}
-
-/**
- * 'mfe:cart:preferences' 키에 장바구니 UI 환경 설정을 저장합니다 ([Study 04 #10]).
- *
- * @param preferences - 저장할 환경 설정 객체
- */
-export function saveCartPreferences(preferences: CartPreferences): void {
-  getCartScopedStorage().setItem(CART_PREFERENCES_STORAGE_KEY, preferences);
 }
 
 /**

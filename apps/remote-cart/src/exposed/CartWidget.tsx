@@ -35,9 +35,6 @@ export interface CartWidgetProps {
   /** 로딩 지연 시간(ms) 오버라이드 (테스트 가속용, 기본값: 1500) */
   delayMs?: number;
 
-  /** CSS 스타일 오염(false) vs CSS 프리픽스/모듈 격리(true) 비교 실험 토글 (기본값: true) */
-  cssIsolated?: boolean;
-
   /** 백엔드 API 기본 URL 오버라이드 (기본값: 'http://localhost:4000/api') */
   apiBaseUrl?: string;
 }
@@ -54,7 +51,6 @@ export function CartWidget({
   syncMode,
   simulateDelay = false,
   delayMs,
-  cssIsolated,
   apiBaseUrl,
 }: CartWidgetProps) {
   /** Props로 userId가 생략된 경우 mfe:auth-changed 이벤트로 수신하는 보조 사용자 ID 상태 (초기값 null, 임의 폴백 금지) */
@@ -62,9 +58,6 @@ export function CartWidget({
 
   /** Props로 syncMode가 생략된 경우 mfe:sync-mode-changed 이벤트로 수신하는 동기화 모드 상태 */
   const [eventSyncMode, setEventSyncMode] = useState<SyncMode>('mode-a-event');
-
-  /** Props로 cssIsolated가 생략된 경우 mfe:css-isolation-changed 이벤트로 수신하는 CSS 격리 상태 */
-  const [eventCssIsolated, setEventCssIsolated] = useState<boolean>(true);
 
   useMfeEvent(MFE_EVENTS.AUTH_CHANGED, (payload) => {
     setEventUserId(normalizeUserId(payload.userId));
@@ -74,14 +67,9 @@ export function CartWidget({
     setEventSyncMode(payload.syncMode);
   });
 
-  useMfeEvent(MFE_EVENTS.CSS_ISOLATION_CHANGED, (payload) => {
-    setEventCssIsolated(payload.cssIsolated);
-  });
-
   /** [분기 설명] Props가 명시적으로 전달(undefined 아님)되면 Props를 우선하고, 생략된 경우에만 이벤트 구독 값을 사용합니다. */
   const effectiveUserId = userId !== undefined ? normalizeUserId(userId) : eventUserId;
   const effectiveSyncMode: SyncMode = syncMode ?? eventSyncMode;
-  const effectiveCssIsolated: boolean = cssIsolated ?? eventCssIsolated;
 
   /** Mode A 전용 독립 QueryClient를 보관하는 Ref (Mode B 단독 마운트 시 불필요한 생성 0회 보장) */
   const localQueryClientRef = useRef<QueryClient | null>(null);
@@ -104,7 +92,6 @@ export function CartWidget({
         syncMode={effectiveSyncMode}
         simulateDelay={simulateDelay}
         delayMs={delayMs}
-        cssIsolated={effectiveCssIsolated}
         apiBaseUrl={apiBaseUrl}
       />
     </QueryClientProvider>

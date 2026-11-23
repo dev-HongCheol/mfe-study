@@ -319,19 +319,12 @@ describe('CartWidget & App 통합 테스트 (TC-05, TC-06, EC-01~EC-04)', () => 
     expect(fetchCount).toBe(1);
   });
 
-  it('TC-06: 지연 스켈레톤, cssIsolated 토글, 단독 실행 쇼케이스(App) 및 5대 아키텍처 무결성을 검증한다', async () => {
-    const { container, unmount } = render(
-      <CartWidget
-        userId="user-1"
-        syncMode="mode-a-event"
-        simulateDelay={true}
-        delayMs={40}
-        cssIsolated={false}
-      />,
+  it('TC-06: 지연 스켈레톤, 단독 실행 쇼케이스(App) 및 5대 아키텍처 무결성을 검증한다', async () => {
+    const { unmount } = render(
+      <CartWidget userId="user-1" syncMode="mode-a-event" simulateDelay={true} delayMs={40} />,
     );
 
     expect(screen.getByTestId('cart-skeleton')).toBeInTheDocument();
-    expect(container.querySelector('[data-css-isolated="false"]')).not.toBeNull();
     expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
     unmount();
 

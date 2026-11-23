@@ -2,7 +2,7 @@
  * @file cart.css
  * @app remote-cart (Scope: cart | Port: 3003)
  * @exposed true (bundled with ./CartWidget)
- * @description .cart-* 프리픽스 및 시맨틱 CSS 변수(--mfe-*)로 격리된 장바구니 위젯 스타일과 cssIsolated=false 비교 실험 시각 스타일입니다 ([Study 04 #05], [Study 05 #13, #14, #16]).
+ * @description .cart-* 프리픽스 및 시맨틱 CSS 변수(--mfe-*)로 격리된 장바구니 위젯 스타일입니다 ([Study 04 #05], [Study 05 #13, #14, #16]).
  */
 
 .cart-widget-root {
@@ -23,16 +23,6 @@
   margin: 4px 0 0;
   font-size: 0.8125rem;
   color: var(--mfe-text-secondary);
-}
-
-.cart-isolation-warning {
-  padding: 12px 14px;
-  border-radius: var(--mfe-radius-md, 10px);
-  border: 2px dashed var(--mfe-danger);
-  background: color-mix(in srgb, var(--mfe-danger) 10%, var(--mfe-bg-surface));
-  color: var(--mfe-danger);
-  font-size: 0.85rem;
-  line-height: 1.5;
 }
 
 .cart-items-list {
@@ -174,26 +164,6 @@
   border-radius: var(--mfe-radius-md, 10px);
   padding: var(--mfe-space-md, 16px);
   background: var(--mfe-bg-surface);
-}
-
-/* [Study 04 #05 비교 학습] cssIsolated=false 시 비격리 스타일 충돌 위험을 위젯 영역 내부에 안전하게 시각화합니다. */
-.cart-widget-root[data-css-isolated="false"] {
-  padding: 12px;
-  border: 3px double var(--mfe-danger);
-  border-radius: 0;
-  letter-spacing: 0.04em;
-  background: color-mix(in srgb, var(--mfe-danger) 6%, var(--mfe-bg-app));
-}
-
-.cart-widget-root[data-css-isolated="false"] .cart-item-row {
-  border: 2px dotted var(--mfe-danger);
-  border-radius: 0;
-  transform: skewX(-1deg);
-}
-
-.cart-widget-root[data-css-isolated="false"] .cart-item-title {
-  text-transform: uppercase;
-  text-decoration: underline wavy var(--mfe-danger);
 }
 
 /* 단독 실행(Standalone, Port 3003) 쇼케이스 컨트롤 바 스타일 */
