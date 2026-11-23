@@ -67,7 +67,20 @@ export default defineConfig({
           singleton: true,
           requiredVersion: '^19.1.0',
         },
+        // [이종 번들러 방어] Vite Dev(ESM) 공급자와 Rspack 간 React Automatic JSX Transform 서브패스 공유 경합(jsxDEV is not a function) 차단
+        'react/jsx-runtime': {
+          singleton: true,
+          requiredVersion: '^19.1.0',
+        },
+        'react/jsx-dev-runtime': {
+          singleton: true,
+          requiredVersion: '^19.1.0',
+        },
         'react-dom': {
+          singleton: true,
+          requiredVersion: '^19.1.0',
+        },
+        'react-dom/client': {
           singleton: true,
           requiredVersion: '^19.1.0',
         },

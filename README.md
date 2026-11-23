@@ -78,6 +78,7 @@ pnpm dev
 8. **[Study 08. JavaScript `AbortController` · `AbortSignal`과 React 비동기 취소 패턴](./docs/study/08-abort-signal-and-async-cancellation.md)**: 순수 JS·React 독립 샘플로 배우는 `AbortController` vs `AbortSignal` 구조, `'abort'` 이벤트 기반 즉시 취소(`delayWithSignal`), `useEffect` Race Condition 방지 및 TanStack Query `signal` 연동 원리
 9. **[Study 09. MFE 원격 타입(`@mf-types`) 전이 의존성과 디자인 시스템 경계 캡슐화](./docs/study/09-mfe-shared-types-and-design-system-encapsulation.md)**: `vite-env.d.ts`와 `.d.ts` 로드 규약, 서드파티(`@ark-ui/react`) 타입 누출 원인 및 경계 캡슐화 해결 아키텍처
 10. **[Study 10. MFE 실서비스 프로덕션 배포 · 정적 서빙 테스트 · 운영 가이드](./docs/study/10-mfe-production-deployment-and-operations.md)**: `@mf-types.zip` 제외·차단 전략, 단일 정적 서버(서브패스·VS Code Live Server) vs 멀티 도메인 배포, `Cache-Control`·`ChunkLoadError`·롤백 전략
+11. **[Study 11. 실무 웹 서비스 필수 CSS 폰트 · 타이포그래피 설정 가이드](./docs/study/11-css-typography-and-font-essentials.md)**: `font: inherit` 폼 상속, `font-display`·`size-adjust`·`unicode-range` CLS 방어, `font-variant-numeric`(`tabular-nums`·`slashed-zero`), 한글 줄바꿈(`keep-all` + `break-word`), `text-wrap: balance/pretty` 및 MFE 폰트 관리 원칙
 
 ### 📝 표준 작업 템플릿 (`docs/templates/`)
 - **[todo.template.md](./docs/templates/todo.template.md)**: 마이크로 앱별 `docs/todo.md` 생성 템플릿

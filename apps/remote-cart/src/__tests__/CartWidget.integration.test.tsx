@@ -354,6 +354,9 @@ describe('CartWidget & App 통합 테스트 (TC-05, TC-06, EC-01~EC-04)', () => 
     expect(rsbuildConfig).toContain('disableDynamicRemoteTypeHints: true');
     expect(rsbuildConfig).toContain('watchOptions');
     expect(rsbuildConfig).toContain('@mf-types');
+    expect(rsbuildConfig).toContain("'react/jsx-runtime'");
+    expect(rsbuildConfig).toContain("'react/jsx-dev-runtime'");
+    expect(rsbuildConfig).toContain("'react-dom/client'");
 
     const envDts = readFileSync(resolve(APP_ROOT, 'src/rsbuild-env.d.ts'), 'utf-8');
     expect(envDts).not.toContain('@ark-ui/react');
