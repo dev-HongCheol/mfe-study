@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[학습 가이드 정비 & 확장] 스터디 문서(`Study 01 ~ 09`) 현행 코드베이스 정합성 보정, `Study 04 · 05` 명사형 기술 레퍼런스 포맷 통일 및 MFE 실서비스 프로덕션 배포·운영 가이드(`Study 10`, `Step 1.7`) 신설 완료** (`docs/study/`, `GEMINI.md`, `README.md`, `todo.md`, PR #13)
   - **[Step 1.2/1.3 후속 정리] `remote-products`의 `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(80줄) 완전 제거 및 최신 `@mf-types` 기반 무-Shim 소비 검증 완료** (`apps/remote-products`, `docs/service-registry.md`, `Vitest 7개 파일 / 33건`·루트 전체 `98건` 통과, PR #11 — `Study 09` 로드맵 완결)
   - **[Step 1.2/1.3 후속 정리 및 개선] `remote-shared/ui` 노출 Props 13종 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환으로 `@ark-ui/react` 타입 누출 `0건` 달성), `dev.disableDynamicRemoteTypeHints: true` 적용 및 `src/**` `.js` 확장자 일괄 제거 완료** (`apps/remote-shared`, `GEMINI.md`, `docs/service-registry.md`, `Vitest 18개 파일 / 35건`·루트 전체 `97건` 통과, PR #10)
   - **[Phase 1 - Step 1.3] 상품 목록 원격 앱(`./ProductList`), `Mode A vs Mode B` 상태 동기화, 비인증 3중 방어, UI 책임 분리 및 단독 실행 쇼케이스 구축 완료** (`apps/remote-products`, `docs/service-registry.md`, `Vitest 7개 파일 / 32건` 통과, PR #7)
