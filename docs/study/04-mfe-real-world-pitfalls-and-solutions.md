@@ -216,12 +216,21 @@
 ### #05. 리모트 앱이 동적으로 로드될 때 발생하는 '전역 CSS Reset 덮어쓰기 참사'
 * **발생 배경 (원인)**:
   - 흔히 CSS 격리라고 하면 `.btn` 같은 클래스명이 겹치는 것만 생각합니다.
-  - 하지만 진짜 치명적인 사고는 **나중에 동적으로 로드(`React.lazy`)된 리모트 앱이 자기 번들에 포함된 전역 초기화 스타일(`* { margin: 0 }`, `button { background: none }`, Tailwind `@tailwind base` 등)을 브라우저 `<head>`의 맨 마지막 줄에 뒤늦게 꽂아 넣을 때** 발생합니다.
+  - 하지만 진짜 치명적인 사고는 **나중에 동적으로 로드(`React.lazy`)된 리모트 앱이 자기 번들에 포함된 전역 초기화 스타일(`* { margin: 0 }`, `button { background: none }`, Tailwind Preflight 등)을 브라우저 `<head>`의 맨 마지막 줄에 뒤늦게 꽂아 넣을 때** 발생합니다.
 * **주요 증상**:
-  - 처음 호스트 화면을 켰을 땐 멀쩡하던 상단 헤더와 버튼 디자인이, **장바구니 위젯이 로딩 완료되는 순간 갑자기 전부 초기 상태로 풀려서 깨져버리는 기괴한 현상**이 발생합니다 (나중에 삽입된 `<style>` 태그가 앞선 스타일을 덮어쓰기 때문).
-* **해결 아키텍처**:
+  - 처음 호스트 화면을 켰을 땐 멀쩡하던 상단 헤더와 `remote-shared` 버튼 디자인이, **리모트 위젯이 로딩 완료되는 순간 갑자기 전부 초기 상태로 풀려서 깨져버리는 현상**이 발생합니다 (나중에 삽입된 `<style>` 태그가 앞선 스타일을 덮어쓰기 때문).
+* **해결 아키텍처 (공통 대원칙)**:
   1. **전역 CSS Reset 및 루트 CSS 변수(`:root`)는 오직 호스트(또는 `remote-shared/theme`) 단 한 곳에서만 최초 1회 로드**합니다.
-  2. 개별 도메인 리모트(`products`, `cart`)에서는 전역 태그 선택자(`body`, `button`, `h1`, `*`) 사용을 엄격히 금지하고, CSS Modules 또는 서비스 프리픽스(`.prod-*`, `.cart-*`)만 사용합니다.
+  2. 개별 도메인 리모트(`products`, `cart`)에서는 전역 태그 선택자(`body`, `button`, `h1~h5`, `*`) 사용을 엄격히 금지하고, 정적 회귀 테스트(`Vitest`)로 전역 선택자·`#hex` 하드코딩 유입을 자동 차단합니다.
+* **현업 스타일 도구별 MFE 적용 가이드**:
+
+| 스타일링 방식 | MFE 환경에서의 핵심 위험 | 실무 격리 전략 |
+| :--- | :--- | :--- |
+| **Tailwind CSS (v3 / v4)** | **가장 흔한 전역 Reset 사고 주범**: 각 리모트가 기본 `Preflight`(`@tailwind base` / v4 `@import "tailwindcss"`)를 포함해 빌드하면 나중에 로드된 리모트가 앞선 호스트·`remote-shared` 디자인을 초기화함. 또한 앱 간 Tailwind 버전/테마가 다르면 `.p-4` 같은 유틸 클래스가 충돌함. | 1) **호스트 또는 `remote-shared/theme` 단 1곳에서만 Preflight 로드**<br>2) 개별 리모트는 `corePlugins: { preflight: false }`(v3) 또는 `@import "tailwindcss/theme"`·`@import "tailwindcss/utilities"`만 선택 로드(v4)<br>3) 앱 간 버전/토큰이 다를 경우 `prefix(cart)` 등 **앱별 유틸리티 프리픽스** 강제 및 `@layer` 순서 통일 |
+| **CSS Modules (`*.module.css`)** | 로컬 클래스는 빌드 시 해시(`CartRow_title__a1b2c`)로 자동 격리되지만, 모듈 안에서 `:global(button)`이나 별도 `reset.css`를 import하면 여전히 전역 오염 발생. | 로컬 스타일은 모두 `*.module.css`로 스코핑하고, 전역 Reset import를 린트·테스트로 금지. |
+| **Zero-runtime CSS-in-JS (`Vanilla Extract`, `Panda CSS`)** | 런타임 Context나 `<style>` 동적 주입 경쟁 없이 빌드 타임에 정적 CSS + 해시 클래스를 생성하므로 MFE와 궁합이 매우 좋음. 단, 각 리모트가 `globalStyle()`로 전역 Reset을 중복 선언하면 동일한 덮어쓰기 발생. | 디자인 토큰(`createThemeContract`)과 전역 Reset은 `remote-shared`에만 두고, 각 리모트는 컴포넌트 스코프 스타일(`style`, `recipe`)만 작성. |
+| **순수 CSS + 서비스 프리픽스 (`.cart-*`) + 시맨틱 토큰 (`--mfe-*`)** *(본 프로젝트 채택)* | 별도 CSS 도구 의존성 없이 투명하게 동작하지만, 개발자가 실수로 태그 선택자(`button {}`)나 `#hex`를 직접 적을 위험이 있음. | `remote-shared/theme`에서만 Reset·토큰 로드 + 리모트는 `.prod-*`/`.cart-*` 프리픽스만 사용 + **`Vitest` 정적 정규식 테스트로 전역 태그 선택자 및 `#hex` 유입 자동 차단**. |
+| **Shadow DOM / CSS `@scope`** | Shadow DOM은 스타일을 완벽히 격리하지만, `Ark UI` 등의 `Portal`(모달·드롭다운)이 `document.body`로 빠져나갈 때 Shadow 내부 스타일이 끊기고 접근성·포커스 관리가 복잡해짐. | 외부 제3자 위젯 임베딩처럼 완전 격리가 필수일 때만 제한적으로 채택. |
 
 ---
 

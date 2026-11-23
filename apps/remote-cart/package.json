@@ -1,0 +1,39 @@
+{
+  "name": "@mfe-study/remote-cart",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MFE Study Shopping Cart Remote Micro-App (Port 3003 | Rsbuild/Rspack + Module Federation 2.0)",
+  "scripts": {
+    "dev": "rsbuild dev",
+    "preview": "rsbuild preview",
+    "build": "rsbuild build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "catalog:",
+    "date-fns": "catalog:",
+    "es-toolkit": "catalog:",
+    "ky": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@module-federation/rsbuild-plugin": "^2.9.3",
+    "@rsbuild/core": "^1.5.14",
+    "@rsbuild/plugin-react": "^1.4.2",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
+    "@types/node": "^22.10.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "catalog:",
+    "msw": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

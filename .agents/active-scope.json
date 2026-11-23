@@ -1,8 +1,8 @@
 {
-  "scope": "root",
-  "path": ".",
-  "branch": "root/docs/sync-study-docs",
-  "featureDir": "docs/study",
+  "scope": "cart",
+  "path": "apps/remote-cart",
+  "branch": "cart/feat/cart-widget-sync",
+  "featureDir": "apps/remote-cart/docs/features/20261123-cart-widget-sync",
   "currentStep": 5,
-  "isDocsOnly": true
+  "isDocsOnly": false
 }

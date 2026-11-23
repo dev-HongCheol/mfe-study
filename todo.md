@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[Phase 1 - Step 1.4] 프로젝트 최초 `Rsbuild(Rspack)` 장바구니 원격 앱(`./CartWidget`, `Port 3003`), `Mode A vs Mode B` 대칭 동기화, 비인증 3중 차단, 이종 번들러(`Rspack` ↔ `Vite`) 무-Shim `@mf-types` 소비·React 서브패스 3종 공유 및 `Study 08(Part 3)` · `Study 11(CSS 폰트 가이드)` · `Study 12(Mode A Self-Echo & QueryClient 동기화)` 구축 완료** (`apps/remote-cart`, `docs/service-registry.md`, `Vitest 8개 파일 / 26건`·루트 전체 `42개 파일 / 124건` 통과, PR #14)
   - **[학습 가이드 정비 & 확장] 스터디 문서(`Study 01 ~ 09`) 현행 코드베이스 정합성 보정, `Study 04 · 05` 명사형 기술 레퍼런스 포맷 통일 및 MFE 실서비스 프로덕션 배포·운영 가이드(`Study 10`, `Step 1.7`) 신설 완료** (`docs/study/`, `GEMINI.md`, `README.md`, `todo.md`, PR #13)
   - **[Step 1.2/1.3 후속 정리] `remote-products`의 `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(80줄) 완전 제거 및 최신 `@mf-types` 기반 무-Shim 소비 검증 완료** (`apps/remote-products`, `docs/service-registry.md`, `Vitest 7개 파일 / 33건`·루트 전체 `98건` 통과, PR #11 — `Study 09` 로드맵 완결)
   - **[Step 1.2/1.3 후속 정리 및 개선] `remote-shared/ui` 노출 Props 13종 경계 캡슐화(`ComponentPropsWithoutRef` 기반 전환으로 `@ark-ui/react` 타입 누출 `0건` 달성), `dev.disableDynamicRemoteTypeHints: true` 적용 및 `src/**` `.js` 확장자 일괄 제거 완료** (`apps/remote-shared`, `GEMINI.md`, `docs/service-registry.md`, `Vitest 18개 파일 / 35건`·루트 전체 `97건` 통과, PR #10)
@@ -26,8 +27,9 @@
   - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료
   - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 승인 완료
 - **다음 진행 예정 작업 (Next Up)**:
-  1. **[다음 대기 | `Scope: cart` | `Branch: cart/feat/cart-widget-sync`] [Phase 1 - Step 1.4] 장바구니 원격 앱(`apps/remote-cart`, `Port 3003`, `Rspack`) 구축**
+  1. **[다음 대기 | `Scope: cart` | `Branch: cart/refactor/queryclient-sync-channel`] [Phase 1 - Step 1.4 후속 개선] `remote-cart` `Mode A` 자기 에코(Self-Echo) 중복 `invalidateQueries` 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** ([`Study 12`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md))
   2. **[다음 대기 | `Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`] [Phase 1 - Step 1.5] 공통 껍데기 호스트 2종(`apps/host-vite:3000`, `apps/host-rspack:3001`) 구축**
+  3. **[다음 대기 | `Scope: root` | `Branch: root/test/phase1-mfe-smoke`] [Phase 1 - Step 1.6] Phase 1 실제 Module Federation 6개 서버 런타임 스모크 테스트 구축**
 
 ---
 
@@ -82,9 +84,13 @@
 - [x] **Step 1.3: 상품 목록 원격 앱 구축** (`Scope: products` | `Branch: products/feat/catalog-list`)
   - 문서 경로: `apps/remote-products/docs/todo.md` 및 `apps/remote-products/docs/features/20261107-catalog-list/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - `./ProductList` 컴포넌트, 장바구니 담기 **비교 학습 모드(`Mode A: 리모트별 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)**, 비인증(`userId` 미전달/`null`) 3중 읽기 전용 방어, `DeferredRemoteProxy` 3중 방어, `DEV`/`PROD` 스키마 에러 이원화 및 단독 실행(Standalone) 쇼케이스 TDD 구현·머지 완료 (`Port 3002` / Vite 7, `Vitest 7개 파일 / 32건`·`typecheck`·`vite build`·`Biome` 통과, `docs/service-registry.md` 반영)
-- [ ] **Step 1.4: 장바구니 원격 앱 구축** (`Scope: cart` | `Branch: cart/feat/cart-widget-sync`)
-  - 문서 경로: `apps/remote-cart/docs/todo.md` 및 `apps/remote-cart/docs/features/YYYYMMDD-cart-widget-sync/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
-  - `./CartWidget` 컴포넌트, **비교 학습 모드(`Mode A: CustomEvent 수신 후 자체 QueryClient 재조회` vs `Mode B: sharedQueryClient 캐시 무효화 자동 감지`)**, CSS 스타일 충돌/격리 토글, 단독 실행(Standalone) 화면 TDD 구현 (`Port 3003` / Rspack)
+- [x] **Step 1.4: 장바구니 원격 앱 구축** (`Scope: cart` | `Branch: cart/feat/cart-widget-sync`, PR #14)
+  - 문서 경로: `apps/remote-cart/docs/todo.md` 및 `apps/remote-cart/docs/features/20261123-cart-widget-sync/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
+  - 프로젝트 최초 `Rsbuild(Rspack)` + `@module-federation/rsbuild-plugin(^2.9.3)` 리모트 앱(`Port 3003`) 구축: `./CartWidget` 컴포넌트, **비교 학습 모드(`Mode A: CustomEvent 수신 후 독립 QueryClient 재조회` vs `Mode B: sharedQueryClient 캐시 무효화 자동 감지`)**, 비인증 3중 차단, `.cart-*` 프리픽스 및 전역 태그 선택자 금지 정적 회귀 검증, React 서브패스 3종(`jsx-runtime`/`jsx-dev-runtime`/`react-dom/client`) 명시 공유, `syncCartAfterMutation` 공통 헬퍼 리팩토링 및 단독 실행(`샘플 상품 담기` 포함) 쇼케이스 TDD 구현 완료 (`Vitest 8개 파일 / 26건`·루트 전체 `42개 파일 / 124건`·`rsbuild build`·무-Shim `typecheck`·`Biome` 통과, `docs/service-registry.md` 반영)
+- [ ] **Step 1.2/1.4 후속 정리 (`Scope: shared` | `Branch: shared/chore/cleanup-subpaths-and-unused-events`)**: `apps/remote-shared/vite.config.ts`에 React 서브패스 3종 명시 공유 통일 및 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` 이벤트 계약 정리 (연계 시 `remote-products` 스텁·루트 SSOT 동시 정리)
+- [ ] **Step 1.4 후속 개선: `remote-cart` `Mode A` 자기 에코(Self-Echo) 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** (`Scope: cart` | `Branch: cart/refactor/queryclient-sync-channel`)
+  - 참조 가이드: [`docs/study/12-mfe-event-self-echo-and-queryclient-sync.md`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)
+  - 공통 Zod 스키마(`remote-shared`) 변경 없이 `apps/remote-cart` 내부에 `Symbol.for` `WeakMap<QueryClient, Channel>` + `selfEchoTokens` 1회 소비 스택 + `useSyncExternalStore` 사용자별 수신 카운터를 도입하고, 쿼리 키 `['cart', userId, { apiBaseUrl, simulateDelay }]` 정렬, `emit` 선행(`try/catch` 격리) → `await invalidateQueries` 1회 적용 및 3지표(`receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`) 8대 회귀 테스트 구축
 - [ ] **Step 1.5: 공통 껍데기 호스트 2종 구축** (`Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`)
   - 문서 경로: `apps/host-vite/docs/todo.md`, `apps/host-vite/docs/features/YYYYMMDD-dashboard/` 및 `apps/host-rspack/docs/todo.md`, `apps/host-rspack/docs/features/YYYYMMDD-dashboard/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - 원격 모듈 통합 대시보드, `Suspense` + `Skeleton` (1.5초 지연 시뮬레이션 토글), `RemoteErrorBoundary` 장애 격리, 실시간 MFE 학습 모니터(`MfeInspector` — **`Mode A: CustomEvent` ↔ `Mode B: sharedQueryClient` 비교 관찰 토글** 포함) TDD 구현 (`Port 3000`, `Port 3001`)
