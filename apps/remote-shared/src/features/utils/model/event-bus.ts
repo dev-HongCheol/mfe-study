@@ -104,22 +104,25 @@ function extractSourceId(detail: unknown): string | undefined {
 /**
  * 앱·위젯·QueryClient 인스턴스 단위의 고유한 MFE 이벤트 발신자 ID를 생성합니다 ([Study 04 #09, Study 12]).
  *
- * @param prefix - 발신 출처를 식별하기 위한 선택적 접두사 (예: 'remote-cart', 'host-vite')
+ * @param prefix - 발신 출처를 식별하기 위한 필수 접두사 (예: 'remote-cart', 'host-vite')
  * @returns 충돌 없는 고유 발신자 ID 문자열 (예: 'remote-cart:550e8400-...')
  */
-export function createMfeEventSourceId(prefix?: string): string {
+export function createMfeEventSourceId(prefix: string): string {
   const normalizedPrefix = normalizeSourceId(prefix);
+
+  // [분기 설명] MfeInspector 출처 추적 일관성을 위해 빈 문자열·공백 접두사 호출을 즉시 차단합니다.
+  if (!normalizedPrefix) {
+    throw new Error(
+      "[mfeEventBus] createMfeEventSourceId의 prefix는 비어 있지 않은 문자열이어야 합니다 (예: 'remote-cart').",
+    );
+  }
+
   const uniqueToken =
     typeof globalThis.crypto?.randomUUID === 'function'
       ? globalThis.crypto.randomUUID()
       : `fallback-${++fallbackSourceIdSequence}-${Date.now()}`;
 
-  // [분기 설명] 유효한 접두사가 주어진 경우에만 '<prefix>:<uuid>' 형식으로 결합해 MfeInspector 로그 가독성을 높입니다.
-  if (normalizedPrefix) {
-    return `${normalizedPrefix}:${uniqueToken}`;
-  }
-
-  return uniqueToken;
+  return `${normalizedPrefix}:${uniqueToken}`;
 }
 
 /**

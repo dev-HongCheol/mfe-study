@@ -140,18 +140,17 @@ describe('mfeEventBus (TC-01 & EC-01)', () => {
     unsubInspector();
   });
 
-  it('TC-03(createMfeEventSourceId): 프리픽스 정규화 및 고유 발신자 ID 생성과 exposed/utils 재노출을 검증한다', () => {
+  it('TC-03(createMfeEventSourceId): 필수 prefix 정규화, 고유 발신자 ID 생성, 빈 prefix 예외 차단 및 exposed/utils 재노출을 검증한다', () => {
     const idA = createMfeEventSourceId('remote-cart');
     const idB = createMfeEventSourceId('remote-cart');
-    const plainId = createMfeEventSourceId();
     const trimmedId = createMfeEventSourceId('  host-vite  ');
 
     expect(idA.startsWith('remote-cart:')).toBe(true);
     expect(idB.startsWith('remote-cart:')).toBe(true);
     expect(idA).not.toBe(idB);
-    expect(plainId.length).toBeGreaterThan(0);
-    expect(plainId.startsWith(':')).toBe(false);
     expect(trimmedId.startsWith('host-vite:')).toBe(true);
+    expect(() => createMfeEventSourceId('')).toThrow(/prefix/);
+    expect(() => createMfeEventSourceId('   ')).toThrow(/prefix/);
     expect(typeof exposedUtils.createMfeEventSourceId).toBe('function');
   });
 

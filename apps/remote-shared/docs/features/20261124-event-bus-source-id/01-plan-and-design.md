@@ -26,7 +26,7 @@
   - 이때 이벤트를 **발행하면서 동시에 구독**하는 앱(예: `remote-cart`의 `[+1]`/`[삭제]` 클릭, 향후 `host-vite`/`host-rspack`의 양방향 상태 동기화)은 자기가 발행한 이벤트를 자기 리스너가 즉시 되받아(Self-Echo) **`GET /api/cart` 중복 호출** 및 **외부 이벤트 수신 카운터 오염**을 일으킵니다.
 - **목적 — 현업 MFE 표준 `sourceId` 발신자 식별 패턴을 `remote-shared/utils` 공통 기능으로 내장**:
   - 개별 앱마다 복잡한 동기 전용 트릭(`selfEchoTokens` 스택 등)을 중복 구현하는 대신, 현업 MFE 아키텍처(ThoughtWorks, `mitt`/`RxJS` 래퍼 등)의 표준 패턴인 **`sourceId` 발신자 식별 & 수신 측 `ignoreSourceId` 자동 필터링**을 `mfeEventBus`와 `useMfeEvent`에 선택적 옵션으로 내장합니다.
-  - 또한 `crypto.randomUUID()` 기반의 `createMfeEventSourceId(prefix?)` 헬퍼를 함께 노출하여, `remote-cart`와 향후 호스트 2종(`host-vite`, `host-rspack`)이 일관된 형식의 발신자 ID로 자기 에코 차단과 `MfeInspector` 출처 추적을 즉시 활용할 수 있게 합니다.
+  - 또한 `crypto.randomUUID()` 기반의 `createMfeEventSourceId(prefix)` 헬퍼를 함께 노출하여, `remote-cart`와 향후 호스트 2종(`host-vite`, `host-rspack`)이 일관된 형식의 발신자 ID로 자기 에코 차단과 `MfeInspector` 출처 추적을 즉시 활용할 수 있게 합니다.
   - 동시에 [`Study 04` (`#09`)](../../../../../docs/study/04-mfe-real-world-pitfalls-and-solutions.md) 트러블슈팅 필독 문서와 [`Study 12`](../../../../../docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)를 현업 표준 `sourceId` 패턴으로 현행화하여 이후 호스트 2종 구축·리뷰 시 자동으로 적용되도록 합니다.
 
 ### 2.2 MFE / 아키텍처 핵심 학습 포인트
@@ -130,9 +130,9 @@ export interface MfeEventBus {
 ### 5.1 핵심 동작 규칙 (정규화 및 하위 호환 경계)
 1. **`normalizeSourceId(sourceId?: string): string | undefined`**:
    - 앞뒤 공백을 제거(`trim()`)한 뒤 빈 문자열이면 `undefined`를 반환합니다. 공백만 있는 잘못된 `sourceId`가 메타 키나 무시 필터로 오작동하는 것을 방지합니다.
-2. **`createMfeEventSourceId(prefix?: string): string`**:
-   - 브라우저 표준 `globalThis.crypto?.randomUUID?.()`를 우선 사용하고, 구형 테스트 환경 등 `randomUUID` 미지원 시 단조 증가 시퀀스 + 타임스탬프 폴백(`fallback-<seq>-<ts>`)을 생성합니다.
-   - 유효한 `prefix`가 주어지면 `${normalizedPrefix}:${uuid}` 형태(예: `remote-cart:550e8400-...`), 미지정 시 순수 `${uuid}`를 반환합니다.
+2. **`createMfeEventSourceId(prefix: string): string`**:
+   - 브라우저 표준 `globalThis.crypto?.randomUUID?.()`를 우선 사용하고, 구형 브라우저·비보안 HTTP 컨텍스트 등 `randomUUID` 미지원 시 단조 증가 시퀀스 + 타임스탬프 폴백(`fallback-<seq>-<ts>`)을 생성합니다.
+   - `prefix`는 `MfeInspector` 출처 추적 일관성을 위해 **필수 문자열**로 강제하며, 빈 문자열·공백 전달 시 예외를 던지고 정상 입력 시 항상 `${normalizedPrefix}:${uuid}` 형태(예: `remote-cart:550e8400-...`)를 반환합니다.
 3. **`subscribe` 핸들러 호출 인자 규칙 (기존 테스트·소비자 100% 무깨짐)**:
    - 수신된 이벤트에 유효한 `sourceId`가 있으면 `handler(parsed.data, { sourceId })`로 호출합니다.
    - `sourceId`가 없으면(기존 2인자 `emit` 또는 외부 평문 `CustomEvent`) **`handler(parsed.data)` 1개 인자**로 호출해 기존 소비자 및 테스트의 `toHaveBeenCalledWith(payload)` 계약을 100% 보존합니다.

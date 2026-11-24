@@ -95,6 +95,8 @@
    - `subscribe`가 항상 2번째 인자(`{ sourceId: undefined }`)를 전달하면 기존 1인자 검증 테스트가 깨질 수 있음을 사전 포착해, `sourceId`가 존재할 때만 `handler(parsed.data, { sourceId })`로 호출하고 미지정 시 `handler(parsed.data)` 1인자로 호출하도록 설계·검증했습니다(`EC-01` 통과).
 2. **`tsc --noEmit` 엄격 타입 검사로 발견된 인덱스 시그니처 캐스팅 및 테스트 암시적 `any` 즉시 수정**:
    - `parsed.data`에 `__mfeSourceId`를 결합할 때 불필요한 `as Record<string, unknown>` 캐스팅 대신 `Object.assign({}, parsed.data, { [MFE_EVENT_SOURCE_ID_KEY]: normalizedSourceId })`로 개선하고, `UseMfeEvent.test.tsx`의 콜백 인자 타입을 정리해 `tsc --noEmit` 에러 `0건`을 달성했습니다.
+3. **승인자 리뷰 피드백 반영 (`createMfeEventSourceId(prefix: string)` 필수 인자 단순화)**:
+   - YAGNI 원칙에 따라 실제로 사용하지 않는 `prefix` 생략 분기를 제거하고 `prefix: string`을 필수 인자로 강제하며 빈 문자열·공백 전달 시 명시적 `Error`를 던지도록 단순화했습니다.
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
 1. **2단계 로드맵 중 1차 PR 완료 및 2차 PR 연계 안내**:

@@ -42,14 +42,14 @@
   1. 초기 렌더에서 자기 에코(`alpha`)는 무시되고 외부 이벤트(`beta`)만 `onEvent(payload, { sourceId: 'remote-products:beta' })`로 1회 호출된다.
   2. `ignoreSourceId`가 `gamma`로 바뀐 뒤에는 `window.addEventListener` 추가 재등록 없이(최초 1회 유지) `alpha`는 수신되고 `gamma`는 차단된다.
 
-### TC-03: `createMfeEventSourceId` 고유 ID 생성 및 `exposed/utils` 공개 심볼 검증 (`event-bus.test.ts`)
+### TC-03: `createMfeEventSourceId` 필수 `prefix` 검증·고유 ID 생성 및 `exposed/utils` 공개 심볼 검증 (`event-bus.test.ts`)
 - **사전 조건 (`Given`)**: `src/exposed/utils.ts`에서 `createMfeEventSourceId`가 노출된 상태
 - **실행 동작 (`When`)**:
   1. `createMfeEventSourceId('remote-cart')`를 연속 2회 호출한다.
-  2. `createMfeEventSourceId()`(프리픽스 없음)와 `createMfeEventSourceId('  host-vite  ')`(공백 포함 프리픽스)를 호출한다.
+  2. `createMfeEventSourceId('  host-vite  ')`(공백 포함 프리픽스)와 빈/공백 문자열(`''`, `'   '`)을 각각 호출한다.
 - **기대 결과 (`Then`)**:
   1. 연속 호출된 두 ID는 모두 `'remote-cart:'`로 시작하며 서로 달라야(고유성) 한다.
-  2. 프리픽스가 없으면 접두 콜론 없이 비어 있지 않은 고유 문자열을 반환하고, 앞뒤 공백이 있는 프리픽스는 trim되어 `'host-vite:'`로 시작한다.
+  2. 앞뒤 공백이 있는 프리픽스는 trim되어 `'host-vite:'`로 시작하고, 빈 문자열·공백 프리픽스는 명시적 `Error`를 던져야 한다.
   3. `exposed/utils.ts` 모듈에서 `createMfeEventSourceId`가 함수로 재노출되어 있어야 한다.
 
 ### TC-04: `dist/@mf-types` 산출물 내 신규 공개 타입 포함 및 `@ark-ui/react` 무누출 검증 (`SharedShowcase.integration.test.tsx`)
@@ -107,4 +107,4 @@
 - [x] 모든 단위 및 통합 테스트(`Vitest`, 단독 + 루트 전체)가 통과(`Green`)했는가?
 - [x] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
 - [x] `Biome` 포맷팅·린트 검사(`LF` 줄바꿈 포함), `tsc --noEmit`, `vite build` (`dist/@mf-types.zip` 재생성)를 통과했는가?
-- [ ] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-shared/docs/todo.md`, 그리고 [`docs/service-registry.md`](../../../../../docs/service-registry.md)를 최신 상태로 업데이트했는가?
+- [x] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-shared/docs/todo.md`, 그리고 [`docs/service-registry.md`](../../../../../docs/service-registry.md)를 최신 상태로 업데이트했는가?

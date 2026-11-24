@@ -24,7 +24,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- [-] **[`20261124-event-bus-source-id`](./features/20261124-event-bus-source-id/01-plan-and-design.md)**: [Step 1.4 후속 개선 1차] `remote-shared/utils` `mfeEventBus`·`useMfeEvent` 발신자 식별(`sourceId` / `ignoreSourceId`) 자기 에코 자동 필터링 및 `createMfeEventSourceId` 헬퍼 추가 + `Study 04`/`Study 12` 현행화 (`Branch: shared/feat/event-bus-source-id`)
+- *(현재 진행 중인 작업 없음 — 다음 백로그 작업 착수 시 여기에 등록)*
 
 ---
 
@@ -38,6 +38,12 @@
 
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
+
+- [x] **[`20261124-event-bus-source-id`](./features/20261124-event-bus-source-id/01-plan-and-design.md)**: [Step 1.4 후속 개선 1차] `remote-shared/utils` `mfeEventBus`·`useMfeEvent` 발신자 식별(`sourceId` / `ignoreSourceId`) 자기 에코 자동 필터링 및 `createMfeEventSourceId(prefix)` 헬퍼 추가 + `Study 04 (#09)` · `Study 12` 현행화 (`Port 3004`) — **완료일: `2026-11-24`** (PR #16)
+  - **작업 브랜치**: `shared/feat/event-bus-source-id` (`Scope: shared`)
+  - **설계 문서**: [01-plan-and-design.md](./features/20261124-event-bus-source-id/01-plan-and-design.md)
+  - **TDD 명세**: [02-tdd-spec.md](./features/20261124-event-bus-source-id/02-tdd-spec.md)
+  - **코드 리뷰**: [03-code-review.md](./features/20261124-event-bus-source-id/03-code-review.md)
 
 - [x] **[`20261123-cleanup-subpaths-and-unused-events`](./features/20261123-cleanup-subpaths-and-unused-events/01-plan-and-design.md)**: [Step 1.2/1.4 후속 정리] `vite.config.ts` React 서브패스 3종(`react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom/client`) 명시 공유 통일, 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` 이벤트 계약 제거(표준 4종 확정) 및 폐기·미등록 이벤트 런타임 방어 가드 보강 (`Port 3004`) — **완료일: `2026-11-24`** (PR #15)
   - **작업 브랜치**: `shared/chore/cleanup-subpaths-and-unused-events` (`Scope: shared`)
