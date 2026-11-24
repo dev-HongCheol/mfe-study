@@ -333,14 +333,16 @@ flowchart TD
 
 ---
 
-### #09. 리모트 언마운트 후 살아남은 '좀비 이벤트 리스너'와 중복 API 호출 (메모리 누수)
+### #09. 리모트 언마운트 후 살아남은 '좀비 이벤트 리스너'와 양방향 이벤트 '자기 에코(Self-Echo)' 중복 호출
 * **발생 배경 (원인)**:
-  - 단일 앱에서는 이벤트 리스너 해제를 깜빡해도 페이지가 유지되는 동안 큰 티가 안 나기도 합니다.
-  - 하지만 MFE에서는 사용자가 메뉴를 바꿀 때마다 리모트 마이크로 앱이 수시로 마운트(`mount`)되었다가 언마운트(`unmount`)됩니다.
+  1. **좀비 이벤트 리스너**: 단일 앱에서는 이벤트 리스너 해제를 깜빡해도 페이지가 유지되는 동안 큰 티가 안 나기도 하지만, MFE에서는 사용자가 메뉴를 바꿀 때마다 리모트 마이크로 앱이 수시로 마운트(`mount`)되었다가 언마운트(`unmount`)됩니다.
+  2. **양방향 이벤트 자기 에코(Self-Echo)**: `remote-cart`나 호스트 2종(`host-vite`, `host-rspack`)처럼 **동일한 `CustomEvent`를 발행(`emit`)하면서 동시에 구독(`subscribe`)**하는 구조에서는, 브라우저 DOM 표준상 `window.dispatchEvent()`가 동기 브로드캐스트되면서 **자신이 발행한 이벤트를 자기 자신의 리스너가 그대로 되받는 현상**이 발생합니다.
 * **주요 증상**:
-  - `remote-cart`가 `window.addEventListener('mfe:cart-updated', refetchCart)`를 등록하고 언마운트 시 `removeEventListener`를 정확히 하지 않으면, 사용자가 장바구니를 5번 열었다 닫은 뒤 상품을 1개 담았을 때 **이미 화면에서 사라진 죽은(좀비) 장바구니 컴포넌트 4개까지 동시에 반응해 백엔드 API를 5번 연속 호출**합니다!
-* **해결 아키텍처 (`useMfeEvent` 자동 클린업 훅 강제)**:
-  - 컴포넌트 내부에서 직접 `window.addEventListener`를 쓰는 것을 컨벤션으로 금지하고, `remote-shared/utils`에서 **언마운트 시 100% 자동으로 리스너를 제거해 주는 `useMfeEvent(eventName, handler)` 커스텀 훅**을 제공하여 사용합니다.
+  1. 언마운트 시 `removeEventListener`를 누락하면, 장바구니를 5번 열었다 닫은 뒤 상품을 1개 담았을 때 **이미 사라진 좀비 리스너 4개까지 동시에 반응해 백엔드 API를 5번 연속 호출**합니다.
+  2. 자기 에코 차단이 없으면, 장바구니 위젯이 `[+1]`/`[삭제]` 성공 후 자체 `invalidateQueries`로 1번째 `GET`을 보낸 뒤 `emit('mfe:cart-updated')`를 호출했을 때 **자기 리스너가 이벤트를 되받아 2번째 `GET`을 중복 발사**하고 외부 수신 카운터까지 오염시킵니다. 호스트에서도 인증·테마·모드 이벤트를 양방향으로 다룰 때 무한 루프나 중복 상태 갱신이 터질 수 있습니다.
+* **해결 아키텍처 (`useMfeEvent` 자동 클린업 + `sourceId` / `ignoreSourceId` 자기 에코 차단 표준 패턴)**:
+  1. **직접 `window.addEventListener` 금지**: 모든 이벤트 구독은 `remote-shared/utils`의 **`useMfeEvent(eventName, handler, options?)`**(또는 반환 해제 함수를 정리하는 `mfeEventBus.subscribe`)를 사용해 언마운트 시 100% 자동 클린업합니다.
+  2. **양방향 발행·구독 시 `sourceId` 필수 부착 ([`Study 12`](./12-mfe-event-self-echo-and-queryclient-sync.md))**: 같은 이벤트를 발행하면서 구독하는 모든 앱·호스트·`QueryClient`는 `createMfeEventSourceId('<app>')`로 인스턴스별 고유 `sourceId`를 생성해 발행 시 `{ sourceId }`, 구독 시 `{ ignoreSourceId }` 옵션을 전달하여 이벤트 버스 경계에서 자기 에코를 1줄로 차단합니다. *(단, 호스트 `MfeInspector`처럼 모든 앱의 이벤트를 관찰하는 로거는 `ignoreSourceId`를 생략하고 두 번째 인자 `meta?.sourceId`로 발신 출처를 표시합니다.)*
 
 ---
 

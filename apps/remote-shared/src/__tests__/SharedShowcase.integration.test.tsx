@@ -134,7 +134,7 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     expect(leakyFiles).toEqual([]);
   });
 
-  it('7) TC-03/TC-06: dist/@mf-types 산출물이 존재하는 경우 모든 .d.ts 파일에 @ark-ui/react 참조 및 폐기 이벤트 심볼이 0건이어야 한다 (Study 09)', () => {
+  it('7) TC-03/TC-04/TC-06: dist/@mf-types 산출물이 존재하는 경우 @ark-ui/react 및 폐기 심볼이 0건이고 sourceId 공개 타입이 포함되어야 한다 (Study 09)', () => {
     const mfTypesDir = resolve(srcRoot, '../dist/@mf-types');
     // [분기 설명] 최초 빌드 전 단위 테스트만 실행되는 경우 건너뛰고, 빌드 산출물이 존재할 때는 실제 생성된 .d.ts 전체를 검사합니다.
     if (!existsSync(mfTypesDir)) {
@@ -148,9 +148,12 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     const deprecatedEventDtsFiles: string[] = [];
     const deprecatedPattern =
       /CSS_ISOLATION_CHANGED|CssIsolationChangedEventPayload|cssIsolationChangedEventSchema|mfe:css-isolation-changed/;
+    let mergedDtsContent = '';
 
     for (const file of dtsFiles) {
       const content = readFileSync(file, 'utf-8');
+      mergedDtsContent += `\n${content}`;
+
       // [분기 설명] 생성된 .d.ts 타입 선언 파일에 @ark-ui/react 모듈 import 또는 참조가 단 한 건이라도 남으면 실패 처리합니다.
       if (
         /(?:from|import\s*\()\s*['"]@ark-ui\/react/.test(content) ||
@@ -167,6 +170,10 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
 
     expect(leakyDtsFiles).toEqual([]);
     expect(deprecatedEventDtsFiles).toEqual([]);
+    expect(mergedDtsContent).toContain('createMfeEventSourceId');
+    expect(mergedDtsContent).toContain('MfeEventEmitOptions');
+    expect(mergedDtsContent).toContain('MfeEventSubscribeOptions');
+    expect(mergedDtsContent).toContain('MfeEventMeta');
   });
 
   it('8) TC-02: vite.config.ts의 federation.shared에 React 서브패스 3종(jsx-runtime, jsx-dev-runtime, react-dom/client)이 singleton 및 ^19.1.0으로 명시 공유되어야 한다', () => {

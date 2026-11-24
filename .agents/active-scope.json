@@ -1,8 +1,8 @@
 {
   "scope": "shared",
   "path": "apps/remote-shared",
-  "branch": "shared/chore/cleanup-subpaths-and-unused-events",
-  "featureDir": "apps/remote-shared/docs/features/20261123-cleanup-subpaths-and-unused-events",
+  "branch": "shared/feat/event-bus-source-id",
+  "featureDir": "apps/remote-shared/docs/features/20261124-event-bus-source-id",
   "currentStep": 5,
   "isDocsOnly": false
 }

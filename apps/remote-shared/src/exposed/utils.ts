@@ -39,7 +39,15 @@ export {
   themeModeSchema,
 } from '../features/utils/model/contracts';
 export { type NormalizedError, normalizeError } from '../features/utils/model/error';
-export { type MfeEventBus, mfeEventBus, useMfeEvent } from '../features/utils/model/event-bus';
+export {
+  type MfeEventBus,
+  type MfeEventEmitOptions,
+  type MfeEventMeta,
+  type MfeEventSubscribeOptions,
+  createMfeEventSourceId,
+  mfeEventBus,
+  useMfeEvent,
+} from '../features/utils/model/event-bus';
 export {
   formatCurrency,
   formatDate,
