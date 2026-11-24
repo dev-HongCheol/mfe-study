@@ -24,7 +24,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- *(현재 진행 중인 작업 없음 — 다음 백로그 작업 착수 시 여기에 등록)*
+- [-] **[`20261124-event-bus-source-id`](./features/20261124-event-bus-source-id/01-plan-and-design.md)**: [Step 1.4 후속 개선 1차] `remote-shared/utils` `mfeEventBus`·`useMfeEvent` 발신자 식별(`sourceId` / `ignoreSourceId`) 자기 에코 자동 필터링 및 `createMfeEventSourceId` 헬퍼 추가 + `Study 04`/`Study 12` 현행화 (`Branch: shared/feat/event-bus-source-id`)
 
 ---
 
