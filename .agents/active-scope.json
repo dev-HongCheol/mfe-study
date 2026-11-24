@@ -1,8 +1,8 @@
 {
-  "scope": "shared",
-  "path": "apps/remote-shared",
-  "branch": "shared/feat/event-bus-source-id",
-  "featureDir": "apps/remote-shared/docs/features/20261124-event-bus-source-id",
+  "scope": "cart",
+  "path": "apps/remote-cart",
+  "branch": "cart/refactor/queryclient-sync-channel",
+  "featureDir": "apps/remote-cart/docs/features/20261124-queryclient-sync-channel",
   "currentStep": 5,
   "isDocsOnly": false
 }
