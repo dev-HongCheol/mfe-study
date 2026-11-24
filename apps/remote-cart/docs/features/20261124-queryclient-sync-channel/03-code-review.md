@@ -13,10 +13,12 @@
 | :--- | :--- | :---: | :---: | :--- |
 | `src/features/cart/model/cart-sync-channel.ts` | `Symbol.for` `WeakMap` 레지스트리, 고유 `sourceId` + Ref-Counting 단일 리스너, `useSyncExternalStore` 훅, `syncCartAfterMutation` 신설 | `NEW` | 신규 1개 파일 | `일치` |
 | `src/features/cart/model/cart-sync-channel.test.ts` | 동기화 채널 단위 테스트 신설 | `NEW` | 신규 1개 파일 | `일치` (`EC-01`은 DOM `dispatchEvent` 예외 전파 스펙을 고려해 `mfeEventBus.emit` 스파이 예외 모킹으로 정교화) |
+| `src/exposed/CartWidget.tsx` | `<QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>` 리마운트 적용 | `MOD` | +4 / -1 | `일치` (실전 브라우저 `Mode A → Mode B` 전환 시 `QueryObserver` Split-Brain 보강) |
 | `src/features/cart/model/use-cart-queries.ts` | 쿼리 키 `['cart', userId, { apiBaseUrl, simulateDelay }]` 정렬, 사용자 단위 `cancelQueries`, `syncCartAfterMutation` 위임 | `MOD` | 68줄 변경 | `일치` |
 | `src/features/cart/ui/CartWidgetView.tsx` | `useState(0)` + `useMfeEvent` 제거 → `useCartSyncChannel` 연동 (`Mode B` 구독 `0회`) | `MOD` | 29줄 변경 | `일치` |
 | `src/testing/stubs/remote-shared-utils.ts` | PR #15·#16 최신 `remote-shared/utils` 계약과 1:1 정합화 | `MOD` | 263줄 변경 | `일치` |
-| `src/__tests__/CartWidget.integration.test.tsx` | 기존 `TC-05` 쿼리 키 정밀화 + Study 12 8대 회귀 시나리오(3지표 분리 검증) 통합 테스트 추가 | `MOD` | 649줄 변경 | `일치` |
+| `src/__tests__/CartWidget.integration.test.tsx` | 기존 `TC-05` 쿼리 키 정밀화 + Study 12 8대 회귀 시나리오(3지표 분리 검증) 통합 테스트 추가 | `MOD` | 692줄 변경 | `일치` (`매트릭스 #8` `Mode B` 전환 후 실제 `GET`·화면 갱신 검증 보강) |
+| `docs/study/12-mfe-event-self-echo-and-queryclient-sync.md` | `§ 3.5` `Mode A ↔ Mode B` `QueryObserver` Split-Brain 및 `key` 리마운트 원리 추가 | `MOD` | 루트 스터디 문서 | `일치` |
 
 ### 1.2 핵심 데이터 흐름 및 입출력 요약 (`Data Flow & Contracts`)
 - **입력 데이터 (`Props` / `Event Payload` / `QueryClient`)**:
@@ -93,6 +95,7 @@
 1. **`EC-01` DOM `EventTarget.dispatchEvent` 예외 전파 특성 발견** -> 브라우저/jsdom 표준상 `dispatchEvent`는 리스너 내부 `throw`를 호출 측으로 rethrow하지 않고 전역 `Uncaught Exception`으로 보고하므로, `cart-sync-channel.test.ts` `EC-01`을 `vi.spyOn(mfeEventBus, 'emit').mockImplementationOnce(...)`로 정교화하여 `syncCartAfterMutation`의 실제 `try/catch` 격리 분기를 Unhandled Error `0건`으로 정확 검증 완료
 2. **통합 테스트 매트릭스 #7 버튼 텍스트 및 TS 제어 흐름 좁힘(`never`) 보정** -> `CartSummaryCard` 실제 라벨(`/장바구니 비우기/i`) 정합화 및 비동기 클로저 해소 콜백을 객체 프로퍼티(`delayedGate.release`)로 감싸 `tsc --noEmit` 통과 완료
 3. **로컬 `@mf-types` 최신 동기화 및 스텁 계약 정합화** -> PR #15·#16 이후 구버전이었던 로컬 `@mf-types`를 `remote-shared:3004` 프리뷰 서버에서 재동기화해 무-Shim `typecheck`·`rsbuild build`를 실증하고, 테스트 스텁(`remote-shared-utils.ts`)에서 폐기된 `CSS_ISOLATION_CHANGED` 제거 및 `sourceId`/`ignoreSourceId` 필터링 1:1 동기화 완료
+4. **실전 브라우저 `Mode A → Mode B` 전환 시 `[장바구니 비우기]` 화면 미갱신(`QueryObserver` Split-Brain) 발견·해결** -> `TanStack Query v5`의 `useBaseQuery`/`useMutation` 내부 `Observer`가 `React.useState` 초기값으로 최초 `localQueryClient`에 영구 고정되어 `sharedQueryClient`에 쿼리가 미등록되던 원인을 확인하고, `CartWidget.tsx`에 `<QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>` 적용, `매트릭스 #8` 회귀 테스트(`Red → Green`) 보강 및 `Study 12 § 3.5` 영구 문서화 완료
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
 1. **사용자 단위 쿼리 키 정렬 (`['cart', userId, { apiBaseUrl, simulateDelay }]`) 및 `Mode B` 하위 호환**: `remote-cart` 자체의 `cancelQueries`/`invalidateQueries`는 `['cart', userId]`로 사용자 격리를 정밀화하면서도, `remote-products`가 `Mode B`에서 호출하는 `sharedQueryClient.invalidateQueries({ queryKey: ['cart'] })`는 `TanStack Query v5` prefix 매칭으로 100% 하위 호환되도록 검증했습니다.

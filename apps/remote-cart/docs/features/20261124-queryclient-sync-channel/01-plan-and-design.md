@@ -53,10 +53,11 @@
     - `invalidateQueries({ queryKey: ['cart', userId] })` 및 `cancelQueries({ queryKey: ['cart', userId] })`는 해당 사용자의 모든 옵션 조합 쿼리만 정밀하게 타깃팅하면서 타 사용자 캐시는 격리합니다.
     - 외부 앱(`remote-products`)이 `Mode B`에서 호출하는 `sharedQueryClient.invalidateQueries({ queryKey: ['cart'] })` 역시 prefix 매칭으로 100% 하위 호환됩니다.
   - **`TanStack Query v5` `cancelRefetch` 기본값 `true`**: `invalidateQueries`는 내부적으로 `refetchQueries`를 호출하며 `cancelRefetch` 기본값이 `true`입니다. 빠른 연속 뮤테이션(`[+1]` 직후 `[삭제]`)으로 진행 중이던 구버전 재조회가 있더라도 새 `invalidateQueries`가 이전 fetch를 취소하고 최신 재조회를 재시작해 최종 서버 상태와 일치시킵니다.
-  - **`React 19` `useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?)`**:
+  - **`React 19` `useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?)` 및 `<QueryClientProvider key>` 리마운트**:
     - `getSnapshot`은 불변 원시값(`number`: 사용자별 외부 이벤트 수신 횟수)을 반환해야 `Object.is` 비교 시 불필요한 리렌더링이나 무한 루프가 발생하지 않습니다.
     - `subscribe` 참조가 렌더마다 변경되면 React가 재구독을 반복하므로 `useCallback(..., [queryClient])`로 안정화합니다.
     - SSR/하이드레이션 호환성을 위해 세 번째 인자 `getServerSnapshot`으로 `() => 0`을 제공합니다.
+    - `TanStack Query v5`의 `useBaseQuery`·`useMutation`은 내부 `Observer`를 `React.useState(() => new Observer(client, ...))`로 최초 마운트 시점의 `QueryClient`에 영구 바인딩하므로, 런타임 중 `Mode A ↔ Mode B` 전환으로 `QueryClient` 인스턴스가 교체될 때는 `<QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>`로 하위 트리를 리마운트하여 `QueryObserver` Split-Brain을 방지합니다([Study 12 § 3.5](../../../../docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)).
 
 ---
 
@@ -66,10 +67,12 @@
 | :---: | :--- | :--- |
 | `NEW` | `src/features/cart/model/cart-sync-channel.ts` | `Symbol.for` `WeakMap<QueryClient, CartSyncChannel>` 레지스트리, `QueryClient`당 고유 `sourceId` + Ref-Counting 단일 리스너 + 멱등 클린업, `useSyncExternalStore` 기반 `useCartSyncChannel` 훅, `syncCartAfterMutation`(`emit` 선행 `try/catch` 격리 → `await invalidateQueries` 1회) 구현 |
 | `NEW` | `src/features/cart/model/cart-sync-channel.test.ts` | `cart-sync-channel.ts` 단위 테스트 (`QueryClient`별 `sourceId` 격리, 동일 `QueryClient` 리스너 1개 불변식, Ref-Counting 부분 해제 및 완전 해제, 멱등 클린업, 외부 리스너 예외 격리, 중첩 동기 이벤트 처리 검증) |
+| `MOD` | `src/exposed/CartWidget.tsx` | `<QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>` 적용 — `Mode A ↔ Mode B` 전환 시 `QueryObserver`가 이전 `QueryClient`에 고정되는 Split-Brain 차단 |
 | `MOD` | `src/features/cart/model/use-cart-queries.ts` | 쿼리 키를 `['cart', validUserId, { apiBaseUrl, simulateDelay }]`로 정렬 (`buildCartQueryKey`, `buildCartUserQueryKey` 헬퍼 도입), `onMutate` `cancelQueries` 사용자 단위 정밀화, 내부 `syncCartAfterMutation`을 `cart-sync-channel.ts` 함수로 위임 |
 | `MOD` | `src/features/cart/ui/CartWidgetView.tsx` | 기존 컴포넌트 로컬 `useState(0)` + `useMfeEvent` 직접 구독 제거 → `useCartSyncChannel(activeQueryClient, userId, syncMode === 'mode-a-event')`로 교체 (`Mode B` 구독 `0회` 격리) |
 | `MOD` | `src/testing/stubs/remote-shared-utils.ts` | PR #15(폐기 `CSS_ISOLATION_CHANGED` 제거)·PR #16(`createMfeEventSourceId`, `MfeEventEmitOptions`/`MfeEventSubscribeOptions`/`MfeEventMeta`, `__mfeSourceId` 기반 자기 에코 필터링 및 `Zod strip`) 최신 `remote-shared/utils` 계약과 1:1 정합화 |
-| `MOD` | `src/__tests__/CartWidget.integration.test.tsx` | 기존 `TC-05` 쿼리 키 정밀화 반영 + [Study 12 § 4](../../../../docs/study/12-mfe-event-self-echo-and-queryclient-sync.md) 8대 회귀 시나리오 및 3지표(`receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`) 분리 검증 통합 테스트 추가 |
+| `MOD` | `src/__tests__/CartWidget.integration.test.tsx` | 기존 `TC-05` 쿼리 키 정밀화 반영 + [Study 12 § 4](../../../../docs/study/12-mfe-event-self-echo-and-queryclient-sync.md) 8대 회귀 시나리오 및 3지표(`receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`) 분리 검증 통합 테스트 추가 (`Mode A → Mode B` 전환 후 `[+1]`·`[장바구니 비우기]` 실제 `GET`·화면 갱신 포함) |
+| `MOD` | `docs/study/12-mfe-event-self-echo-and-queryclient-sync.md` *(루트 학습 문서)* | `§ 3.5` `Mode A ↔ Mode B` 전환 시 `<QueryClientProvider>` `QueryObserver` Split-Brain 원인 및 `key={effectiveSyncMode}` 해결 아키텍처 보강 |
 
 ---
 

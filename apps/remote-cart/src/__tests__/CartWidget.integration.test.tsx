@@ -707,9 +707,11 @@ describe('CartWidget & App 통합 테스트 (기존 회귀 + Study 12 8대 매�
     expect(screen.getByText('수신 이벤트 0회')).toBeInTheDocument();
   });
 
-  it('매트릭스 #8 (TC-08): Mode A → Mode B 전환 후 외부 이벤트 시 GET 0회 및 자기 뮤테이션 시 emit 0회를 보장한다', async () => {
+  it('매트릭스 #8 (TC-08): Mode A → Mode B 전환 시 QueryObserver가 sharedQueryClient로 재바인딩되어 외부 이벤트는 GET 0회, 자기 뮤테이션([+1]/[장바구니 비우기])은 emit 0회 및 실제 GET·화면 갱신이 정상 동작한다', async () => {
     const user = userEvent.setup();
     let getCartCount = 0;
+    let isCleared = false;
+    let quantity = 1;
     const emitSpy = vi.spyOn(mfeEventBus, 'emit');
     const sharedInvSpy = vi.spyOn(sharedQueryClient, 'invalidateQueries');
 
@@ -718,19 +720,45 @@ describe('CartWidget & App 통합 테스트 (기존 회귀 + Study 12 8대 매�
         getCartCount += 1;
         return HttpResponse.json({
           success: true,
-          data: [
-            {
-              id: 1,
-              userId: 'user-1',
-              productId: 1,
-              productName: '기계식 무선 키보드 Pro',
-              price: 129000,
-              category: 'electronics',
-              quantity: 1,
-              addedFromHost: 'vite',
-              createdAt: '2026-11-24 17:00:00',
-            },
-          ],
+          data: isCleared
+            ? []
+            : [
+                {
+                  id: 1,
+                  userId: 'user-1',
+                  productId: 1,
+                  productName: '기계식 무선 키보드 Pro',
+                  price: 129000,
+                  category: 'electronics',
+                  quantity,
+                  addedFromHost: 'vite',
+                  createdAt: '2026-11-24 17:00:00',
+                },
+              ],
+        });
+      }),
+      http.post('http://localhost:4000/api/cart', () => {
+        quantity += 1;
+        return HttpResponse.json({
+          success: true,
+          data: {
+            id: 1,
+            userId: 'user-1',
+            productId: 1,
+            productName: '기계식 무선 키보드 Pro',
+            price: 129000,
+            category: 'electronics',
+            quantity,
+            addedFromHost: 'rspack',
+            createdAt: '2026-11-24 17:10:00',
+          },
+        });
+      }),
+      http.delete('http://localhost:4000/api/cart/:id', () => {
+        isCleared = true;
+        return HttpResponse.json({
+          success: true,
+          data: { deletedId: 'all', deletedCount: 1 },
         });
       }),
     );
@@ -740,10 +768,11 @@ describe('CartWidget & App 통합 테스트 (기존 회귀 + Study 12 8대 매�
     );
     expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
 
-    // Mode B로 전환
+    // Mode B로 전환 (key={effectiveSyncMode}로 QueryObserver가 sharedQueryClient에 재바인딩되어 초기 조회 완료 대기)
     rerender(<CartWidget userId="user-1" hostType="rspack" syncMode="mode-b-query" />);
     await waitFor(() => {
       expect(screen.getByText('Mode B (Shared Query)')).toBeInTheDocument();
+      expect(screen.getByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
     });
 
     const countBeforeExternalEvent = getCartCount;
@@ -765,14 +794,28 @@ describe('CartWidget & App 통합 테스트 (기존 회귀 + Study 12 8대 매�
     expect(getCartCount).toBe(countBeforeExternalEvent);
     expect(sharedInvSpy).not.toHaveBeenCalled();
 
-    // Mode B에서 자기 뮤테이션 클릭 시 sharedQueryClient 1회 무효화, emit 0회
+    // Mode B에서 자기 뮤테이션([+1]) 클릭 시 sharedQueryClient 1회 무효화 + 실제 GET 1회 + 수량 2개 화면 갱신, emit 0회
     emitSpy.mockClear();
     await user.click(screen.getByRole('button', { name: /\+1/i }));
 
     await waitFor(() => {
       expect(sharedInvSpy).toHaveBeenCalledTimes(1);
       expect(sharedInvSpy).toHaveBeenCalledWith({ queryKey: ['cart', 'user-1'] });
+      expect(screen.getByText(/단가 129,000원 × 2개/)).toBeInTheDocument();
     });
+    expect(getCartCount).toBe(countBeforeExternalEvent + 1);
+    expect(emitSpy).not.toHaveBeenCalled();
+
+    // Mode B에서 [장바구니 비우기] 클릭 시 실제 GET 재조회 + 빈 장바구니 화면으로 갱신되어야 함
+    sharedInvSpy.mockClear();
+    const countBeforeClear = getCartCount;
+    await user.click(screen.getByRole('button', { name: /장바구니 비우기/i }));
+
+    await waitFor(() => {
+      expect(sharedInvSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/장바구니가 비어 있습니다/i)).toBeInTheDocument();
+    });
+    expect(getCartCount).toBe(countBeforeClear + 1);
     expect(emitSpy).not.toHaveBeenCalled();
 
     emitSpy.mockRestore();

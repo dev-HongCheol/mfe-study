@@ -213,6 +213,73 @@ const REGISTRY_SYMBOL = Symbol.for('mfe-study.remote-cart.sync-channels');
 2. **React 19 `<StrictMode>` & `useSyncExternalStore`**:
    - Ref-Counting(`users: Map<string, number>`) + 멱등 클린업(`let disposed = false`)으로 `<StrictMode>` 이중 마운트에도 좀비 리스너가 `0개`이며, `useSyncExternalStore`로 동일 `QueryClient` + 동일 `userId` 위젯 간 `receivedEventCount`가 100% 일치합니다.
 
+### 3.5 실전 함정 — `Mode A ↔ Mode B` 전환 시 `<QueryClientProvider>`의 `QueryClient` 교체와 `QueryObserver` Split-Brain (`key` 리마운트 해결)
+
+실제 브라우저에서 `Mode A (localQueryClient)`로 초기 마운트한 뒤 드롭다운으로 `Mode B (sharedQueryClient)`로 전환하고 `[장바구니 비우기]`나 `[+1]`을 클릭했을 때, **백엔드 `DELETE /api/cart/all`은 `200 OK`로 성공했는데도 직후 `GET /api/cart`가 호출되지 않고 이전 상품이 화면에 그대로 남는 장애**가 발생합니다.
+
+#### 1) 원인: `TanStack Query v5` 내부 `Observer`의 `useState` 영구 바인딩
+`@tanstack/react-query` v5의 `useBaseQuery.js`와 `useMutation.js` 내부 구현을 보면 다음과 같습니다.
+
+```js
+// @tanstack/react-query/build/modern/useBaseQuery.js
+const client = useQueryClient(queryClient);
+const [observer] = React.useState(() => new Observer(client, defaultedOptions));
+
+// @tanstack/react-query/build/modern/useMutation.js
+const client = useQueryClient(queryClient);
+const [observer] = React.useState(() => new MutationObserver(client, options));
+```
+
+- **`QueryClient`** = API 캐시를 보관하는 **캐시 창고** (`Mode A`의 `localQueryClient` = 개인 창고, `Mode B`의 `sharedQueryClient` = 공용 창고).
+- **`QueryObserver`** = `useQuery`가 내부적으로 고용해 특정 `QueryClient`의 쿼리 키 변화를 감시하는 **창고 감시원**.
+- `React.useState(() => ...)`는 **컴포넌트가 처음 마운트될 때 딱 1번만 실행**되므로, 부모가 `<QueryClientProvider client={activeQueryClient}>`의 `client` prop만 `localQueryClient → sharedQueryClient`로 교체하고 하위 컴포넌트를 그대로 유지하면 **Split-Brain(창고 불일치)**이 발생합니다:
+  1. **`useCartQuery`의 `QueryObserver`**: 최초 마운트 때 잡힌 **옛날 `localQueryClient`**에만 영구 고정되어 있음 (`sharedQueryClient`에는 `['cart', 'user-1']` 키가 **등록조차 안 됨**).
+  2. **뮤테이션 훅 내부의 `useQueryClient()`**: 매 렌더링마다 최신 Context를 읽으므로 **새 `sharedQueryClient`**를 반환함.
+  3. **`[장바구니 비우기]` 실행**: `DELETE 200 OK` 성공 후 `sharedQueryClient.invalidateQueries({ queryKey: ['cart', 'user-1'] })`를 호출하지만, `sharedQueryClient`에는 구독 중인 감시원이 `0명`이므로 **`GET /api/cart` 호출 `0회`**, 화면은 `localQueryClient`의 옛날 데이터를 그대로 유지.
+
+```mermaid
+flowchart LR
+    subgraph Before["❌ key 미지정 (Mode A → Mode B 전환 시 Split-Brain)"]
+        direction TB
+        P1["QueryClientProvider (client = sharedQueryClient)"]
+        Q1["useCartQuery의 QueryObserver<br/>(useState 초기값으로 localQueryClient에 고정!)"]
+        M1["useDeleteCartMutation<br/>(useQueryClient() = sharedQueryClient)"]
+        M1 -->|"invalidateQueries(['cart', 'user-1'])"| S1["sharedQueryClient<br/>(등록된 쿼리 0개 → GET 0회!)"]
+        Q1 -.->|"여전히 옛날 데이터 표시"| L1["localQueryClient (고립됨)"]
+    end
+
+    subgraph After["✅ key={effectiveSyncMode} 지정 (리마운트로 정상 재바인딩)"]
+        direction TB
+        P2["QueryClientProvider key={effectiveSyncMode}<br/>(client = sharedQueryClient)"]
+        Q2["새 QueryObserver<br/>(sharedQueryClient에 정상 등록)"]
+        M2["새 useDeleteCartMutation<br/>(sharedQueryClient)"]
+        M2 -->|"invalidateQueries(['cart', 'user-1'])"| S2["sharedQueryClient<br/>(매칭 1건 → GET 1회 + 화면 갱신!)"]
+        Q2 --> S2
+    end
+```
+
+#### 2) 해결책: `<QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>`
+React에서 단일 컴포넌트에 `key`를 부여하는 것은 **"상태와 인스턴스를 완전히 새로 교체(Reset)"**하기 위한 공식 패턴입니다.
+
+```tsx
+// apps/remote-cart/src/exposed/CartWidget.tsx
+return (
+  <QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>
+    <CartWidgetView
+      userId={effectiveUserId}
+      hostType={hostType}
+      syncMode={effectiveSyncMode}
+      simulateDelay={simulateDelay}
+      delayMs={delayMs}
+      apiBaseUrl={apiBaseUrl}
+    />
+  </QueryClientProvider>
+);
+```
+
+- `effectiveSyncMode`가 `'mode-a-event'` ↔ `'mode-b-query'`로 바뀌면 React가 기존 트리를 **완전히 언마운트(옛날 `QueryObserver` 구독 해제 및 임시 UI 상태 초기화)**하고, 새 `activeQueryClient`에 맞춰 **처음부터 새로 마운트**하여 `useQuery`·`useMutation`의 `Observer`를 새 `QueryClient`에 정식 바인딩합니다.
+- **전사 MFE 체크리스트**: 런타임 중 `QueryClient` 인스턴스를 동적으로 교체하는 모든 마이크로 앱(`remote-cart`, `remote-products`, 향후 호스트 2종)은 반드시 `<QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>`를 적용해야 합니다.
+
 ---
 
 ## 4. 2차 PR (`remote-cart`) 8대 회귀 테스트 매트릭스 (3지표 분리 검증)
@@ -227,5 +294,5 @@ const REGISTRY_SYMBOL = Symbol.for('mfe-study.remote-cart.sync-channels');
 | 4 | **같은 `userId` 위젯 2개 중 1개만 언마운트** 후 외부 이벤트 1회 | 남은 위젯 `+1회` | **1회** (조기 해제 없음) | `+1회` (2개 모두 해제 후 `0회`) |
 | 5 | **React 19 `<StrictMode>` 마운트/재마운트** 후 외부 이벤트 1회 | `1회` (중복 없음) | **1회** (좀비 리스너 0) | 재조회 **1회** |
 | 6 | **중첩 동기 이벤트 발행** (A 발행 중 외부 리스너가 다른 `sourceId`로 동기 `emit`) | 중첩 외부 이벤트 **정상 `+1회`** | 중첩 외부 이벤트 **정상 1회** | 중첩 대상 **정상 재조회** |
-| 7 | **빠른 연속 뮤테이션** (`[+1]` 직후 `[삭제]` / 지연 응답 엇갈림) | `0회` | 각 성공당 1회 (`cancelRefetch: true`) | 최종 화면·캐시가 **서버 최종 상태와 일치** |
-| 8 | **Mode A ↔ Mode B 전환** | A→B 전환 후 외부 이벤트 시 `0회` | Mode B 외부 이벤트 무효화 `0회`, 자기 뮤테이션 `sharedQueryClient` 1회 + `emit` `0회` | Mode B 외부 이벤트 시 `GET` `0회` |
+| 7 | **빠른 연속 뮤테이션** (`[+1]` 직후 `[장바구니 비우기]` / 지연 응답 엇갈림) | `0회` | 각 성공당 1회 (`cancelRefetch: true`) | 최종 화면·캐시가 **서버 최종 상태와 일치** |
+| 8 | **Mode A ↔ Mode B 전환** (`QueryObserver` 재바인딩 포함) | A→B 전환 후 외부 이벤트 시 `0회` | Mode B 외부 이벤트 무효화 `0회`, 자기 뮤테이션(`[+1]`/`[장바구니 비우기]`) `sharedQueryClient` 각 1회 + `emit` `0회` | Mode B 외부 이벤트 시 `GET` `0회`, `[+1]`·`[장바구니 비우기]` 시 각 **실제 `GET` 1회 + 화면 즉시 갱신** |

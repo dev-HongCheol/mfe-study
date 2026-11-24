@@ -85,7 +85,10 @@ export function CartWidget({
       : (localQueryClientRef.current as QueryClient);
 
   return (
-    <QueryClientProvider client={activeQueryClient}>
+    // [분기 설명] TanStack Query v5의 useBaseQuery·useMutation은 내부 Observer를 useState 초기값으로
+    // 최초 마운트 시점의 QueryClient에 영구 고정합니다. Mode A ↔ Mode B 전환으로 activeQueryClient 인스턴스가
+    // 바뀔 때 key={effectiveSyncMode}로 하위 트리를 리마운트하여 QueryObserver Split-Brain을 원천 차단합니다 ([Study 12 § 3.5]).
+    <QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>
       <CartWidgetView
         userId={effectiveUserId}
         hostType={hostType}

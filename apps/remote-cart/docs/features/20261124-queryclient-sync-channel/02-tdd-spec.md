@@ -76,15 +76,17 @@
   - 두 뮤테이션 모두 자기 에코가 차단되어 `receivedEventCount`는 **`0회`** 유지
   - `cancelQueries({ queryKey: ['cart', 'user-1'] })` 및 `invalidateQueries`의 `cancelRefetch: true` 동작에 의해 구버전 지연 응답이 최신 화면을 덮어쓰지 않으며 최종 화면·캐시가 **서버 최종 상태와 일치**
 
-### TC-08: `Mode A ↔ Mode B` 전환 — `Mode B` 완전 격리 및 `['cart']` prefix 하위 호환 (매트릭스 #8)
+### TC-08: `Mode A ↔ Mode B` 전환 — `QueryObserver` 재바인딩, `Mode B` 완전 격리 및 실제 `GET`·화면 갱신 (매트릭스 #8)
 - **사전 조건 (`Given`)**: `CartWidget`이 `userId="user-1"`, `syncMode="mode-a-event"`로 마운트된 상태
 - **실행 동작 (`When`)**:
   1. `syncMode="mode-b-query"`로 props 전환 후 외부 `mfe:cart-updated` 이벤트 발행
   2. `Mode B` 상태에서 위젯 내부 `[+1]` 클릭
-  3. 외부 앱(`remote-products`)이 `sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY })`(`['cart']`) 호출
+  3. 이어서 `Mode B` 상태에서 `[장바구니 비우기]` 클릭
+  4. 외부 앱(`remote-products`)이 `sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY })`(`['cart']`) 호출
 - **기대 결과 (`Then`)**:
+  - `Mode B` 전환 시 `<QueryClientProvider key={effectiveSyncMode}>` 리마운트로 `QueryObserver`가 `sharedQueryClient`에 정상 재바인딩됨
   - `Mode B` 전환 후 외부 `mfe:cart-updated` 이벤트 발행 시 `receivedEventCount` 증가 `0회`, `invalidateQueries` `0회`, 실제 `GET /api/cart` `0회`
-  - `Mode B` 자기 뮤테이션 시 `sharedQueryClient.cancelQueries({ queryKey: ['cart', 'user-1'] })` 및 `sharedQueryClient.invalidateQueries({ queryKey: ['cart', 'user-1'] })` 1회 호출, `mfeEventBus.emit` 호출 `0회`
+  - `Mode B` 자기 뮤테이션(`[+1]` · `[장바구니 비우기]`) 시 각각 `sharedQueryClient.invalidateQueries({ queryKey: ['cart', 'user-1'] })` 1회 + **실제 `GET /api/cart` 1회 + 화면 갱신(수량 `2개` → `장바구니가 비어 있습니다`)**, `mfeEventBus.emit` 호출 `0회`
   - 외부 `sharedQueryClient.invalidateQueries({ queryKey: ['cart'] })` 호출 시 정렬된 쿼리 키(`['cart', 'user-1', { ... }]`)가 prefix 매칭으로 정상 자동 재조회됨
 
 ---
