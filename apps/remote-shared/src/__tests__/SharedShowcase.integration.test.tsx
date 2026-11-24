@@ -2,7 +2,7 @@
  * @file SharedShowcase.integration.test.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed false
- * @description [TC-06, TC-08] 3계층 단방향 의존성(utils -> theme -> ui), 컴포넌트 파일명 PascalCase 규칙, UI Props 경계 캡슐화(Study 09), .js 확장자 0건 및 단독 쇼케이스 통합 테스트입니다.
+ * @description [TC-02, TC-03, TC-06, TC-08] 3계층 단방향 의존성(utils -> theme -> ui), React 서브패스 3종 공유, 컴포넌트 파일명 PascalCase 규칙, UI Props 경계 캡슐화(Study 09), .js 확장자 0건, 폐기 이벤트 심볼 0건 및 단독 쇼케이스 통합 테스트입니다.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
@@ -134,7 +134,7 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     expect(leakyFiles).toEqual([]);
   });
 
-  it('7) TC-06: dist/@mf-types 산출물이 존재하는 경우 모든 .d.ts 파일에 @ark-ui/react 참조가 0건이어야 한다 (Study 09)', () => {
+  it('7) TC-03/TC-06: dist/@mf-types 산출물이 존재하는 경우 모든 .d.ts 파일에 @ark-ui/react 참조 및 폐기 이벤트 심볼이 0건이어야 한다 (Study 09)', () => {
     const mfTypesDir = resolve(srcRoot, '../dist/@mf-types');
     // [분기 설명] 최초 빌드 전 단위 테스트만 실행되는 경우 건너뛰고, 빌드 산출물이 존재할 때는 실제 생성된 .d.ts 전체를 검사합니다.
     if (!existsSync(mfTypesDir)) {
@@ -145,6 +145,10 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     expect(dtsFiles.length).toBeGreaterThan(0);
 
     const leakyDtsFiles: string[] = [];
+    const deprecatedEventDtsFiles: string[] = [];
+    const deprecatedPattern =
+      /CSS_ISOLATION_CHANGED|CssIsolationChangedEventPayload|cssIsolationChangedEventSchema|mfe:css-isolation-changed/;
+
     for (const file of dtsFiles) {
       const content = readFileSync(file, 'utf-8');
       // [분기 설명] 생성된 .d.ts 타입 선언 파일에 @ark-ui/react 모듈 import 또는 참조가 단 한 건이라도 남으면 실패 처리합니다.
@@ -154,8 +158,32 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
       ) {
         leakyDtsFiles.push(file);
       }
+
+      // [분기 설명] 제거된 미사용 이벤트 심볼이 이전 빌드 산출물이나 원격 타입에 남아 소비자 앱 타입을 오염시키지 않는지 검증합니다.
+      if (deprecatedPattern.test(content)) {
+        deprecatedEventDtsFiles.push(file);
+      }
     }
 
     expect(leakyDtsFiles).toEqual([]);
+    expect(deprecatedEventDtsFiles).toEqual([]);
+  });
+
+  it('8) TC-02: vite.config.ts의 federation.shared에 React 서브패스 3종(jsx-runtime, jsx-dev-runtime, react-dom/client)이 singleton 및 ^19.1.0으로 명시 공유되어야 한다', () => {
+    const viteConfigPath = resolve(srcRoot, '../vite.config.ts');
+    const viteConfigCode = readFileSync(viteConfigPath, 'utf-8');
+    const requiredReactSubpaths = [
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'react-dom/client',
+    ];
+
+    for (const subpath of requiredReactSubpaths) {
+      const escapedSubpath = subpath.replace('/', '\\/');
+      const blockPattern = new RegExp(
+        `['"]${escapedSubpath}['"]\\s*:\\s*\\{[^}]*singleton\\s*:\\s*true[^}]*requiredVersion\\s*:\\s*['"]\\^19\\.1\\.0['"][^}]*\\}`,
+      );
+      expect(viteConfigCode).toMatch(blockPattern);
+    }
   });
 });

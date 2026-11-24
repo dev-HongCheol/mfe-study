@@ -1,8 +1,8 @@
 {
-  "scope": "cart",
-  "path": "apps/remote-cart",
-  "branch": "cart/feat/cart-widget-sync",
-  "featureDir": "apps/remote-cart/docs/features/20261123-cart-widget-sync",
+  "scope": "shared",
+  "path": "apps/remote-shared",
+  "branch": "shared/chore/cleanup-subpaths-and-unused-events",
+  "featureDir": "apps/remote-shared/docs/features/20261123-cleanup-subpaths-and-unused-events",
   "currentStep": 5,
   "isDocsOnly": false
 }

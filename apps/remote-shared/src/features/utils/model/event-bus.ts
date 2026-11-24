@@ -39,6 +39,13 @@ export const mfeEventBus: MfeEventBus = {
     }
 
     const schema = MFE_EVENT_SCHEMAS[eventName];
+
+    // [분기 설명] 독립 배포된 구버전 리모트나 외부 코드가 폐기·미등록 이벤트 이름으로 발행해도 런타임 TypeError 크래시를 차단합니다.
+    if (!schema) {
+      console.warn(`[mfeEventBus] 미등록 이벤트 발행 차단 (${String(eventName)})`);
+      return false;
+    }
+
     const parsed = schema.safeParse(payload);
 
     // [분기 설명] 발신 측에서 잘못된 구조의 페이로드를 보냈을 때 다른 마이크로 앱들이 연쇄 크래시되는 것을 원천 차단합니다.
@@ -65,6 +72,12 @@ export const mfeEventBus: MfeEventBus = {
     }
 
     const schema = MFE_EVENT_SCHEMAS[eventName];
+
+    // [분기 설명] 폐기·미등록 이벤트 이름으로 구독이 시도되더라도 리스너 등록 없이 안전한 빈 해제 함수를 반환해 크래시를 방지합니다.
+    if (!schema) {
+      console.warn(`[mfeEventBus] 미등록 이벤트 구독 차단 (${String(eventName)})`);
+      return () => {};
+    }
 
     const listener = (event: Event): void => {
       const customEvent = event as CustomEvent<unknown>;

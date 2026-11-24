@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[Step 1.2/1.4 후속 정리] `remote-shared` `vite.config.ts` React 서브패스 3종(`react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom/client`) 명시 공유 통일, 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` 이벤트 계약 제거 및 폐기·미등록 이벤트 런타임 방어 가드 보강 완료** (`apps/remote-shared`, `docs/service-registry.md`, `Vitest 18개 파일 / 38건`·루트 전체 `42개 파일 / 127건` 통과, PR #15)
   - **[Phase 1 - Step 1.4] 프로젝트 최초 `Rsbuild(Rspack)` 장바구니 원격 앱(`./CartWidget`, `Port 3003`), `Mode A vs Mode B` 대칭 동기화, 비인증 3중 차단, 이종 번들러(`Rspack` ↔ `Vite`) 무-Shim `@mf-types` 소비·React 서브패스 3종 공유 및 `Study 08(Part 3)` · `Study 11(CSS 폰트 가이드)` · `Study 12(Mode A Self-Echo & QueryClient 동기화)` 구축 완료** (`apps/remote-cart`, `docs/service-registry.md`, `Vitest 8개 파일 / 26건`·루트 전체 `42개 파일 / 124건` 통과, PR #14)
   - **[학습 가이드 정비 & 확장] 스터디 문서(`Study 01 ~ 09`) 현행 코드베이스 정합성 보정, `Study 04 · 05` 명사형 기술 레퍼런스 포맷 통일 및 MFE 실서비스 프로덕션 배포·운영 가이드(`Study 10`, `Step 1.7`) 신설 완료** (`docs/study/`, `GEMINI.md`, `README.md`, `todo.md`, PR #13)
   - **[Step 1.2/1.3 후속 정리] `remote-products`의 `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(80줄) 완전 제거 및 최신 `@mf-types` 기반 무-Shim 소비 검증 완료** (`apps/remote-products`, `docs/service-registry.md`, `Vitest 7개 파일 / 33건`·루트 전체 `98건` 통과, PR #11 — `Study 09` 로드맵 완결)
@@ -87,7 +88,9 @@
 - [x] **Step 1.4: 장바구니 원격 앱 구축** (`Scope: cart` | `Branch: cart/feat/cart-widget-sync`, PR #14)
   - 문서 경로: `apps/remote-cart/docs/todo.md` 및 `apps/remote-cart/docs/features/20261123-cart-widget-sync/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
   - 프로젝트 최초 `Rsbuild(Rspack)` + `@module-federation/rsbuild-plugin(^2.9.3)` 리모트 앱(`Port 3003`) 구축: `./CartWidget` 컴포넌트, **비교 학습 모드(`Mode A: CustomEvent 수신 후 독립 QueryClient 재조회` vs `Mode B: sharedQueryClient 캐시 무효화 자동 감지`)**, 비인증 3중 차단, `.cart-*` 프리픽스 및 전역 태그 선택자 금지 정적 회귀 검증, React 서브패스 3종(`jsx-runtime`/`jsx-dev-runtime`/`react-dom/client`) 명시 공유, `syncCartAfterMutation` 공통 헬퍼 리팩토링 및 단독 실행(`샘플 상품 담기` 포함) 쇼케이스 TDD 구현 완료 (`Vitest 8개 파일 / 26건`·루트 전체 `42개 파일 / 124건`·`rsbuild build`·무-Shim `typecheck`·`Biome` 통과, `docs/service-registry.md` 반영)
-- [ ] **Step 1.2/1.4 후속 정리 (`Scope: shared` | `Branch: shared/chore/cleanup-subpaths-and-unused-events`)**: `apps/remote-shared/vite.config.ts`에 React 서브패스 3종 명시 공유 통일 및 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` 이벤트 계약 정리 (연계 시 `remote-products` 스텁·루트 SSOT 동시 정리)
+- [x] **Step 1.2/1.4 후속 정리 (`Scope: shared` | `Branch: shared/chore/cleanup-subpaths-and-unused-events`, PR #15)**:
+  - 문서 경로: `apps/remote-shared/docs/todo.md` 및 `apps/remote-shared/docs/features/20261123-cleanup-subpaths-and-unused-events/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`)
+  - `apps/remote-shared/vite.config.ts`에 React 서브패스 3종(`react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom/client`) 명시 공유 통일, 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` 계약 제거(표준 4종 확정), 폐기·미등록 이벤트 런타임 방어 가드 보강 및 `dist/@mf-types` 폐기 심볼 `0건` 검증 완료 (`Vitest 18개 파일 / 38건`·루트 전체 `42개 파일 / 127건` 통과, `docs/service-registry.md` 반영)
 - [ ] **Step 1.4 후속 개선: `remote-cart` `Mode A` 자기 에코(Self-Echo) 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** (`Scope: cart` | `Branch: cart/refactor/queryclient-sync-channel`)
   - 참조 가이드: [`docs/study/12-mfe-event-self-echo-and-queryclient-sync.md`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)
   - 공통 Zod 스키마(`remote-shared`) 변경 없이 `apps/remote-cart` 내부에 `Symbol.for` `WeakMap<QueryClient, Channel>` + `selfEchoTokens` 1회 소비 스택 + `useSyncExternalStore` 사용자별 수신 카운터를 도입하고, 쿼리 키 `['cart', userId, { apiBaseUrl, simulateDelay }]` 정렬, `emit` 선행(`try/catch` 격리) → `await invalidateQueries` 1회 적용 및 3지표(`receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`) 8대 회귀 테스트 구축
