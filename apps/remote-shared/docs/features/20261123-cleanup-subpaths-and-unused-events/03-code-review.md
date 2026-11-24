@@ -17,7 +17,6 @@
 | `apps/remote-shared/src/features/utils/model/event-bus.ts` | 미등록/폐기 이벤트 이름으로 런타임 `emit`/`subscribe` 호출 시 `TypeError` 크래시 차단 가드 추가 | `MOD` | `+13 / -0` | `일치` (구버전 독립 배포 리모트 호환성 방어) |
 | `apps/remote-shared/src/features/utils/model/event-bus.test.ts` | 표준 4종 계약 정합성, `CSS_ISOLATION_CHANGED` 미포함, `exposed/utils` 공개 심볼 및 폐기 이벤트 런타임 방어 단위 테스트 추가 | `MOD` | `+40 / -1` | `일치` |
 | `apps/remote-shared/src/__tests__/SharedShowcase.integration.test.tsx` | `vite.config.ts` React 서브패스 3종 명시 공유 정적 회귀 검증 및 `dist/@mf-types/**/*.d.ts` 내 폐기 이벤트 심볼 `0건` 검증 추가 | `MOD` | `+30 / -2` | `일치` |
-| `docs/features/20261027-phase1-service-contracts/01-plan-and-design.md` | `§ 5.2.1`(`CSS_ISOLATION_CHANGED`), `§ 5.4.3`(`cssIsolated`) 정리 및 `§ 5.5` React 서브패스 3종 공유 규약 동기화 | `MOD` | `+6 / -6` | `보완` (`§ 5.4.3` `CartWidgetProps`에 현행 `delayMs?: number`도 함께 정합화) |
 | `apps/remote-shared/docs/todo.md` & `docs/features/20261123-cleanup-subpaths-and-unused-events/*` | 진행 중 등록 및 `01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md` 작성 | `NEW/MOD` | `문서 4종` | `일치` |
 | `.agents/active-scope.json` | 활성 스코프 `shared` 및 브랜치·단계 동기화 | `MOD` | `+5 / -5` | `일치` |
 
@@ -47,7 +46,7 @@
 - **포맷팅 및 린트 (`Biome`)**: `통과` (`Checked 165 files in 39ms. No fixes applied.`)
 - **타입 검사 (`tsc --noEmit`)**: `통과` (`apps/remote-shared/tsconfig.json` 에러 `0`건)
 - **프로덕션 빌드 (`vite build`)**: `통과` (`dist/remoteEntry.js`, `dist/mf-manifest.json`, `dist/@mf-types.zip`, `dist/@mf-types/` 28개 `.d.ts` 정상 생성)
-- **작업 스코프 격리 (`verify-scope.mjs`)**: `shared` (`apps/remote-shared`) 및 전역 허용 루트 문서(`docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`, `.agents/active-scope.json`) 외 타 서비스 폴더 수정 `0건` 확인
+- **작업 스코프 격리 (`verify-scope.mjs`)**: `shared` (`apps/remote-shared`) 및 `.agents/active-scope.json` 외 타 서비스 폴더·기존 머지 완료 세션 문서 수정 `0건` 확인
 - **DB 3종 SQL 해시 동기화 (`verify-sql-sync.mjs`)**: `N/A (해당 없음 — api 스코프 SQL 미변경)`
 
 ---
@@ -93,8 +92,8 @@
 1. **폐기 이벤트 이름(`'mfe:css-isolation-changed'`)의 런타임 유입 시 `TypeError` 크래시 가능성 사전 포착 및 방어**:
    - `MFE_EVENT_SCHEMAS`에서 `CSS_ISOLATION_CHANGED`를 제거한 뒤 구버전 리모트나 외부 코드가 해당 이벤트 이름으로 `mfeEventBus.emit` 또는 `subscribe`를 호출하면 `MFE_EVENT_SCHEMAS[eventName]`이 `undefined`가 되어 `schema.safeParse(...)`에서 `TypeError`가 발생할 수 있음을 설계·리뷰 단계에서 식별했습니다.
    - `event-bus.ts`의 `emit`·`subscribe` 양쪽에 `!schema` 조기 차단 가드를 추가하고 `EC-01` 단위 테스트로 검증 완료했습니다.
-2. **루트 SSOT(`§ 5.4.3 CartWidgetProps`) 내 `delayMs` 및 `§ 5.5` React 서브패스 3종 규약 동시 정합화**:
-   - `docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`의 `CSS_ISOLATION_CHANGED` 및 `cssIsolated`를 정리하면서, 이미 `Step 1.4`에서 구현된 `CartWidgetProps.delayMs?: number`와 `§ 5.5` React 서브패스 3종 공유 규약도 함께 정합화해 정본 문서와 구현 간 괴리를 완전히 없앴습니다.
+2. **React 서브패스(`react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom/client`) `shareKey` 정확 일치(Exact Match) 원리 및 변경 계약 설계서 수록**:
+   - 번들러의 JSX 자동 변환(Automatic JSX Transform) 시 삽입되는 서브패스 `import`가 왜 `'react'` 단독 등록 시 공유 풀(`shareScope`)에서 누락되는지와 이중 React 인스턴스 경합 원리를 본 브랜치의 설계 문서(`01-plan-and-design.md` `§ 2.2`)에 표와 예시로 상세히 명세하고, 변경된 전체 계약 내역(`§ 2.3`, `§ 5.1~5.3`, `§ 6`)을 수록했습니다.
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
 1. **타 서비스(`remote-products`, `remote-cart`) 테스트 스텁 및 `remote-products/vite.config.ts` 후속 분리**:

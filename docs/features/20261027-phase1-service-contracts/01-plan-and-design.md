@@ -220,6 +220,9 @@ export const MFE_EVENTS = {
 
   /** 호스트 MfeInspector에서 상태 동기화 학습 모드(Mode A <-> Mode B)를 전환했음을 알리는 이벤트 */
   SYNC_MODE_CHANGED: 'mfe:sync-mode-changed',
+
+  /** 장바구니 앱의 CSS 스타일 충돌/격리 실험 토글 상태가 변경되었음을 알리는 이벤트 */
+  CSS_ISOLATION_CHANGED: 'mfe:css-isolation-changed',
 } as const;
 ```
 
@@ -402,8 +405,8 @@ export interface CartWidgetProps {
   /** 1.5초 네트워크 로딩 지연(Skeleton UI 확인) 시뮬레이션 활성화 여부 (기본값: false) */
   simulateDelay?: boolean;
 
-  /** 로딩 지연 시간(ms) 오버라이드 (테스트 가속용, 기본값: 1500) */
-  delayMs?: number;
+  /** CSS 스타일 오염(false) vs CSS 프리픽스/모듈 격리(true) 비교 실험 토글 (기본값: true) */
+  cssIsolated?: boolean;
 
   /** 백엔드 API 기본 URL 오버라이드 (기본값: 'http://localhost:4000/api') */
   apiBaseUrl?: string;
@@ -419,12 +422,9 @@ export interface CartWidgetProps {
 1. **고정 포트 및 CORS 필수 설정**:
    - `host-vite`: `3000`, `host-rspack`: `3001`, `remote-products`: `3002`, `remote-cart`: `3003`, `remote-shared`: `3004`, `api-server`: `4000`
    - 모든 서버는 `strictPort: true` 및 `cors: true`(`Access-Control-Allow-Origin: *`)를 필수로 활성화합니다.
-2. **Module Federation `shared` 싱글톤 설정 (`pnpm-workspace.yaml`의 `catalog:` 버전과 동기화 — 이종 번들러 `Vite` ↔ `Rspack` 간 `jsxDEV` 경합 방지를 위해 React 서브패스 3종 명시 공유)**:
+2. **Module Federation `shared` 싱글톤 설정 (`pnpm-workspace.yaml`의 `catalog:` 버전과 동기화)**:
    - `react`: `{ singleton: true, requiredVersion: '^19.1.0' }`
-   - `react/jsx-runtime`: `{ singleton: true, requiredVersion: '^19.1.0' }`
-   - `react/jsx-dev-runtime`: `{ singleton: true, requiredVersion: '^19.1.0' }`
    - `react-dom`: `{ singleton: true, requiredVersion: '^19.1.0' }`
-   - `react-dom/client`: `{ singleton: true, requiredVersion: '^19.1.0' }`
    - `@tanstack/react-query`: `{ singleton: true, requiredVersion: '^5.74.4' }`
 3. **2단 비동기 부트스트랩 분리**:
    - 모든 프론트엔드 앱은 `main.tsx`(또는 `index.tsx`)에서 `import('./bootstrap')`만 호출하고 실제 마운트는 `bootstrap.tsx`에서 수행하여 `eager consumption` 에러를 방지합니다.

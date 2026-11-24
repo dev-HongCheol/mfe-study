@@ -24,7 +24,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- [-] **[`20261123-cleanup-subpaths-and-unused-events`](./features/20261123-cleanup-subpaths-and-unused-events/01-plan-and-design.md)**: [Step 1.2/1.4 후속 정리] `vite.config.ts` React 서브패스 3종 명시 공유 통일, 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` 계약 제거·폐기 이벤트 런타임 방어 및 루트 SSOT 동기화 (`Branch: shared/chore/cleanup-subpaths-and-unused-events`)
+- [-] **[`20261123-cleanup-subpaths-and-unused-events`](./features/20261123-cleanup-subpaths-and-unused-events/01-plan-and-design.md)**: [Step 1.2/1.4 후속 정리] `vite.config.ts` React 서브패스 3종 명시 공유 통일, 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` 계약 제거 및 폐기 이벤트 런타임 방어 (`Branch: shared/chore/cleanup-subpaths-and-unused-events`)
 
 ---
 

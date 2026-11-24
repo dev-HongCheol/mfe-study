@@ -15,7 +15,7 @@
 | **작업 브랜치** | `shared/chore/cleanup-subpaths-and-unused-events` (패턴 A) |
 | **기술 스택 / 번들러** | `Vite 7 + React 19 + TypeScript 5.7 + @module-federation/vite + Zod + Vitest` |
 | **작성일** | `2026-11-23` |
-| **작업 규모 평가** | `적정 (단일 PR)` — 최하위 공통 공급자(`remote-shared`)의 React 서브패스 공유 정렬, 미사용 이벤트 제거, 방어 가드 보강 및 루트 SSOT 정본 동기화를 단일 PR로 처리 |
+| **작업 규모 평가** | `적정 (단일 PR)` — 최하위 공통 공급자(`remote-shared`)의 React 서브패스 3종 공유 정렬, 미사용 이벤트 계약 제거 및 폐기 이벤트 런타임 방어 가드 보강을 단일 PR로 처리 |
 
 ---
 
@@ -29,25 +29,48 @@
   - `Step 1.4` 리뷰 과정에서 `remote-cart`는 `.cart-*` 프리픽스와 정적 회귀 테스트(`body|html|button|h1~h5|*` 전역 선택자 금지)로 CSS 격리를 이미 완벽히 보장하므로, 인위적 시각 연출용 `cssIsolated` 토글을 제거했습니다.
   - 이에 따라 `remote-shared/utils`에 남아 있는 미사용 이벤트 상수(`MFE_EVENTS.CSS_ISOLATION_CHANGED`), 페이로드 타입(`CssIsolationChangedEventPayload`), `Zod` 스키마(`cssIsolationChangedEventSchema`)를 제거하여 표준 이벤트 계약을 실사용 4종(`CART_UPDATED`, `AUTH_CHANGED`, `THEME_CHANGED`, `SYNC_MODE_CHANGED`)으로 간결하게 정리합니다.
   - 동시에, 멀티레포 환경에서 구버전 리모트나 외부 스크립트가 폐기된 이벤트 이름(`'mfe:css-isolation-changed'` 등)을 런타임에 전달하더라도 `mfeEventBus`가 `undefined.safeParse(...)` 예외로 크래시하지 않도록 미등록 스키마 방어 가드를 보강합니다.
-- **배경 3 — 루트 SSOT 정본(`20261027-phase1-service-contracts`) 정합성 동기화**:
-  - 최하위 공급자 계약과 루트 정본 문서가 어긋나지 않도록, `docs/features/20261027-phase1-service-contracts/01-plan-and-design.md`의 `§ 5.2.1`(미사용 이벤트), `§ 5.4.3`(제거된 `cssIsolated` 속성), `§ 5.5`(React 서브패스 3종 공유 규약)을 현행 구현과 1:1로 동기화합니다.
 
 ### 2.2 MFE / 아키텍처 핵심 학습 포인트
-- **이종 번들러(`Vite` ↔ `Rspack`) 공유 스코프 키(`shareKey`) 대칭성 보장**:
-  - Module Federation 런타임에서 `shared`에 `'react'`만 등록하면 정확 일치(exact match) 모듈만 공유되고 `react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom/client` 같은 서브패스 import는 공유 풀에서 누락될 수 있습니다.
-  - 공급자(`Vite`)와 소비자(`Rspack`/`Vite`) 양쪽에 동일한 3개 서브패스 키와 버전 범위(`^19.1.0`)를 명시하여 호스트 2종(`host-vite`, `host-rspack`) 구축 전에 공유 계약을 표준화합니다.
+- **왜 `shared`에 `'react'`만 등록하면 서브패스(`react/jsx-runtime` 등)가 공유 풀에서 누락될까? (`shareKey` 정확 일치 원리)**:
+  - Module Federation의 공유 풀(`shareScope`, `__FEDERATION__.__SHARE__`)은 패키지 폴더 단위가 아니라 **코드에 적힌 `import` 경로 문자열(이름표)이 100% 정확히 일치(Exact Match)해야만 꺼내 쓸 수 있는 사물함**처럼 동작합니다.
+  - **① 컴파일러가 몰래 추가하는 숨은 `import` 문**:
+    - 개발자가 `.tsx` 파일에 `import { useState } from 'react'`만 작성하더라도, 번들러(`Vite/esbuild`, `Rspack/SWC`)가 JSX 문법(`<button>...</button>`)을 브라우저용 JS로 변환(Automatic JSX Transform)할 때 코드 상단에 자동으로 서브패스 `import`를 삽입합니다.
+    - **프로덕션 빌드(`build`)**: `import { jsx as _jsx } from 'react/jsx-runtime';`
+    - **개발 서버(`dev`)**: `import { jsxDEV as _jsxDEV } from 'react/jsx-dev-runtime';`
+    - **React 18/19 루트 마운트**: `import { createRoot } from 'react-dom/client';`
+  - **② 공유 풀(`shareScope`)의 정확 일치(Exact Match) 조회**:
+    - 만약 `vite.config.ts`의 `shared`에 `'react'`와 `'react-dom'` 두 개만 적어두면, 공유 사물함에는 `'react'`와 `'react-dom'` 이름표 딱 2개만 등록됩니다.
+    - 앞글자가 `react`로 시작하더라도 MF 런타임에서 `'react'`와 `'react/jsx-runtime'`은 완전히 별개의 문자열 키로 취급됩니다. 따라서 리모트 앱이 `"공유 풀에 `'react/jsx-runtime'` 있나요?"`라고 찾으면 **공유 풀에서 찾지 못하고 누락(Miss)**됩니다.
+  - **③ 공유 풀에서 누락되면 실제로 터지는 문제 (Dual React Instance & `jsxDEV` 경합)**:
+    - 공유 풀에서 서브패스를 찾지 못한 리모트 앱은 자기 번들 안에 자체 내장된 복사본으로 폴백(Fallback)합니다.
+    - 결과적으로 `useState`·`useContext`를 부르는 `'react'`는 **호스트의 싱글톤 React**를 쓰면서, 정작 JSX 엘리먼트를 생성하는 `'react/jsx-runtime'`이나 `'react/jsx-dev-runtime'`은 **리모트가 자체 번들링한 별도 복사본**을 타는 **React 인스턴스 이원화**가 발생합니다.
+    - 특히 `Vite dev(ESM)` 공급자(`remote-shared`)와 `Rspack` 소비자(`remote-cart`, `host-rspack`)처럼 서로 다른 번들러나 개발/프로덕션 모드가 섞일 때 `jsxDEV is not a function`, `Invalid hook call`, `Cannot read properties of null (reading 'useContext')` 에러가 터지는 직접적인 원인이 됩니다.
+  - **④ 해결책 — React 공유 5종(`기본 2종 + 서브패스 3종`) 명시적 1:1 대칭 등록**:
+    - 컴파일러와 React 19 런타임이 실제로 `import`하는 아래 5가지 경로 문자열을 공급자(`Vite`)와 소비자(`Rspack`/`Vite`) 양쪽 `shared`에 모두 동일한 이름표와 버전 범위(`^19.1.0`)로 명시하여 공유 누락을 원천 봉쇄합니다.
+
+    | 등록 키 (`shared`) | 언제 `import` 되는가? | 싱글톤 설정 |
+    | :--- | :--- | :--- |
+    | `'react'` | `useState`, `useEffect`, `useContext` 등 코어 React API를 사용할 때 | `singleton: true, requiredVersion: '^19.1.0'` |
+    | `'react-dom'` | `createPortal`, `flushSync` 등 DOM API를 사용할 때 | `singleton: true, requiredVersion: '^19.1.0'` |
+    | `'react/jsx-runtime'` | **프로덕션 빌드(`build`)**에서 JSX(`<div />`)가 변환될 때 | `singleton: true, requiredVersion: '^19.1.0'` |
+    | `'react/jsx-dev-runtime'` | **개발 서버(`dev`)**에서 JSX(`<div />`)가 디버깅 정보와 함께 변환될 때 | `singleton: true, requiredVersion: '^19.1.0'` |
+    | `'react-dom/client'` | React 18/19에서 `createRoot`, `hydrateRoot`를 호출할 때 | `singleton: true, requiredVersion: '^19.1.0'` |
+
 - **공통 계약 축소(Breaking Cleanup) 시 하위 계층 우선 정리 & 런타임 방어 전략**:
-  - 물리적 멀티레포 격리(`verify-scope.mjs`) 원칙에 따라 최하위 공통 모듈(`remote-shared`)과 루트 정본(`docs/`)을 먼저 정리하고, 타 서비스(`remote-products`, `remote-cart`)의 테스트용 로컬 스텁 정리는 각 서비스의 후속 작업 브랜치에서 독립 수행합니다.
+  - 물리적 멀티레포 격리(`verify-scope.mjs`) 원칙에 따라 최하위 공통 모듈(`remote-shared`)을 먼저 정리하고, 타 서비스(`remote-products`, `remote-cart`)의 테스트용 로컬 스텁 정리는 각 서비스의 후속 작업 브랜치에서 독립 수행합니다.
   - 독립 배포된 구버전 리모트가 폐기된 이벤트 이름으로 `emit`/`subscribe`를 호출해도 런타임 `TypeError`가 발생하지 않도록 `mfeEventBus` 내부에 스키마 존재 여부 가드를 둡니다([Study 05 #10](../../../../../docs/study/05-fullstack-service-real-world-issues.md)).
 
-### 2.3 루트 공통 설계 정본(SSOT) 참조 — `[타 서비스 연계 작업 시 필수]`
-- **참조 정본 문서**: [Phase 1 서비스 간 공통 연동 계약 (`01-plan-and-design.md`)](../../../../../docs/features/20261027-phase1-service-contracts/01-plan-and-design.md), [서비스 레지스트리 (`service-registry.md`)](../../../../../docs/service-registry.md)
-- **참조 항목(섹션 제목)**:
-  - `§ 5.2.1 표준 커스텀 이벤트 이름 상수 (MFE_EVENTS)` *(미사용 `CSS_ISOLATION_CHANGED` 제거 후 4종으로 동기화)*
-  - `§ 5.2.2 이벤트별 페이로드 인터페이스 및 Zod 검증 스키마` *(표준 4종 이벤트 페이로드 정합 유지)*
-  - `§ 5.4.3 remote_cart/CartWidget 노출 컴포넌트 Props 계약 (CartWidgetProps)` *(이미 제거된 `cssIsolated?: boolean` 속성 정리)*
-  - `§ 5.5 Module Federation 2.0 공통 공유 의존성(shared singleton) 및 포트·CORS 계약` *(React 서브패스 3종 명시 공유 규약 추가 동기화)*
-  - `service-registry.md § 4.2 Module Federation 노출(exposes) 3대 서브패스 시그니처 요약` *(5단계-C 머지 직전 `5대 이벤트` → `4대 이벤트` 및 React 서브패스 공유 반영)*
+### 2.3 현행 서비스 정본(`service-registry.md`) 참조 및 본 작업 계약 업데이트 내역 — `[타 서비스 연계 작업 시 필수]`
+- **참조 정본 문서**: [서비스 레지스트리 (`docs/service-registry.md`)](../../../../../docs/service-registry.md) *(현행 구현·계약 단일 운영 정본)*
+- **참조 항목(섹션 제목) 및 본 브랜치 업데이트 계약**:
+  - `§ 4.2 Module Federation 노출(exposes) 3대 서브패스 시그니처 요약` (`remote_shared/utils`)
+    - 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` (`'mfe:css-isolation-changed'`), `CssIsolationChangedEventPayload`, `cssIsolationChangedEventSchema`를 제거하여 실사용 표준 4종(`CART_UPDATED`, `AUTH_CHANGED`, `THEME_CHANGED`, `SYNC_MODE_CHANGED`)으로 정리하고 폐기 이벤트 런타임 방어 가드를 추가합니다(`§ 5.1 ~ § 5.2`).
+    - **(5단계-C 머지 직전 업데이트)**: `service-registry.md § 4.2`의 `remote_shared/utils` 설명을 `표준 4대 이벤트`로 갱신합니다.
+  - `§ 6.2 Module Federation 노출(exposes) 및 소비(remotes) 시그니처 요약` (`remote_cart/CartWidget`)
+    - `Step 1.4`에서 `CartWidgetProps`의 `cssIsolated?: boolean` 속성이 제거되고 테스트 가속용 `delayMs?: number`로 대체됨에 따라, 이와 한 쌍이던 `CSS_ISOLATION_CHANGED` 이벤트 계약을 `remote-shared/utils`에서도 완전히 제거하여 서비스 간 계약을 일치시킵니다(`§ 5.3`).
+  - `§ 6.3 상위 호스트(host-vite, host-rspack) 필수 소비 규칙` (React 서브패스 3종 명시 공유)
+    - `remote-cart`(`Rsbuild/Rspack`) 및 향후 호스트 2종(`host-vite`, `host-rspack`)과 1:1 대칭을 이루도록 최하위 공급자 `remote-shared/vite.config.ts`의 `shared`를 `react`, `react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom`, `react-dom/client`, `@tanstack/react-query` 총 6종 싱글톤 규약으로 통일합니다(`§ 6`).
+    - **(5단계-C 머지 직전 업데이트)**: `service-registry.md § 4.1 ~ § 4.2`에 React 서브패스 3종 명시 공유 및 최신 테스트 건수(`38건`)를 반영합니다.
 
 ---
 
@@ -78,7 +101,6 @@
 | `MOD` | `src/features/utils/model/event-bus.ts` | 미등록/폐기 이벤트 이름으로 런타임 `emit`/`subscribe` 호출 시 `TypeError` 크래시를 차단하는 스키마 존재 여부 방어 가드 추가 |
 | `MOD` | `src/features/utils/model/event-bus.test.ts` | 표준 이벤트 4종 계약 검증, `CSS_ISOLATION_CHANGED` 미포함 검증, `exposed/utils` 공개 심볼 검증 및 미등록/폐기 이벤트 런타임 방어 단위 테스트 추가 |
 | `MOD` | `src/__tests__/SharedShowcase.integration.test.tsx` | `vite.config.ts` React 서브패스 3종 명시 공유 정적 회귀 검증 및 `dist/@mf-types/**/*.d.ts` 내 폐기 심볼 `0건` 검증 추가 |
-| `MOD` | `(루트) docs/features/20261027-phase1-service-contracts/01-plan-and-design.md` | `§ 5.2.1`(`CSS_ISOLATION_CHANGED`), `§ 5.4.3`(`cssIsolated`) 미사용 계약 정리 및 `§ 5.5` React 서브패스 3종 공유 규약 동기화 |
 | `MOD` | `(루트) todo.md` & `docs/service-registry.md` | **(5단계-C 머지 직전 필수 갱신)** Step 1.2/1.4 후속 정리 완료 및 표준 이벤트 4종·서브패스 공유 현황 반영 |
 
 ---
@@ -90,7 +112,7 @@
 
 ```ts
 /**
- * @description 마이크로 프론트엔드 앱 간 통신에 사용되는 표준 CustomEvent 이름 상수 맵 (루트 SSOT § 5.2.1)
+ * @description 마이크로 프론트엔드 앱 간 통신에 사용되는 표준 CustomEvent 이름 상수 맵 (표준 4종)
  */
 export const MFE_EVENTS = {
   /** 상품 앱에서 장바구니에 상품을 추가했음을 알리는 이벤트 (Mode A 동기화 트리거 및 모니터 로깅용) */
@@ -137,6 +159,31 @@ export const MFE_EVENT_SCHEMAS: {
 ### 5.2 폐기·미등록 이벤트 런타임 방어 가드 (`src/features/utils/model/event-bus.ts`)
 - `emit(eventName, payload)`에서 `const schema = MFE_EVENT_SCHEMAS[eventName];` 조회 후 `!schema`이면 `console.warn`을 남기고 즉시 `false`를 반환합니다.
 - `subscribe(eventName, handler)`에서도 `!schema`이면 `console.warn`을 남기고 `window.addEventListener`를 등록하지 않은 채 안전한 빈 해제 함수 `() => {}`를 반환합니다.
+
+### 5.3 연관 도메인 계약 정합 요약 (`CartWidgetProps`의 `cssIsolated` 폐기 및 `delayMs` 확정)
+- `CSS_ISOLATION_CHANGED` 이벤트 제거의 배경이 된 `remote_cart/CartWidget` 노출 Props 현행 계약(`Step 1.4` 확정본)은 다음과 같이 `cssIsolated` 없이 유지됩니다.
+
+```ts
+export interface CartWidgetProps {
+  /** 현재 로그인된 사용자 고유 ID (미지정·null 시 비로그인 상태 — 임의 유저 폴백 금지) */
+  userId?: string | null;
+
+  /** 이 컴포넌트를 마운트한 상위 호스트 종류 (기본값: 'standalone') */
+  hostType?: HostOriginType;
+
+  /** 상태 동기화 아키텍처 비교 모드 (기본값: 'mode-a-event') */
+  syncMode?: SyncMode;
+
+  /** 1.5초 네트워크 로딩 지연(Skeleton UI 확인) 시뮬레이션 활성화 여부 (기본값: false) */
+  simulateDelay?: boolean;
+
+  /** 로딩 지연 시간(ms) 오버라이드 (테스트 가속용, 기본값: 1500) */
+  delayMs?: number;
+
+  /** 백엔드 API 기본 URL 오버라이드 (기본값: 'http://localhost:4000/api') */
+  apiBaseUrl?: string;
+}
+```
 
 ---
 
