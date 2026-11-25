@@ -246,7 +246,7 @@ export function subscribeCartSync(queryClient: QueryClient, userId: string): () 
 /**
  * React 컴포넌트에서 QueryClient 단위 Mode A 동기화 채널을 구독하고,
  * useSyncExternalStore를 통해 현재 사용자의 외부 이벤트 수신 횟수를 안전하게 구독하는 훅입니다.
- * Mode B(enabled === false)에서는 mfeEventBus 구독을 0회로 완전 격리합니다.
+ * Mode B(enabled === false) 또는 비로그인 상태에서는 mfeEventBus 구독과 내부 Store 구독·채널 생성을 모두 0회로 완전 격리합니다.
  *
  * @param queryClient - 현재 활성 QueryClient 인스턴스
  * @param userId - 정규화된 로그인 사용자 ID (비로그인 시 null)
@@ -268,11 +268,20 @@ export function useCartSyncChannel(
   }, [queryClient, userId, enabled]);
 
   const subscribe = useCallback(
-    (onStoreChange: () => void) => subscribeChannelStore(queryClient, onStoreChange),
-    [queryClient],
+    (onStoreChange: () => void) => {
+      // [분기 설명] Mode B(enabled === false) 또는 비로그인 상태에서는 내부 Store 구독과 빈 채널 생성까지 0회로 완전 격리합니다.
+      if (!enabled || !userId) {
+        return () => {};
+      }
+
+      return subscribeChannelStore(queryClient, onStoreChange);
+    },
+    [queryClient, userId, enabled],
   );
 
-  const getSnapshot = () => getCartSyncReceivedCount(queryClient, userId);
+  const getSnapshot = () => (enabled ? getCartSyncReceivedCount(queryClient, userId) : 0);
+
+  /** SSR 및 hydration 단계에서 사용하는 기본 스냅샷 반환 함수 */
   const getServerSnapshot = () => 0;
 
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);

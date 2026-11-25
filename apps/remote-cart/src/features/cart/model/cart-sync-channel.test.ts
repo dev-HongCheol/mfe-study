@@ -2,8 +2,10 @@
  * @file cart-sync-channel.test.ts
  * @app remote-cart (Scope: cart | Port: 3003)
  * @exposed false
- * @description [TC-01~TC-06, EC-01~EC-04] QueryClient 단위 장바구니 동기화 채널(cart-sync-channel.ts)의 자기 에코 차단, Ref-Counting 단일 리스너, 멱등 클린업, 외부 리스너 예외 격리 및 중첩 동기 이벤트 처리 단위 테스트입니다.
+ * @description [TC-01~TC-06, EC-01~EC-04] QueryClient 단위 장바구니 동기화 채널(cart-sync-channel.ts)의 자기 에코 차단, Ref-Counting 단일 리스너, 멱등 클린업, 외부 리스너 예외 격리, 중첩 동기 이벤트 처리 및 Mode B·비로그인 완전 격리 단위 테스트입니다.
  */
+import { renderHook } from '@testing-library/react';
+import * as remoteSharedUtils from 'remote_shared/utils';
 import {
   CART_QUERY_KEY,
   type CartUpdatedEventPayload,
@@ -19,6 +21,7 @@ import {
   getCartSyncSourceId,
   subscribeCartSync,
   syncCartAfterMutation,
+  useCartSyncChannel,
 } from './cart-sync-channel';
 
 /**
@@ -237,5 +240,25 @@ describe('cart-sync-channel 단위 테스트 (TC-01~TC-06, EC-01~EC-04)', () => 
 
     // PR #16: createMfeEventSourceId 공백 prefix 차단
     expect(() => createMfeEventSourceId('   ')).toThrow();
+  });
+
+  it('Mode B(enabled=false) 및 비로그인(userId=null)에서 useCartSyncChannel은 EventBus 구독뿐 아니라 빈 채널 생성과 내부 Store 구독도 0회로 완전 격리한다', () => {
+    const qcModeB = createMfeQueryClient();
+    const qcGuest = createMfeQueryClient();
+    const subscribeSpy = vi.spyOn(mfeEventBus, 'subscribe');
+    const createSourceIdSpy = vi.spyOn(remoteSharedUtils, 'createMfeEventSourceId');
+
+    const modeBHook = renderHook(() => useCartSyncChannel(qcModeB, 'user-1', false));
+    const guestHook = renderHook(() => useCartSyncChannel(qcGuest, null, true));
+
+    expect(modeBHook.result.current).toBe(0);
+    expect(guestHook.result.current).toBe(0);
+    expect(subscribeSpy).not.toHaveBeenCalled();
+    expect(createSourceIdSpy).not.toHaveBeenCalled();
+
+    modeBHook.unmount();
+    guestHook.unmount();
+    subscribeSpy.mockRestore();
+    createSourceIdSpy.mockRestore();
   });
 });
