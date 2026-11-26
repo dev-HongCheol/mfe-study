@@ -21,6 +21,7 @@ export default defineConfig({
       'apps/remote-shared/vitest.config.ts',
       'apps/remote-products/vitest.config.ts',
       'apps/remote-cart/vitest.config.ts',
+      'apps/host-vite/vitest.config.ts',
     ],
   },
 });
