@@ -133,10 +133,10 @@
 ## 5. [조건부 A] 프론트엔드 및 MFE 통합 검증 (`shared`, `products`, `cart`, `host-*` 전용)
 
 - **적용 여부**: `적용`
-- [ ] **단독 실행(Standalone) 렌더링 검증**: `App.tsx`의 `[샘플 상품 담기]` 및 `[원격 동기화 신호 테스트]`가 리팩토링 후에도 정상 동작하는가?
-- [ ] **리모트 장애 격리 검증**: `syncCartAfterMutation` 외부 이벤트 리스너 예외가 `try/catch`로 격리되어 로컬 장바구니 갱신에 영향을 주지 않는가?
-- [ ] **이벤트 버스 및 쿼리 캐시 연동**: 8대 회귀 시나리오(3지표: `receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`)와 `Mode A ↔ Mode B` 전환이 100% 통과하는가?
-- [ ] **무-Shim 원격 타입 및 아키텍처 무결성**: 최신 `remote-shared` `@mf-types` 동기화 상태에서 `tsc --noEmit` 및 `rsbuild build`가 임시 Shim 없이 통과하는가?
+- [x] **단독 실행(Standalone) 렌더링 검증**: `App.tsx`의 `[샘플 상품 담기]` 및 `[원격 동기화 신호 테스트]`가 리팩토링 후에도 정상 동작하는가?
+- [x] **리모트 장애 격리 검증**: `syncCartAfterMutation` 외부 이벤트 리스너 예외가 `try/catch`로 격리되어 로컬 장바구니 갱신에 영향을 주지 않는가?
+- [x] **이벤트 버스 및 쿼리 캐시 연동**: 8대 회귀 시나리오(3지표: `receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`)와 `Mode A ↔ Mode B` 전환이 100% 통과하는가?
+- [x] **무-Shim 원격 타입 및 아키텍처 무결성**: 최신 `remote-shared` `@mf-types` 동기화 상태에서 `tsc --noEmit` 및 `rsbuild build`가 임시 Shim 없이 통과하는가?
 
 ---
 
@@ -147,7 +147,7 @@
 ---
 
 ## 7. 최종 완료 및 머지 전 체크리스트 — `[공통 필수]`
-- [ ] 모든 단위 테스트(`cart-sync-channel.test.ts` 포함) 및 통합 테스트(`CartWidget.integration.test.tsx`)가 통과(`Green`)했는가?
-- [ ] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
-- [ ] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
-- [ ] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-cart/docs/todo.md`, `docs/service-registry.md`를 최신 상태로 업데이트했는가?
+- [x] 모든 단위 테스트(`cart-sync-channel.test.ts` 포함) 및 통합 테스트(`CartWidget.integration.test.tsx`)가 통과(`Green`)했는가?
+- [x] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
+- [x] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
+- [x] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-cart/docs/todo.md`, `docs/service-registry.md`를 최신 상태로 업데이트했는가?

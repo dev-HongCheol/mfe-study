@@ -10,6 +10,7 @@
 
 - **현재 단계**: **Phase 1 — 통합 대시보드 뷰 & 핵심 프로세스 구축 단계** (`Phase 0` 사전 아키텍처·문서·하네스 구축 완료)
 - **최근 완료 작업**:
+  - **[Step 1.4 후속 개선 2차] `remote-cart` `Mode A` 자기 에코(Self-Echo) 중복 `invalidateQueries` 제거, `QueryClient` 단위 동기화 채널(`cart-sync-channel`) 리팩토링, `Mode A ↔ Mode B` `QueryObserver` Split-Brain 해소(`key` 리마운트), `Mode B`·비로그인 빈 채널 생성 `0회` 격리 및 `Study 12` 심화·`Study 13` 신규 작성 완료** (`apps/remote-cart`, `docs/study/`, `docs/service-registry.md`, `Vitest 9개 파일 / 43건`·루트 전체 `43개 파일 / 149건` 통과, PR #17)
   - **[Step 1.4 후속 개선 1차] `remote-shared/utils` `mfeEventBus`·`useMfeEvent` 발신자 식별(`sourceId` / `ignoreSourceId`) 기반 자기 에코(Self-Echo) 자동 필터링, `createMfeEventSourceId(prefix)` 헬퍼 추가 및 `Study 04 (#09)` · `Study 12` 현행화 완료** (`apps/remote-shared`, `docs/study/`, `docs/service-registry.md`, `Vitest 18개 파일 / 43건`·루트 전체 `42개 파일 / 132건` 통과, PR #16)
   - **[Step 1.2/1.4 후속 정리] `remote-shared` `vite.config.ts` React 서브패스 3종(`react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom/client`) 명시 공유 통일, 미사용 `MFE_EVENTS.CSS_ISOLATION_CHANGED` 이벤트 계약 제거 및 폐기·미등록 이벤트 런타임 방어 가드 보강 완료** (`apps/remote-shared`, `docs/service-registry.md`, `Vitest 18개 파일 / 38건`·루트 전체 `42개 파일 / 127건` 통과, PR #15)
   - **[Phase 1 - Step 1.4] 프로젝트 최초 `Rsbuild(Rspack)` 장바구니 원격 앱(`./CartWidget`, `Port 3003`), `Mode A vs Mode B` 대칭 동기화, 비인증 3중 차단, 이종 번들러(`Rspack` ↔ `Vite`) 무-Shim `@mf-types` 소비·React 서브패스 3종 공유 및 `Study 08(Part 3)` · `Study 11(CSS 폰트 가이드)` · `Study 12(Mode A Self-Echo & QueryClient 동기화)` 구축 완료** (`apps/remote-cart`, `docs/service-registry.md`, `Vitest 8개 파일 / 26건`·루트 전체 `42개 파일 / 124건` 통과, PR #14)
@@ -29,9 +30,8 @@
   - **[Phase 0 - Step 0.1 & 0.2]** 각 서비스의 코드·테스트 폴더 아키텍처(`exposed/` + 경량 FSD `features/{ui,api,model}` + 단위 테스트 `Co-location` & `testing/`·`__tests__/`) 및 표준 라이브러리(`TanStack Query + ky`, `React Hook Form + Zod`, `date-fns`, `es-toolkit`, `Ark UI + clsx`, `msw`, `supertest`, Node 22 내장 `node:sqlite`, `pnpm catalog:` 다중 앱 공유 전용 분리) 확정 완료
   - **[Phase 0 - Step 0.3 & 0.4]** 루트 크로스 플랫폼 워크스페이스 설정(`biome.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `lefthook.yml`, `README.md`, `GEMINI.md`) 및 Antigravity 5대 라이프사이클 훅(`.agents/hooks.json`, `scripts/*.mjs` 8종) TDD 구현 및 최종 리뷰 승인 완료
 - **다음 진행 예정 작업 (Next Up)**:
-  1. **[다음 대기 | `Scope: cart` | `Branch: cart/refactor/queryclient-sync-channel`] [Phase 1 - Step 1.4 후속 개선] `remote-cart` `Mode A` 자기 에코(Self-Echo) 중복 `invalidateQueries` 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** ([`Study 12`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md))
-  2. **[다음 대기 | `Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`] [Phase 1 - Step 1.5] 공통 껍데기 호스트 2종(`apps/host-vite:3000`, `apps/host-rspack:3001`) 구축**
-  3. **[다음 대기 | `Scope: root` | `Branch: root/test/phase1-mfe-smoke`] [Phase 1 - Step 1.6] Phase 1 실제 Module Federation 6개 서버 런타임 스모크 테스트 구축**
+  1. **[다음 대기 | `Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`] [Phase 1 - Step 1.5] 공통 껍데기 호스트 2종(`apps/host-vite:3000`, `apps/host-rspack:3001`) 구축**
+  2. **[다음 대기 | `Scope: root` | `Branch: root/test/phase1-mfe-smoke`] [Phase 1 - Step 1.6] Phase 1 실제 Module Federation 6개 서버 런타임 스모크 테스트 구축**
 
 ---
 
@@ -95,9 +95,9 @@
 - [x] **Step 1.4 후속 개선 1차 (`Scope: shared` | `Branch: shared/feat/event-bus-source-id`, PR #16)**:
   - 문서 경로: `apps/remote-shared/docs/todo.md`, `apps/remote-shared/docs/features/20261124-event-bus-source-id/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`), [`Study 04 (#09)`](./docs/study/04-mfe-real-world-pitfalls-and-solutions.md), [`Study 12`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)
   - `remote-shared/utils` `mfeEventBus`·`useMfeEvent`에 평문 `CustomEvent.detail` 예약 메타 키(`__mfeSourceId`) + `Zod strip` 기반 양방향 100% 하위 호환 `{ sourceId }` / `{ ignoreSourceId }` 자기 에코 자동 필터링과 `createMfeEventSourceId(prefix)` 헬퍼 추가 완료 (`Vitest 18개 파일 / 43건`·루트 전체 `42개 파일 / 132건` 통과, `docs/service-registry.md` 반영)
-- [ ] **Step 1.4 후속 개선 2차: `remote-cart` `Mode A` 자기 에코(Self-Echo) 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** (`Scope: cart` | `Branch: cart/refactor/queryclient-sync-channel`)
-  - 참조 가이드: [`docs/study/12-mfe-event-self-echo-and-queryclient-sync.md`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)
-  - `remote-shared/utils`의 `createMfeEventSourceId('remote-cart')` 및 `{ sourceId }` / `{ ignoreSourceId }`를 결합해 `apps/remote-cart` 내부에 `Symbol.for` `WeakMap<QueryClient, Channel>` + `useSyncExternalStore` 사용자별 수신 카운터를 도입하고, 쿼리 키 `['cart', userId, { apiBaseUrl, simulateDelay }]` 정렬, `emit` 선행(`try/catch` 격리) → `await invalidateQueries` 1회 적용 및 3지표(`receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`) 8대 회귀 테스트 구축
+- [x] **Step 1.4 후속 개선 2차: `remote-cart` `Mode A` 자기 에코(Self-Echo) 제거 및 `QueryClient` 단위 동기화 채널 리팩토링** (`Scope: cart` | `Branch: cart/refactor/queryclient-sync-channel`, PR #17)
+  - 문서 경로: `apps/remote-cart/docs/todo.md`, `apps/remote-cart/docs/features/20261124-queryclient-sync-channel/` (`01-plan-and-design.md`, `02-tdd-spec.md`, `03-code-review.md`), [`Study 12`](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md), [`Study 13`](./docs/study/13-cart-click-to-render-flow-and-loading-ux.md)
+  - `remote-shared/utils`의 `createMfeEventSourceId('remote-cart')` 및 `{ sourceId }` / `{ ignoreSourceId }`를 결합해 `apps/remote-cart` 내부에 `Symbol.for` `WeakMap<QueryClient, Channel>` + Ref-Counting 단일 리스너 + `useSyncExternalStore` 사용자별 수신 카운터를 도입하고, 쿼리 키 `['cart', userId, { apiBaseUrl, simulateDelay }]` 정렬, `emit` 선행(`try/catch` 격리) → `await invalidateQueries` 1회 적용, `<QueryClientProvider key={effectiveSyncMode}>` 리마운트(Split-Brain 해소), `Mode B`·비로그인 빈 채널 생성 `0회` 격리 및 3지표(`receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`) 8대 회귀 테스트 구축 완료 (`Vitest 9개 파일 / 43건`·루트 전체 `43개 파일 / 149건` 통과, `docs/service-registry.md` 반영)
 - [ ] **Step 1.5: 공통 껍데기 호스트 2종 구축** (`Scope: host-vite` & `host-rspack` | `Branch: host-vite/feat/dashboard`, `host-rspack/feat/dashboard`)
   - 문서 경로: `apps/host-vite/docs/todo.md`, `apps/host-vite/docs/features/YYYYMMDD-dashboard/` 및 `apps/host-rspack/docs/todo.md`, `apps/host-rspack/docs/features/YYYYMMDD-dashboard/` (`01-plan-and-design.md`, `02-tdd-spec.md`)
   - 원격 모듈 통합 대시보드, `Suspense` + `Skeleton` (1.5초 지연 시뮬레이션 토글), `RemoteErrorBoundary` 장애 격리, 실시간 MFE 학습 모니터(`MfeInspector` — **`Mode A: CustomEvent` ↔ `Mode B: sharedQueryClient` 비교 관찰 토글** 포함) TDD 구현 (`Port 3000`, `Port 3001`)

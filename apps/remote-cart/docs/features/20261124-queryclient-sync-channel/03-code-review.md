@@ -39,8 +39,8 @@
   - 앱 단독: `pnpm --filter @mfe-study/remote-cart test`
   - 루트 전체: `pnpm test`
 - **통과 현황**:
-  - `remote-cart` 단독: 총 `9`개 파일 / `42`건 중 **`42`건 통과** (`0`건 실패, Unhandled Error `0`건, 소요 시간: `9.26s`)
-  - 루트 전체: 총 `43`개 파일 / `148`건 중 **`148`건 통과** (`0`건 실패, 소요 시간: `22.69s`)
+  - `remote-cart` 단독: 총 `9`개 파일 / `43`건 중 **`43`건 통과** (`0`건 실패, Unhandled Error `0`건 — `050df02`에서 `Mode B`·비로그인 빈 채널 생성 및 내부 Store 구독 `0회` 격리 단위 테스트 1건 보강)
+  - 루트 전체: 총 `43`개 파일 / `149`건 중 **`149`건 통과** (`0`건 실패)
 - **주요 검증 시나리오 요약**:
   - `[TC-01 ~ TC-08]` Study 12 8대 회귀 시나리오(단일 위젯 자기 뮤테이션, 동일 `QueryClient` 위젯 2개 공유, 독립 `QueryClient` A·B 2개, 부분·완전 언마운트 Ref-Counting, React 19 `<StrictMode>`, 중첩 동기 이벤트, 빠른 연속 뮤테이션 지연 응답 엇갈림, `Mode A ↔ Mode B` 전환) 3지표(`receivedEventCount` / `invalidateQueries` / 실제 `GET /api/cart`) 전원 통과
   - `[EC-01 ~ EC-04]` `emit` 동기 예외 `try/catch` 격리, 멱등 중복 해제 및 타 사용자(`user-2`) 격리, 비인증(`null`) 차단, 스텁 PR #15·#16 계약 정합성 전원 통과
