@@ -2,11 +2,11 @@
  * @file use-cart-queries.ts
  * @app remote-cart (Scope: cart | Port: 3003)
  * @exposed false
- * @description 장바구니 조회(useCartQuery), 수량 증가(useIncrementCartMutation), 단건·전체 삭제(useDeleteCartMutation) 및 Mode A vs Mode B 상태 동기화 훅입니다 ([Study 01, Study 05 #01]).
+ * @description 장바구니 조회(useCartQuery), 수량 증가(useIncrementCartMutation), 단건·전체 삭제(useDeleteCartMutation) 및 QueryClient 단위 Mode A vs Mode B 상태 동기화 훅입니다 ([Study 01, Study 05 #01, Study 12]).
  */
-import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CartUpdatedEventPayload, HostOriginType, SyncMode } from 'remote_shared/utils';
-import { CART_QUERY_KEY, DEFAULT_API_BASE_URL, MFE_EVENTS, mfeEventBus } from 'remote_shared/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { HostOriginType, SyncMode } from 'remote_shared/utils';
+import { DEFAULT_API_BASE_URL } from 'remote_shared/utils';
 import {
   DEFAULT_SIMULATE_DELAY_MS,
   deleteCartItemApi,
@@ -14,6 +14,11 @@ import {
   postIncrementCartItem,
 } from '../api/cart-api';
 import { type CartItemView, type DeleteCartResult, normalizeUserId } from './cart-schema';
+import {
+  buildCartQueryKey,
+  buildCartUserQueryKey,
+  syncCartAfterMutation,
+} from './cart-sync-channel';
 
 /**
  * @description useCartQuery 훅 입력 옵션 인터페이스
@@ -75,29 +80,6 @@ interface DeleteCartMutationResult {
 }
 
 /**
- * 장바구니 쓰기 뮤테이션 성공 직후 활성 QueryClient 캐시를 무효화하고, Mode A에서는 mfe:cart-updated 이벤트를 발행합니다.
- * CartWidget이 이미 모드별 QueryClient(Mode A: 독립 캐시, Mode B: 싱글톤 sharedQueryClient)를 주입하므로
- * invalidateQueries는 공통으로 호출하고 CustomEvent 발행만 Mode A로 분기합니다.
- *
- * @param queryClient - 현재 활성 QueryClient 인스턴스
- * @param syncMode - 상태 동기화 비교 학습 모드
- * @param eventPayload - Mode A에서 발행할 장바구니 변경 이벤트 페이로드
- * @returns 캐시 무효화 완료 Promise
- */
-async function syncCartAfterMutation(
-  queryClient: QueryClient,
-  syncMode: SyncMode,
-  eventPayload: CartUpdatedEventPayload,
-): Promise<void> {
-  await queryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
-
-  // [분기 설명] Mode A에서만 CustomEvent 신호를 발행하고, Mode B는 싱글톤 sharedQueryClient 무효화만으로 동기화합니다.
-  if (syncMode === 'mode-a-event') {
-    mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, eventPayload);
-  }
-}
-
-/**
  * 로그인된 사용자의 장바구니 목록을 조회하는 TanStack Query 훅입니다.
  * 비로그인(userId === null) 상태에서는 enabled: false로 네트워크 요청을 0회 차단합니다 ([SSOT § 5.4.3]).
  *
@@ -115,16 +97,12 @@ export function useCartQuery(options: UseCartQueryOptions) {
   const validUserId = normalizeUserId(userId);
 
   return useQuery({
-    // [분기 설명] CART_QUERY_KEY(['cart'])를 prefix로 유지하여 Mode B에서
-    // sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY }) 호출 시 즉시 무효화되도록 보장합니다.
-    queryKey: [
-      ...CART_QUERY_KEY,
-      {
-        userId: validUserId,
-        apiBaseUrl,
-        simulateDelay,
-      },
-    ] as const,
+    // [분기 설명] ['cart', userId, { apiBaseUrl, simulateDelay }] 구조로 정렬하여
+    // 사용자 단위 정밀 무효화(['cart', userId])와 Mode B 외부 전체 무효화(['cart'])를 모두 prefix 매칭으로 지원합니다 ([Study 12]).
+    queryKey: buildCartQueryKey(validUserId, {
+      apiBaseUrl,
+      simulateDelay,
+    }),
     // [분기 설명] 비인증 상태에서는 임의 유저로 폴백하지 않고 쿼리 실행 자체를 차단합니다 (SSOT § 5.4.3).
     enabled: validUserId !== null,
     queryFn: ({ signal }) => {
@@ -173,8 +151,12 @@ export function useIncrementCartMutation(options: UseCartMutationOptions) {
       });
     },
     onMutate: async () => {
-      // [분기 설명] 활성 QueryClient(Mode A: 독립 캐시, Mode B: sharedQueryClient)에서 진행 중인 구버전 GET을 취소해 응답 역전을 방지합니다 (Study 05 #01).
-      await activeQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
+      // [분기 설명] 현재 사용자의 진행 중인 구버전 GET만 정밀 취소해 타 사용자 캐시를 건드리지 않고 응답 역전을 방지합니다 ([Study 05 #01, Study 12]).
+      if (validUserId) {
+        await activeQueryClient.cancelQueries({
+          queryKey: buildCartUserQueryKey(validUserId),
+        });
+      }
     },
     onSuccess: async (updatedItem) => {
       await syncCartAfterMutation(activeQueryClient, syncMode, {
@@ -220,8 +202,12 @@ export function useDeleteCartMutation(options: UseCartMutationOptions) {
       return { result, userId: validUserId };
     },
     onMutate: async () => {
-      // [분기 설명] 삭제 요청 출발 전 활성 QueryClient의 진행 중 조회를 취소해 응답 역전을 차단합니다 (Study 05 #01).
-      await activeQueryClient.cancelQueries({ queryKey: CART_QUERY_KEY });
+      // [분기 설명] 삭제 요청 출발 전 현재 사용자의 진행 중 조회만 정밀 취소해 응답 역전을 차단합니다 ([Study 05 #01, Study 12]).
+      if (validUserId) {
+        await activeQueryClient.cancelQueries({
+          queryKey: buildCartUserQueryKey(validUserId),
+        });
+      }
     },
     onSuccess: async ({ userId: deletedUserId }, variables) => {
       await syncCartAfterMutation(activeQueryClient, syncMode, {

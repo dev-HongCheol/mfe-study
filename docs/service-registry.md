@@ -15,7 +15,7 @@
 | **`api`** | `@mfe-study/api-server` | `apps/api-server` | `4000` | `Express 5`, `node:sqlite`, `Zod`, `Supertest` | ✅ 구현 완료 (`Step 1.1`) |
 | **`shared`** | `@mfe-study/remote-shared` | `apps/remote-shared` | `3004` | `Vite 7`, `React 19`, `@ark-ui/react v5`, `clsx` | ✅ 구현 완료 (`Step 1.2` · UI 캡슐화 · React 서브패스 3종 · `sourceId` 자기 에코 차단) |
 | **`products`** | `@mfe-study/remote-products` | `apps/remote-products` | `3002` | `Vite 7`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.3` · 무-Shim 검증 완료) |
-| **`cart`** | `@mfe-study/remote-cart` | `apps/remote-cart` | `3003` | `Rsbuild (Rspack 1.7)`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.4` · 최초 Rspack/무-Shim 검증 완료) |
+| **`cart`** | `@mfe-study/remote-cart` | `apps/remote-cart` | `3003` | `Rsbuild (Rspack 1.7)`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.4` · 최초 Rspack/무-Shim · `QueryClient` 동기화 채널·자기 에코 차단) |
 | **`host-vite`** | `@mfe-study/host-vite` | `apps/host-vite` | `3000` | `Vite`, `React 19`, `@module-federation/vite` | ⏳ 대기 (`Step 1.5`) |
 | **`host-rspack`** | `@mfe-study/host-rspack` | `apps/host-rspack` | `3001` | `Rspack (Rsbuild)`, `React 19`, `@module-federation/rsbuild-plugin` | ⏳ 대기 (`Step 1.5`) |
 
@@ -141,12 +141,12 @@
 | 목적 | 실행 명령어 (루트에서 실행 기준) | 동작 설명 |
 | :--- | :--- | :--- |
 | **개발 서버 기동** | `pnpm --filter @mfe-study/remote-cart dev` | `rsbuild dev` (`Port 3003`, `strictPort: true`, `cors: { origin: '*' }`)로 `http://localhost:3003` 단독 쇼케이스, MF 컨테이너 및 `@mf-types.zip` 실시간 서빙 기동 *(사전에 `api-server:4000` 및 `remote-shared:3004` 기동 권장 — 루트 `pnpm dev:cart`로 일괄 기동 가능)* |
-| **단독 TDD 테스트** | `pnpm --filter @mfe-study/remote-cart test` | `Vitest` (`jsdom` + `MSW` + 로컬 `remote_shared/*` 스텁) 기반 단위·통합 테스트 `8`개 파일 / `26`건 실행 (무-Shim, 전역 CSS 금지 및 React 서브패스 공유 정적 회귀 검증 포함) |
+| **단독 TDD 테스트** | `pnpm --filter @mfe-study/remote-cart test` | `Vitest` (`jsdom` + `MSW` + 로컬 `remote_shared/*` 스텁) 기반 단위·통합 테스트 `9`개 파일 / `43`건 실행 (`cart-sync-channel` 자기 에코 차단·`QueryClient` 단위 동기화·Study 12 8대 회귀 매트릭스·`Mode B`/비로그인 빈 채널 생성 `0회` 격리 및 무-Shim·전역 CSS 금지·React 서브패스 공유 정적 회귀 검증 포함) |
 | **타입 검사 / 빌드** | `pnpm --filter @mfe-study/remote-cart typecheck`<br>`pnpm --filter @mfe-study/remote-cart build` | `tsc --noEmit` 무-Shim 검사 및 `dist/remoteEntry.js` · `dist/mf-manifest.json` · `dist/@mf-types.zip` (`Rsbuild v1.7.6` + `@module-federation/rsbuild-plugin@^2.9.3`) 프로덕션 번들링 |
 | **프로덕션 프리뷰** | `pnpm --filter @mfe-study/remote-cart preview` | 빌드된 `dist/` 산출물을 `Port 3003`에서 서빙 |
 
 ### 6.2 Module Federation 노출(`exposes`) 및 소비(`remotes`) 시그니처 요약
-> 상세 계약은 [루트 계약 정본 `§ 5.4.3`](./features/20261027-phase1-service-contracts/01-plan-and-design.md) 및 [`apps/remote-cart` 설계서 `§ 5 ~ § 6`](../apps/remote-cart/docs/features/20261123-cart-widget-sync/01-plan-and-design.md)를 참조합니다.
+> 상세 계약은 [루트 계약 정본 `§ 5.4.3`](./features/20261027-phase1-service-contracts/01-plan-and-design.md), [`apps/remote-cart` 초기 설계서 `§ 5 ~ § 6`](../apps/remote-cart/docs/features/20261123-cart-widget-sync/01-plan-and-design.md) 및 [`QueryClient` 동기화 채널 리팩토링 설계서](../apps/remote-cart/docs/features/20261124-queryclient-sync-channel/01-plan-and-design.md)를 참조합니다.
 
 | 구분 | 경로 / 매니페스트 | 핵심 시그니처 및 동작 요약 |
 | :--- | :--- | :--- |
@@ -156,7 +156,7 @@
 
 ### 6.3 상위 호스트(`host-vite`, `host-rspack`) 필수 소비 규칙
 1. **원격 타입 자동 동기화 및 React 서브패스 3종 명시 공유**: 호스트의 MF 설정에서 `remote_cart` 엔트리로 `http://localhost:3003/mf-manifest.json`을 등록하고, `Vite` ↔ `Rspack` 이종 번들러 간 `jsxDEV` 경합 방지를 위해 `shared`에 `'react'`, `'react/jsx-runtime'`, `'react/jsx-dev-runtime'`, `'react-dom'`, `'react-dom/client'`, `'@tanstack/react-query'`를 싱글톤으로 통일합니다.
-2. **비인증(`userId: null`) 및 상태 동기화 모드 전달**: `syncMode="mode-a-event"`에서는 `mfe:cart-updated` 이벤트 수신 시 독립 `QueryClient`를 재조회하며, `syncMode="mode-b-query"`에서는 이벤트 리스너에 의존하지 않고 싱글톤 `sharedQueryClient`의 `['cart']` 캐시 무효화를 자동 감지합니다.
+2. **비인증(`userId: null`) 및 상태 동기화 모드 전달**: `syncMode="mode-a-event"`에서는 `QueryClient` 단위 동기화 채널(`cart-sync-channel`, 고유 `sourceId` + `{ ignoreSourceId }`)로 자기 에코를 차단하고 외부 `mfe:cart-updated` 이벤트 수신 시 `['cart', userId]` 단위로 정확히 1회만 재조회합니다. `syncMode="mode-b-query"`에서는 EventBus 구독·빈 채널 생성이 `0회`로 완전 격리되며 `<QueryClientProvider key={effectiveSyncMode}>` 리마운트를 통해 싱글톤 `sharedQueryClient`의 `['cart']` / `['cart', userId]` 캐시 무효화를 자동 감지합니다.
 3. **장애 격리 래핑**: 호스트 마운트 시 반드시 `<RemoteErrorBoundary>`와 `<Suspense>`로 감싸 `remote-cart(3003)` 서버 장애가 전체 대시보드로 전파되지 않도록 격리합니다.
 
 ---

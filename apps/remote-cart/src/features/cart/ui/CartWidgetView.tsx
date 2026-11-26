@@ -2,17 +2,18 @@
  * @file CartWidgetView.tsx
  * @app remote-cart (Scope: cart | Port: 3003)
  * @exposed false
- * @description 장바구니 조회·수량 증가·삭제, Mode A 이벤트 구독 재조회, DEV 스키마 에러 로깅 및 하위 UI 컴포넌트 조합을 담당하는 메인 뷰 컴포넌트입니다.
+ * @description 장바구니 조회·수량 증가·삭제, QueryClient 단위 Mode A 이벤트 동기화 채널 연동, DEV 스키마 에러 로깅 및 하위 UI 컴포넌트 조합을 담당하는 메인 뷰 컴포넌트입니다.
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import type { HostOriginType, SyncMode } from 'remote_shared/utils';
-import { CART_QUERY_KEY, MFE_EVENTS, normalizeError, useMfeEvent } from 'remote_shared/utils';
+import { normalizeError } from 'remote_shared/utils';
 import {
   type CartErrorReport,
   type CartItemView,
   formatCartErrorReport,
 } from '../model/cart-schema';
+import { useCartSyncChannel } from '../model/cart-sync-channel';
 import {
   useCartQuery,
   useDeleteCartMutation,
@@ -47,7 +48,7 @@ export interface CartWidgetViewProps {
 }
 
 /**
- * 장바구니 조회, 이벤트 수신 재조회(Mode A), 수량 증가/삭제 뮤테이션 및 상태별 UI를 조합하는 메인 뷰입니다.
+ * 장바구니 조회, QueryClient 단위 이벤트 동기화(Mode A), 수량 증가/삭제 뮤테이션 및 상태별 UI를 조합하는 메인 뷰입니다.
  *
  * @param props - 정규화된 사용자 ID, 호스트 출처, 동기화 모드 및 API 옵션
  * @returns 장바구니 위젯 섹션 JSX 엘리먼트
@@ -62,8 +63,13 @@ export function CartWidgetView({
 }: CartWidgetViewProps) {
   const activeQueryClient = useQueryClient();
 
-  /** Mode A에서 수신한 mfe:cart-updated 이벤트 누적 횟수 상태 */
-  const [receivedEventCount, setReceivedEventCount] = useState<number>(0);
+  // [분기 설명] Mode A('mode-a-event')에서만 QueryClient 단위 동기화 채널을 구독하고,
+  // Mode B('mode-b-query')에서는 enabled=false로 이벤트 리스너 등록 자체를 0회로 격리합니다 ([Study 12]).
+  const receivedEventCount = useCartSyncChannel(
+    activeQueryClient,
+    userId,
+    syncMode === 'mode-a-event',
+  );
 
   /** 수량 증가 또는 삭제 실패 시 표시할 인라인 에러 리포트 상태 */
   const [mutationErrorReport, setMutationErrorReport] = useState<CartErrorReport | null>(null);
@@ -93,19 +99,6 @@ export function CartWidgetView({
     hostType,
     syncMode,
     apiBaseUrl,
-  });
-
-  // [분기 설명] Mode A('mode-a-event')에서만 mfe:cart-updated 이벤트를 수신해 독립 QueryClient를 재조회합니다.
-  // Mode B('mode-b-query')에서는 이벤트 리스너에 의존하지 않고 sharedQueryClient 캐시 무효화만으로 자동 반응합니다.
-  useMfeEvent(MFE_EVENTS.CART_UPDATED, (payload) => {
-    if (syncMode !== 'mode-a-event') {
-      return;
-    }
-    if (!userId || payload.userId !== userId) {
-      return;
-    }
-    setReceivedEventCount((prev) => prev + 1);
-    void activeQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
   });
 
   /** 조회 에러를 환경별(DEV/PROD) 리포트로 변환한 파생 값 */
