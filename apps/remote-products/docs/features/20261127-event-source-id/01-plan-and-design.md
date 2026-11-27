@@ -72,8 +72,8 @@
 | `NEW` | `docs/features/20261127-event-source-id/03-code-review.md` | *(5단계-A 작성 예정)* PR 생성 전 심층 코드 리뷰 문서 |
 | `MOD` | `docs/todo.md` | 진행 중 작업 등록 및 5단계-C 머지 직전 완료 이관 |
 | `MOD` | `src/exposed/ProductList.tsx` | `useRef` 지연 초기화로 `createMfeEventSourceId('remote-products')` 1회 생성·전달 및 `<QueryClientProvider key={effectiveSyncMode}>` 적용 |
-| `MOD` | `src/features/catalog/ui/ProductCatalogView.tsx` | 선택적 `eventSourceId?: string` prop 추가 및 `useAddToCartMutation` 전달 |
-| `MOD` | `src/features/catalog/model/use-catalog-queries.ts` | `UseAddToCartMutationOptions.eventSourceId` 추가, 미전달 시 `useRef` 지연 폴백 `createMfeEventSourceId('remote-products')` 보장 및 `Mode A` `mfeEventBus.emit(..., { sourceId })` 적용 |
+| `MOD` | `src/features/catalog/ui/ProductCatalogView.tsx` | 필수 `eventSourceId: string` prop 추가 및 `useAddToCartMutation` 전달 |
+| `MOD` | `src/features/catalog/model/use-catalog-queries.ts` | `UseAddToCartMutationOptions.eventSourceId: string` 필수 추가 및 `Mode A` `mfeEventBus.emit(..., { sourceId: eventSourceId })` 적용 |
 | `MOD` | `src/App.tsx` | 단독 쇼케이스 `mfe:cart-updated` 실시간 수신 로그에 `meta?.sourceId` 기록 및 표시 |
 | `MOD` | `src/testing/stubs/remote-shared-utils.ts` | 최신 `remote-shared/utils` 정본(`sourceId` · `ignoreSourceId` · `createMfeEventSourceId` · 표준 4대 이벤트 · `CSS_ISOLATION_CHANGED` 제거)과 1:1 동기화 |
 | `MOD` | `vite.config.ts` | `shared`에 React 서브패스 3종(`react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom/client`) 추가해 6종 싱글톤 통일 |
@@ -111,8 +111,8 @@ export interface ProductCatalogViewProps {
   /** 백엔드 API 기본 URL */
   apiBaseUrl?: string;
 
-  /** Mode A 이벤트 발행 시 첨부할 remote-products 인스턴스 고유 발신자 ID (선택, 미지정 시 내부 지연 생성) */
-  eventSourceId?: string;
+  /** Mode A 이벤트 발행 시 첨부할 remote-products 인스턴스 고유 발신자 ID (ProductList에서 1회 생성·주입) */
+  eventSourceId: string;
 
   /** 장바구니 담기 완료 시 상위 호스트에 알리는 콜백 */
   onCartAdded?: (payload: CartUpdatedEventPayload) => void;
@@ -134,8 +134,8 @@ export interface UseAddToCartMutationOptions {
   /** 백엔드 API 기본 URL */
   apiBaseUrl?: string;
 
-  /** Mode A 이벤트 발행 시 첨부할 발신자 식별자 (미지정 시 훅 내부에서 'remote-products' 접두사로 지연 생성) */
-  eventSourceId?: string;
+  /** Mode A 이벤트 발행 시 첨부할 remote-products 인스턴스 고유 발신자 ID (ProductList에서 1회 생성·주입) */
+  eventSourceId: string;
 
   /** 장바구니 담기 성공 시 상위 호스트에 알리는 선택적 콜백 */
   onCartAdded?: (payload: CartUpdatedEventPayload) => void;
@@ -155,8 +155,8 @@ interface StandaloneCartEventLog {
 
 ### 5.1 발신자 식별자(`sourceId`) 생성 및 전달 흐름
 1. `ProductList`가 마운트될 때 `productsSourceIdRef`를 통해 최초 1회만 `createMfeEventSourceId('remote-products')`를 호출하여 `remote-products:<uuid>` 형식의 고유 ID를 생성합니다.
-2. `ProductList`는 생성한 `eventSourceId`를 `<ProductCatalogView eventSourceId={productsSourceId} ... />`로 전달하고, `ProductCatalogView`는 `useAddToCartMutation`에 그대로 전달합니다.
-3. `useAddToCartMutation`은 `syncMode === 'mode-a-event'` 성공 분기에서 `eventSourceId?.trim()`이 유효하면 해당 값을, 미전달(단독 훅·뷰 직접 마운트)이면 내부 `fallbackSourceIdRef`에 1회 지연 생성한 `remote-products:<uuid>`를 사용해 `mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, eventPayload, { sourceId: resolvedSourceId })`를 호출합니다.
+2. `ProductList`는 생성한 `eventSourceId`를 `<ProductCatalogView eventSourceId={productsSourceId} ... />`로 필수 전달하고, `ProductCatalogView`는 `useAddToCartMutation`에 그대로 전달합니다.
+3. `useAddToCartMutation`은 `syncMode === 'mode-a-event'` 성공 분기에서 주입받은 `eventSourceId`를 `mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, eventPayload, { sourceId: eventSourceId })`로 전달합니다. (`sourceId` 생성 책임을 `ProductList` 단일 지점으로 응집하고 누락은 TypeScript 필수 타입으로 컴파일 타임에 차단합니다.)
 4. `syncMode === 'mode-b-query'`에서는 기존과 동일하게 `mfeEventBus.emit`을 전혀 호출하지 않고 `sharedQueryClient.cancelQueries` + `invalidateQueries({ queryKey: CART_QUERY_KEY })`만 수행합니다.
 
 ---

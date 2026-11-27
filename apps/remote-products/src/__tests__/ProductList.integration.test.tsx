@@ -6,20 +6,17 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { ProductList } from '../exposed/ProductList';
-import { ProductCatalogView } from '../features/catalog/ui/ProductCatalogView';
 import { server } from '../testing/msw/server';
 import { ThemeProvider } from '../testing/stubs/remote-shared-theme';
 import {
   CART_QUERY_KEY,
   MFE_EVENTS,
-  createMfeQueryClient,
   mfeEventBus,
   sharedQueryClient,
 } from '../testing/stubs/remote-shared-utils';
@@ -475,44 +472,42 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
     );
   });
 
-  it('EC-01: ProductCatalogView를 eventSourceId 없이 직접 마운트해도 내부 지연 폴백으로 remote-products: sourceId를 발행한다', async () => {
+  it('EC-01: ProductList가 Mode A → Mode B → Mode A로 왕복 전환되어 QueryClientProvider가 리마운트되어도 동일 인스턴스의 sourceId가 일관 유지된다', async () => {
     const user = userEvent.setup();
-    const emitSpy = vi.spyOn(mfeEventBus, 'emit');
-    const localClient = createMfeQueryClient();
-
-    render(
-      <QueryClientProvider client={localClient}>
-        <ProductCatalogView
-          userId="user-1"
-          hostType="standalone"
-          syncMode="mode-a-event"
-          simulateDelay={false}
-        />
-      </QueryClientProvider>,
-    );
-
-    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
-
-    const addButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
-    await user.click(addButtons[0] as HTMLElement);
-
-    await waitFor(() => {
-      expect(emitSpy).toHaveBeenCalledTimes(1);
+    const capturedSourceIds: Array<string | undefined> = [];
+    const unsubscribe = mfeEventBus.subscribe(MFE_EVENTS.CART_UPDATED, (_payload, meta) => {
+      capturedSourceIds.push(meta?.sourceId);
     });
 
-    expect(emitSpy).toHaveBeenCalledWith(
-      MFE_EVENTS.CART_UPDATED,
-      expect.objectContaining({
-        action: 'add',
-        userId: 'user-1',
-        productId: 1,
-      }),
-      {
-        sourceId: expect.stringMatching(/^remote-products:.+/),
-      },
+    const { rerender } = render(
+      <ProductList userId="user-1" hostType="vite" syncMode="mode-a-event" />,
     );
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
 
-    emitSpy.mockRestore();
+    const firstAddButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(firstAddButtons[0] as HTMLElement);
+    await waitFor(() => {
+      expect(capturedSourceIds).toHaveLength(1);
+    });
+
+    // Mode B로 전환 시 QueryClientProvider가 리마운트되며 Mode B는 이벤트를 발행하지 않습니다.
+    rerender(<ProductList userId="user-1" hostType="vite" syncMode="mode-b-query" />);
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    // 다시 Mode A로 복귀해도 상위 ProductList의 productsSourceIdRef가 보존되므로 동일 sourceId로 발행되어야 합니다.
+    rerender(<ProductList userId="user-1" hostType="vite" syncMode="mode-a-event" />);
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    const restoredAddButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(restoredAddButtons[0] as HTMLElement);
+    await waitFor(() => {
+      expect(capturedSourceIds).toHaveLength(2);
+    });
+
+    expect(capturedSourceIds[0]).toMatch(/^remote-products:.+/);
+    expect(capturedSourceIds[1]).toBe(capturedSourceIds[0]);
+
+    unsubscribe();
   });
 
   it('EC-02: ProductList가 Mode A에서 Mode B로 전환(rerender)되어도 QueryClientProvider 리마운트 후 정상 조회 및 Mode B 무효화만 수행한다', async () => {

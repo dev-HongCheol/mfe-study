@@ -53,11 +53,11 @@
 
 ## 3. 예외 및 경계값 테스트 시나리오 — `[공통 필수]`
 
-### EC-01: `ProductCatalogView`를 `eventSourceId` 없이 직접 마운트해도 내부 지연 폴백으로 유효한 `remote-products:` `sourceId`를 발행한다
-- **사전 조건 (`Given`)**: 상위 `ProductList`를 거치지 않고 `ProductCatalogView`를 `eventSourceId` 미전달(또는 공백 문자열 `'   '`) 상태로 `Mode A` 마운트한다.
-- **실행 동작 (`When`)**: 상품의 `[장바구니 담기]` 버튼을 클릭한다.
+### EC-01: `ProductList`가 `Mode A → Mode B → Mode A`로 왕복 전환되어 `QueryClientProvider`가 리마운트되어도 동일 인스턴스의 `sourceId`가 일관 유지된다
+- **사전 조건 (`Given`)**: `ProductList`가 `userId="user-1"`, `syncMode="mode-a-event"`로 마운트되어 있다.
+- **실행 동작 (`When`)**: `Mode A`에서 1회 담기를 수행한 뒤 `syncMode="mode-b-query"` → `syncMode="mode-a-event"`로 왕복 `rerender` 후 1회 더 담기를 수행한다.
 - **기대 결과 및 폴백 동작 (`Then`)**:
-  - `anonymous`로 누락되지 않고 내부 지연 생성된 `remote-products:<uuid>`가 `mfeEventBus.emit` 3번째 인자 `{ sourceId }`로 정상 첨부된다.
+  - `QueryClientProvider` 리마운트와 무관하게 `ProductList`의 `productsSourceIdRef`가 보존되어, 왕복 전환 전후 발행된 이벤트의 `meta.sourceId`가 동일한 `remote-products:<uuid>` 값으로 일치한다.
 
 ### EC-02: `Mode B`에서는 `mfeEventBus.emit`이 0회 유지되며, `Mode A ↔ Mode B` 전환 시에도 상품 조회·장바구니 동기화가 정상 동작한다
 - **사전 조건 (`Given`)**: `ProductList`가 `userId="user-1"`, `syncMode="mode-a-event"`로 마운트된 상태에서 상품을 조회한다.

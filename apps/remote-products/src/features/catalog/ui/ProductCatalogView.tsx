@@ -51,8 +51,8 @@ export interface ProductCatalogViewProps {
   /** 백엔드 API 기본 URL */
   apiBaseUrl?: string;
 
-  /** Mode A 이벤트 발행 시 첨부할 remote-products 인스턴스 고유 발신자 ID (선택) */
-  eventSourceId?: string;
+  /** Mode A 이벤트 발행 시 첨부할 remote-products 인스턴스 고유 발신자 ID (ProductList에서 1회 생성·주입) */
+  eventSourceId: string;
 
   /** 장바구니 담기 완료 시 상위 호스트에 알리는 콜백 */
   onCartAdded?: (payload: CartUpdatedEventPayload) => void;
