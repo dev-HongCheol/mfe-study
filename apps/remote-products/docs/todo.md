@@ -24,7 +24,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- *현재 진행 중인 작업이 없습니다.*
+- [-] **[`20261127-event-source-id`](./features/20261127-event-source-id/01-plan-and-design.md)**: `remote-products` `Mode A` 이벤트 발신자 식별(`sourceId`) 적용, 로컬 테스트 스텁 정본 동기화, `<QueryClientProvider key={effectiveSyncMode}>` 리마운트 및 `vite.config.ts` React 서브패스 3종 싱글톤 통일 (`Branch: products/feat/event-source-id`)
 
 ---
 

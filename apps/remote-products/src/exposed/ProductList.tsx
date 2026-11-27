@@ -10,12 +10,14 @@ import {
   DEFAULT_API_BASE_URL,
   MFE_EVENTS,
   type SyncMode,
+  createMfeEventSourceId,
   createMfeQueryClient,
   sharedQueryClient,
   useMfeEvent,
 } from 'remote_shared/utils';
 import { DEFAULT_SIMULATE_DELAY_MS } from '../features/catalog/api/catalog-api';
 import { type ProductListProps, normalizeUserId } from '../features/catalog/model/catalog-schema';
+import { PRODUCTS_EVENT_SOURCE_PREFIX } from '../features/catalog/model/use-catalog-queries';
 import { ProductCatalogView } from '../features/catalog/ui/ProductCatalogView';
 
 export type { ProductListProps } from '../features/catalog/model/catalog-schema';
@@ -39,6 +41,13 @@ export function ProductList({
 }: ProductListProps) {
   /** Mode A(독립 캐시)에서 사용할 remote-products 전용 QueryClient 인스턴스 Ref (Mode B 전용 시 미생성) */
   const localQueryClientRef = useRef<QueryClient | null>(null);
+
+  /** ProductList 마운트 인스턴스당 1회 지연 생성하는 MFE 이벤트 발신자 ID Ref (DeferredRemoteProxy 경합 및 리렌더 재발급 방지) */
+  const productsSourceIdRef = useRef<string | null>(null);
+  // [분기 설명] 모듈 최상단 동기 호출을 피하고 최초 렌더 시점에 1회만 생성해 동일 인스턴스 생명주기 동안 같은 sourceId를 유지합니다.
+  if (productsSourceIdRef.current === null) {
+    productsSourceIdRef.current = createMfeEventSourceId(PRODUCTS_EVENT_SOURCE_PREFIX);
+  }
 
   /** 상위 Props가 생략되었을 때 커스텀 이벤트(mfe:auth-changed)로 수신한 사용자 ID 상태 (미로그인 초기값: null) */
   const [eventUserId, setEventUserId] = useState<string | null>(null);
@@ -82,7 +91,8 @@ export function ProductList({
   }
 
   return (
-    <QueryClientProvider client={activeQueryClient}>
+    // [분기 설명] Mode A ↔ Mode B 전환으로 activeQueryClient가 바뀔 때 key 리마운트로 QueryObserver Split-Brain을 방지합니다 (Study 12).
+    <QueryClientProvider key={effectiveSyncMode} client={activeQueryClient}>
       <ProductCatalogView
         userId={effectiveUserId}
         hostType={hostType}
@@ -90,6 +100,7 @@ export function ProductList({
         simulateDelay={simulateDelay}
         delayMs={delayMs}
         apiBaseUrl={apiBaseUrl}
+        eventSourceId={productsSourceIdRef.current}
         onCartAdded={onCartAdded}
       />
     </QueryClientProvider>

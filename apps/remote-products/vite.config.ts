@@ -60,7 +60,20 @@ export default defineConfig({
           singleton: true,
           requiredVersion: '^19.1.0',
         },
+        // [이종 번들러 방어] Vite 리모트와 Rsbuild(Rspack) 호스트 간 React Automatic JSX Transform 서브패스 경합(jsxDEV is not a function) 차단
+        'react/jsx-runtime': {
+          singleton: true,
+          requiredVersion: '^19.1.0',
+        },
+        'react/jsx-dev-runtime': {
+          singleton: true,
+          requiredVersion: '^19.1.0',
+        },
         'react-dom': {
+          singleton: true,
+          requiredVersion: '^19.1.0',
+        },
+        'react-dom/client': {
           singleton: true,
           requiredVersion: '^19.1.0',
         },

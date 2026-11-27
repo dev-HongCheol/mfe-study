@@ -5,12 +5,14 @@
  * @description 상품 목록 조회(useProductsQuery) 및 Mode A / Mode B 상태 동기화 비교 로직이 캡슐화된 장바구니 추가(useAddToCartMutation) 훅입니다 ([Study 01, Study 05 #01]).
  */
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
 import type { CartUpdatedEventPayload, HostOriginType, SyncMode } from 'remote_shared/utils';
 import {
   CART_QUERY_KEY,
   DEFAULT_API_BASE_URL,
   MFE_EVENTS,
   PRODUCTS_QUERY_KEY,
+  createMfeEventSourceId,
   mfeEventBus,
   sharedQueryClient,
 } from 'remote_shared/utils';
@@ -21,6 +23,9 @@ import {
   type ProductFilterValues,
   normalizeUserId,
 } from './catalog-schema';
+
+/** MfeInspector 발신 출처 추적 및 자기 에코 식별용 상품 카탈로그 앱 이벤트 접두사 상수 */
+export const PRODUCTS_EVENT_SOURCE_PREFIX = 'remote-products';
 
 /**
  * @description useProductsQuery 훅 입력 옵션 인터페이스
@@ -65,6 +70,9 @@ export interface UseAddToCartMutationOptions {
 
   /** 백엔드 API 기본 URL */
   apiBaseUrl?: string;
+
+  /** Mode A 이벤트 발행 시 첨부할 remote-products 인스턴스 고유 발신자 ID (미지정 시 훅 내부에서 지연 생성) */
+  eventSourceId?: string;
 
   /** 장바구니 담기 성공 시 상위 호스트에 알리는 선택적 콜백 */
   onCartAdded?: (payload: CartUpdatedEventPayload) => void;
@@ -113,7 +121,17 @@ export function useProductsQuery(options: UseProductsQueryOptions) {
  * @returns TanStack Query useMutation 결과 객체
  */
 export function useAddToCartMutation(options: UseAddToCartMutationOptions) {
-  const { userId, hostType, syncMode, apiBaseUrl = DEFAULT_API_BASE_URL, onCartAdded } = options;
+  const {
+    userId,
+    hostType,
+    syncMode,
+    apiBaseUrl = DEFAULT_API_BASE_URL,
+    eventSourceId,
+    onCartAdded,
+  } = options;
+
+  /** 상위 컴포넌트에서 eventSourceId를 전달하지 않은 단독 호출 시에도 일관된 발신자 ID를 보장하는 지연 폴백 Ref */
+  const fallbackSourceIdRef = useRef<string | null>(null);
 
   const validUserId = normalizeUserId(userId);
 
@@ -162,12 +180,22 @@ export function useAddToCartMutation(options: UseAddToCartMutationOptions) {
       };
 
       // [분기 설명] Mode A('mode-a-event')와 Mode B('mode-b-query')의 순수 동작 차이를 명확히 비교하기 위해:
-      // - Mode A에서는 공유 캐시를 건드리지 않고 오직 CustomEvent('mfe:cart-updated') 신호만 발송합니다.
+      // - Mode A에서는 공유 캐시를 건드리지 않고 remote-products 고유 sourceId와 함께 CustomEvent('mfe:cart-updated') 신호만 발송합니다.
       // - Mode B에서는 이벤트 버스 발송 없이 싱글톤 sharedQueryClient.invalidateQueries(['cart'])만 호출합니다.
       if (syncMode === 'mode-b-query') {
         await sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
       } else {
-        mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, eventPayload);
+        const trimmedSourceId = eventSourceId?.trim();
+
+        // [분기 설명] 상위 ProductList가 전달한 sourceId가 없거나 공백뿐이면 Mode A 최초 발행 시점에 1회 지연 생성해 anonymous 노출을 방지합니다.
+        if (!trimmedSourceId && fallbackSourceIdRef.current === null) {
+          fallbackSourceIdRef.current = createMfeEventSourceId(PRODUCTS_EVENT_SOURCE_PREFIX);
+        }
+
+        const resolvedSourceId = trimmedSourceId || (fallbackSourceIdRef.current as string);
+        mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, eventPayload, {
+          sourceId: resolvedSourceId,
+        });
       }
 
       onCartAdded?.(eventPayload);

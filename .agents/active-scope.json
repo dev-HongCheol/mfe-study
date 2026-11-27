@@ -1,8 +1,8 @@
 {
-  "scope": "host-vite",
-  "path": "apps/host-vite",
-  "branch": "host-vite/feat/dashboard",
-  "featureDir": "apps/host-vite/docs/features/20261126-dashboard",
+  "scope": "products",
+  "path": "apps/remote-products",
+  "branch": "products/feat/event-source-id",
+  "featureDir": "apps/remote-products/docs/features/20261127-event-source-id",
   "currentStep": 5,
   "isDocsOnly": false
 }

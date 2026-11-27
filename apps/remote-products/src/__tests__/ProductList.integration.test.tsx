@@ -2,21 +2,24 @@
  * @file ProductList.integration.test.tsx
  * @app remote-products (Scope: products | Port: 3002)
  * @exposed false
- * @description [TC-01, TC-05, TC-06, EC-01, EC-02, EC-03] ProductList 통합 플로우(Mode A vs Mode B, 1.5초 지연 스켈레톤, 에러 복구, 무-Shim 아키텍처 무결성) 테스트입니다.
+ * @description [TC-01~TC-06, EC-01~EC-04] ProductList 통합 플로우(Mode A sourceId 발신·유지 vs Mode B, 1.5초 지연 스켈레톤, 에러 복구, 단독 쇼케이스, 무-Shim·React 서브패스 6종 아키텍처 무결성) 테스트입니다.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { ProductList } from '../exposed/ProductList';
+import { ProductCatalogView } from '../features/catalog/ui/ProductCatalogView';
 import { server } from '../testing/msw/server';
 import { ThemeProvider } from '../testing/stubs/remote-shared-theme';
 import {
   CART_QUERY_KEY,
   MFE_EVENTS,
+  createMfeQueryClient,
   mfeEventBus,
   sharedQueryClient,
 } from '../testing/stubs/remote-shared-utils';
@@ -43,11 +46,18 @@ function collectDtsFiles(dirPath: string): string[] {
 }
 
 describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () => {
-  it('TC-05: Mode A(mode-a-event)에서는 장바구니 담기 성공 시 mfe:cart-updated 이벤트를 발행하고 sharedQueryClient.invalidateQueries는 호출하지 않는다', async () => {
+  it('TC-01 / TC-05: Mode A(mode-a-event)에서는 장바구니 담기 성공 시 remote-products: sourceId와 함께 mfe:cart-updated 이벤트를 발행하고 sharedQueryClient.invalidateQueries는 호출하지 않는다', async () => {
     const user = userEvent.setup();
     const emitSpy = vi.spyOn(mfeEventBus, 'emit');
     const invalidateSpy = vi.spyOn(sharedQueryClient, 'invalidateQueries');
     const onCartAdded = vi.fn();
+    const observedEvents: Array<{ payload: Record<string, unknown>; sourceId?: string }> = [];
+    const unsubscribe = mfeEventBus.subscribe(MFE_EVENTS.CART_UPDATED, (payload, meta) => {
+      observedEvents.push({
+        payload: payload as unknown as Record<string, unknown>,
+        sourceId: meta?.sourceId,
+      });
+    });
 
     render(
       <ProductList
@@ -78,10 +88,17 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
         quantity: 1,
         sourceHost: 'vite',
       }),
+      {
+        sourceId: expect.stringMatching(/^remote-products:.+/),
+      },
     );
+    expect(observedEvents).toHaveLength(1);
+    expect(observedEvents[0]?.sourceId).toMatch(/^remote-products:.+/);
+    expect(observedEvents[0]?.payload).not.toHaveProperty('__mfeSourceId');
     expect(invalidateSpy).not.toHaveBeenCalled();
     expect(onCartAdded).toHaveBeenCalledTimes(1);
 
+    unsubscribe();
     emitSpy.mockRestore();
     invalidateSpy.mockRestore();
   });
@@ -371,5 +388,159 @@ describe('ProductList & App 통합 테스트 (TC-05, TC-06, EC-02, EC-03)', () =
       );
       expect(leakedFiles).toEqual([]);
     }
+  });
+
+  it('TC-02: 동일 ProductList 인스턴스는 리렌더 후에도 같은 sourceId를 유지하고, 재마운트된 새 인스턴스는 고유한 sourceId를 발급받는다', async () => {
+    const user = userEvent.setup();
+    const capturedSourceIds: Array<string | undefined> = [];
+    const unsubscribe = mfeEventBus.subscribe(MFE_EVENTS.CART_UPDATED, (_payload, meta) => {
+      capturedSourceIds.push(meta?.sourceId);
+    });
+
+    const { rerender, unmount } = render(
+      <ProductList userId="user-1" hostType="vite" syncMode="mode-a-event" />,
+    );
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    const firstButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(firstButtons[0] as HTMLElement);
+    await waitFor(() => {
+      expect(capturedSourceIds).toHaveLength(1);
+    });
+
+    // 상위 호스트 prop 변경으로 리렌더가 발생해도 동일 마운트 인스턴스의 sourceId는 유지되어야 합니다.
+    rerender(<ProductList userId="user-1" hostType="rspack" syncMode="mode-a-event" />);
+    const secondButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(secondButtons[0] as HTMLElement);
+    await waitFor(() => {
+      expect(capturedSourceIds).toHaveLength(2);
+    });
+
+    unmount();
+
+    // 새 마운트 인스턴스는 이전 인스턴스와 구별되는 신규 remote-products:<uuid>를 발급받아야 합니다.
+    render(<ProductList userId="user-1" hostType="vite" syncMode="mode-a-event" />);
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+    const thirdButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(thirdButtons[0] as HTMLElement);
+    await waitFor(() => {
+      expect(capturedSourceIds).toHaveLength(3);
+    });
+
+    expect(capturedSourceIds[0]).toMatch(/^remote-products:.+/);
+    expect(capturedSourceIds[1]).toBe(capturedSourceIds[0]);
+    expect(capturedSourceIds[2]).toMatch(/^remote-products:.+/);
+    expect(capturedSourceIds[2]).not.toBe(capturedSourceIds[0]);
+
+    unsubscribe();
+  });
+
+  it('TC-03: 단독 실행 쇼케이스(App.tsx) 실시간 이벤트 로그에 발신자 sourceId가 함께 표시된다', async () => {
+    const user = userEvent.setup();
+    render(
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    const userSelect = screen.getByLabelText('시뮬레이션 사용자 선택');
+    await user.selectOptions(userSelect, 'user-1');
+
+    const addButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(addButtons[0] as HTMLElement);
+
+    expect(await screen.findByText(/source=remote-products:.+/)).toBeInTheDocument();
+  });
+
+  it('TC-04: vite.config.ts에 React 서브패스 3종 포함 6종 싱글톤이 선언되고 로컬 스텁이 표준 4대 이벤트·createMfeEventSourceId 정본과 정합한다', () => {
+    const appRoot = resolve(import.meta.dirname, '../..');
+    const viteConfigText = readFileSync(resolve(appRoot, 'vite.config.ts'), 'utf-8');
+
+    expect(viteConfigText).toContain("'react/jsx-runtime'");
+    expect(viteConfigText).toContain("'react/jsx-dev-runtime'");
+    expect(viteConfigText).toContain("'react-dom/client'");
+    expect(viteConfigText).toContain("'@tanstack/react-query'");
+
+    expect(Object.keys(MFE_EVENTS).sort()).toEqual([
+      'AUTH_CHANGED',
+      'CART_UPDATED',
+      'SYNC_MODE_CHANGED',
+      'THEME_CHANGED',
+    ]);
+    expect('CSS_ISOLATION_CHANGED' in MFE_EVENTS).toBe(false);
+    expect(typeof (remoteSharedUtils as Record<string, unknown>).createMfeEventSourceId).toBe(
+      'function',
+    );
+  });
+
+  it('EC-01: ProductCatalogView를 eventSourceId 없이 직접 마운트해도 내부 지연 폴백으로 remote-products: sourceId를 발행한다', async () => {
+    const user = userEvent.setup();
+    const emitSpy = vi.spyOn(mfeEventBus, 'emit');
+    const localClient = createMfeQueryClient();
+
+    render(
+      <QueryClientProvider client={localClient}>
+        <ProductCatalogView
+          userId="user-1"
+          hostType="standalone"
+          syncMode="mode-a-event"
+          simulateDelay={false}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    const addButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(addButtons[0] as HTMLElement);
+
+    await waitFor(() => {
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+    });
+
+    expect(emitSpy).toHaveBeenCalledWith(
+      MFE_EVENTS.CART_UPDATED,
+      expect.objectContaining({
+        action: 'add',
+        userId: 'user-1',
+        productId: 1,
+      }),
+      {
+        sourceId: expect.stringMatching(/^remote-products:.+/),
+      },
+    );
+
+    emitSpy.mockRestore();
+  });
+
+  it('EC-02: ProductList가 Mode A에서 Mode B로 전환(rerender)되어도 QueryClientProvider 리마운트 후 정상 조회 및 Mode B 무효화만 수행한다', async () => {
+    const user = userEvent.setup();
+    const emitSpy = vi.spyOn(mfeEventBus, 'emit');
+    const cancelSpy = vi.spyOn(sharedQueryClient, 'cancelQueries');
+    const invalidateSpy = vi.spyOn(sharedQueryClient, 'invalidateQueries');
+
+    const { rerender } = render(
+      <ProductList userId="user-1" hostType="vite" syncMode="mode-a-event" />,
+    );
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    rerender(<ProductList userId="user-1" hostType="vite" syncMode="mode-b-query" />);
+    expect(await screen.findByText('기계식 무선 키보드 Pro')).toBeInTheDocument();
+
+    const addButtons = screen.getAllByRole('button', { name: /장바구니 담기/ });
+    await user.click(addButtons[0] as HTMLElement);
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: CART_QUERY_KEY });
+    });
+
+    expect(cancelSpy).toHaveBeenCalledWith({ queryKey: CART_QUERY_KEY });
+    expect(emitSpy).not.toHaveBeenCalled();
+
+    emitSpy.mockRestore();
+    cancelSpy.mockRestore();
+    invalidateSpy.mockRestore();
   });
 });
