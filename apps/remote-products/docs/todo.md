@@ -11,7 +11,7 @@
 - **스코프 ID (`Scope ID`)**: `products`
 - **대상 경로**: `apps/remote-products` (루트 작업은 루트 [`todo.md`](../../../todo.md)에서 통합 관리)
 - **기술 스택**: `Vite 7 + React 19 + TypeScript 5.7 + @module-federation/vite + TanStack Query v5 + React Hook Form + Zod + ky + es-toolkit + MSW + Vitest`
-- **최종 업데이트**: `2026-11-19`
+- **최종 업데이트**: `2026-11-28`
 - **핵심 역할**: 상품 카탈로그 조회·카테고리/검색어 필터링 및 장바구니 담기(`POST /api/cart`) 기능을 담당하는 도메인 원격 마이크로 앱입니다 (`Port 3002`). `remote_shared`(`Port 3004`)의 디자인 시스템·테마·유틸리티를 런타임 소비하는 동시에 호스트(`host-vite:3000`, `host-rspack:3001`)에 `./ProductList` 컴포넌트를 노출하며, **상태 동기화 아키텍처 비교 학습 모드(`Mode A: 독립 QueryClient + CustomEvent` vs `Mode B: 싱글톤 sharedQueryClient + invalidateQueries`)**를 지원합니다.
 - **노출 모듈 (`exposes`)**:
   - `./ProductList` (`./src/exposed/ProductList.tsx`): 상품 카탈로그 그리드, 카테고리/키워드 필터 바, 1.5초 로딩 지연 시뮬레이션 스켈레톤 및 장바구니 담기 통합 컴포넌트 (`@mf-types.zip` 원격 타입 생성 포함)
@@ -38,6 +38,11 @@
 
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
+
+- [x] **[`20261127-event-source-id`](./features/20261127-event-source-id/01-plan-and-design.md)**: [Step 1.3/1.5 후속 정비] `Mode A` 이벤트 발신자 식별(`sourceId`: `remote-products:<uuid>` 단일 생성·필수 주입), 단독 쇼케이스 `meta.sourceId` 로그, 로컬 스텁 정본 동기화, `<QueryClientProvider key={effectiveSyncMode}>` 리마운트 및 `vite.config.ts` React 서브패스 3종(6종 싱글톤) 통일 (`Port 3002`) — **완료일: `2026-11-28`** (PR #19)
+  - **작업 브랜치**: `products/feat/event-source-id` (`Scope: products`)
+  - **관련 문서**: [01-plan-and-design.md](./features/20261127-event-source-id/01-plan-and-design.md) | [02-tdd-spec.md](./features/20261127-event-source-id/02-tdd-spec.md) | [03-code-review.md](./features/20261127-event-source-id/03-code-review.md)
+  - **핵심 성과**: `ProductList` `useRef` 지연 초기화로 인스턴스당 1회 `createMfeEventSourceId('remote-products')` 생성 및 `ProductCatalogView` → `useAddToCartMutation` 필수(`eventSourceId: string`) 전달, 단독 쇼케이스 실시간 로그 `source={log.sourceId}` 표시, 로컬 스텁 표준 4대 이벤트·`sourceId` 정본 동기화, `<QueryClientProvider key={effectiveSyncMode}>` 리마운트 및 `vite.config.ts` React 서브패스 3종 추가(6종 싱글톤 통일), `Vitest 7개 파일 / 38건`(루트 전체 `51개 파일 / 179건`)·무-Shim `typecheck`·`vite build`·`Biome` 전원 통과 (`docs/service-registry.md` 반영)
 
 - [x] **[`20261119-remove-ark-type-shim`](./features/20261119-remove-ark-type-shim/01-plan-and-design.md)**: [Step 1.2/1.3 후속 정리] `src/vite-env.d.ts` 내 `@ark-ui/react/*` 임시 타입 Shim(10~89행) 제거 및 갱신된 `@mf-types` 기반 무-Shim 소비 검증 (`Port 3002`) — **완료일: `2026-11-19`** (PR #11)
   - **작업 브랜치**: `products/chore/remove-ark-type-shim` (`Scope: products`)

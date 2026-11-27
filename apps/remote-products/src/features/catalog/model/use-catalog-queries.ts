@@ -22,6 +22,9 @@ import {
   normalizeUserId,
 } from './catalog-schema';
 
+/** MfeInspector 발신 출처 추적 및 자기 에코 식별용 상품 카탈로그 앱 이벤트 접두사 상수 */
+export const PRODUCTS_EVENT_SOURCE_PREFIX = 'remote-products';
+
 /**
  * @description useProductsQuery 훅 입력 옵션 인터페이스
  */
@@ -66,6 +69,9 @@ export interface UseAddToCartMutationOptions {
   /** 백엔드 API 기본 URL */
   apiBaseUrl?: string;
 
+  /** Mode A 이벤트 발행 시 첨부할 remote-products 인스턴스 고유 발신자 ID (ProductList에서 1회 생성·주입) */
+  eventSourceId: string;
+
   /** 장바구니 담기 성공 시 상위 호스트에 알리는 선택적 콜백 */
   onCartAdded?: (payload: CartUpdatedEventPayload) => void;
 }
@@ -109,11 +115,18 @@ export function useProductsQuery(options: UseProductsQueryOptions) {
 /**
  * 상품을 장바구니에 추가하고 선택된 syncMode(Mode A vs Mode B)에 맞춰 타 마이크로 앱과 상태를 동기화하는 뮤테이션 훅입니다.
  *
- * @param options - 사용자 ID, 호스트 출처, 동기화 모드 및 콜백 옵션
+ * @param options - 사용자 ID, 호스트 출처, 동기화 모드, 발신자 ID 및 콜백 옵션
  * @returns TanStack Query useMutation 결과 객체
  */
 export function useAddToCartMutation(options: UseAddToCartMutationOptions) {
-  const { userId, hostType, syncMode, apiBaseUrl = DEFAULT_API_BASE_URL, onCartAdded } = options;
+  const {
+    userId,
+    hostType,
+    syncMode,
+    apiBaseUrl = DEFAULT_API_BASE_URL,
+    eventSourceId,
+    onCartAdded,
+  } = options;
 
   const validUserId = normalizeUserId(userId);
 
@@ -162,12 +175,14 @@ export function useAddToCartMutation(options: UseAddToCartMutationOptions) {
       };
 
       // [분기 설명] Mode A('mode-a-event')와 Mode B('mode-b-query')의 순수 동작 차이를 명확히 비교하기 위해:
-      // - Mode A에서는 공유 캐시를 건드리지 않고 오직 CustomEvent('mfe:cart-updated') 신호만 발송합니다.
+      // - Mode A에서는 공유 캐시를 건드리지 않고 ProductList가 발급한 고유 sourceId와 함께 CustomEvent('mfe:cart-updated') 신호만 발송합니다.
       // - Mode B에서는 이벤트 버스 발송 없이 싱글톤 sharedQueryClient.invalidateQueries(['cart'])만 호출합니다.
       if (syncMode === 'mode-b-query') {
         await sharedQueryClient.invalidateQueries({ queryKey: CART_QUERY_KEY });
       } else {
-        mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, eventPayload);
+        mfeEventBus.emit(MFE_EVENTS.CART_UPDATED, eventPayload, {
+          sourceId: eventSourceId,
+        });
       }
 
       onCartAdded?.(eventPayload);

@@ -44,6 +44,17 @@ const SYNC_MODE_OPTIONS: SelectOptionItem[] = [
 ];
 
 /**
+ * @description Port 3002 단독 실행 쇼케이스에서 포착한 mfe:cart-updated 이벤트 로그 항목 인터페이스
+ */
+interface StandaloneCartEventLog {
+  /** Zod 검증을 통과한 장바구니 변경 이벤트 페이로드 */
+  payload: CartUpdatedEventPayload;
+
+  /** 발신 측이 emit 옵션으로 첨부한 발신자 ID (미첨부 레거시 이벤트는 'anonymous') */
+  sourceId: string;
+}
+
+/**
  * Port 3002 단독 실행(Standalone) 쇼케이스 루트 컴포넌트입니다.
  *
  * @returns 단독 실행 대시보드 JSX 엘리먼트
@@ -60,12 +71,14 @@ export function App() {
   /** 1.5초 로딩 지연 시뮬레이션 활성화 상태 */
   const [simulateDelay, setSimulateDelay] = useState<boolean>(false);
 
-  /** Standalone 화면에서 포착된 최근 mfe:cart-updated 이벤트 로그 목록 */
-  const [eventLogs, setEventLogs] = useState<CartUpdatedEventPayload[]>([]);
+  /** Standalone 화면에서 포착된 최근 mfe:cart-updated 이벤트 로그 목록 (발신자 sourceId 포함) */
+  const [eventLogs, setEventLogs] = useState<StandaloneCartEventLog[]>([]);
 
-  // Mode A에서 발행되는 mfe:cart-updated 커스텀 이벤트를 실시간 포착하여 모니터에 기록합니다.
-  useMfeEvent(MFE_EVENTS.CART_UPDATED, (payload) => {
-    setEventLogs((prev) => [payload, ...prev].slice(0, 5));
+  // Mode A에서 발행되는 mfe:cart-updated 커스텀 이벤트와 발신자 sourceId를 실시간 포착하여 모니터에 기록합니다.
+  useMfeEvent(MFE_EVENTS.CART_UPDATED, (payload, meta) => {
+    setEventLogs((prev) =>
+      [{ payload, sourceId: meta?.sourceId ?? 'anonymous' }, ...prev].slice(0, 5),
+    );
   });
 
   /** 테마 Select 드롭다운 옵션 배열 */
@@ -132,9 +145,10 @@ export function App() {
               ) : (
                 <Stack gap="xs">
                   {eventLogs.map((log, idx) => (
-                    <div key={`${log.timestamp}-${idx}`} className="prod-event-log-item">
-                      [{log.timestamp}] user={log.userId} | product={log.productName} (#
-                      {log.productId}) | qty={log.quantity} | host={log.sourceHost}
+                    <div key={`${log.payload.timestamp}-${idx}`} className="prod-event-log-item">
+                      [{log.payload.timestamp}] user={log.payload.userId} | product=
+                      {log.payload.productName} (#{log.payload.productId}) | qty=
+                      {log.payload.quantity} | host={log.payload.sourceHost} | source={log.sourceId}
                     </div>
                   ))}
                 </Stack>
