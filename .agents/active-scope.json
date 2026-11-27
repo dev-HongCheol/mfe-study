@@ -1,8 +1,8 @@
 {
-  "scope": "cart",
-  "path": "apps/remote-cart",
-  "branch": "cart/refactor/queryclient-sync-channel",
-  "featureDir": "apps/remote-cart/docs/features/20261124-queryclient-sync-channel",
+  "scope": "host-vite",
+  "path": "apps/host-vite",
+  "branch": "host-vite/feat/dashboard",
+  "featureDir": "apps/host-vite/docs/features/20261126-dashboard",
   "currentStep": 5,
   "isDocsOnly": false
 }

@@ -80,6 +80,8 @@ pnpm dev
 10. **[Study 10. MFE 실서비스 프로덕션 배포 · 정적 서빙 테스트 · 운영 가이드](./docs/study/10-mfe-production-deployment-and-operations.md)**: `@mf-types.zip` 제외·차단 전략, 단일 정적 서버(서브패스·VS Code Live Server) vs 멀티 도메인 배포, `Cache-Control`·`ChunkLoadError`·롤백 전략
 11. **[Study 11. 실무 웹 서비스 필수 CSS 폰트 · 타이포그래피 설정 가이드](./docs/study/11-css-typography-and-font-essentials.md)**: `font: inherit` 폼 상속, `font-display`·`size-adjust`·`unicode-range` CLS 방어, `font-variant-numeric`(`tabular-nums`·`slashed-zero`), 한글 줄바꿈(`keep-all` + `break-word`), `text-wrap: balance/pretty` 및 MFE 폰트 관리 원칙
 12. **[Study 12. MFE `Mode A` 이벤트 자기 에코(Self-Echo)와 `QueryClient` 단위 상태 동기화 아키텍처](./docs/study/12-mfe-event-self-echo-and-queryclient-sync.md)**: 동기 `CustomEvent` 자기 에코 중복 `GET` 원인 분석, `WeakMap<QueryClient, Channel>` + `selfEchoTokens` 1회 소비 + `Symbol.for` 레지스트리 + `useSyncExternalStore` 설계, 공식 스펙 검증 및 8대 회귀 테스트 매트릭스
+13. **[Study 13. 장바구니 `[+1]` 클릭부터 화면 갱신까지 전체 실행 흐름과 초고속 응답 로딩 UX](./docs/study/13-cart-click-to-render-flow-and-loading-ux.md)**: 유저 클릭부터 화면 갱신까지 8단계 함수·파라미터 완전 추적, `Mode A` 자기 에코 차단 플로우 및 초고속 응답 로딩 UX 패턴
+14. **[Study 14. MFE 공통 껍데기 호스트(App Shell) · 장애 격리 · `MfeInspector` 아키텍처 가이드](./docs/study/14-mfe-host-shell-and-inspector-architecture.md)**: `host-vite(3000)` · `host-rspack(3001)` 두 호스트 공통 3단 화면 구조, 5대 내부 데이터 모델(`SharedQueryCacheEntrySnapshot`, `RemoteModuleDescriptor` 등) 사용처·데이터 흐름, `QueryCache` 공식 API 기반 실시간 캐시 관측, `RemoteErrorBoundary` 비의존 격리 및 `Vite` vs `Rspack` 이종 번들러 소비 비교
 
 ### 📝 표준 작업 템플릿 (`docs/templates/`)
 - **[todo.template.md](./docs/templates/todo.template.md)**: 마이크로 앱별 `docs/todo.md` 생성 템플릿

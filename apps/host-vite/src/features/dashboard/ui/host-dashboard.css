@@ -1,0 +1,181 @@
+/**
+ * @file host-dashboard.css
+ * @app host-vite (Scope: host-vite | Port: 3000)
+ * @exposed false
+ * @description host-vite 전용 .host-* 프리픽스 스타일 시트입니다. 전역 태그 선택자와 #hex 색상 하드코딩을 금지하고 remote_shared/theme의 시맨틱 CSS 변수(var(--mfe-*))만 사용합니다 ([Study 04 #05, Study 05 #14]).
+ */
+
+.host-shell-page {
+  min-height: 100vh;
+  padding: var(--mfe-space-lg, 24px) 0;
+  background-color: var(--mfe-bg-app);
+  color: var(--mfe-text-primary);
+}
+
+.host-header-card {
+  border: 1px solid var(--mfe-border-subtle);
+  background-color: var(--mfe-bg-surface);
+}
+
+.host-title {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.host-header-controls {
+  padding-top: var(--mfe-space-xs, 4px);
+}
+
+.host-auth-error-banner {
+  padding: var(--mfe-space-sm, 8px) var(--mfe-space-md, 16px);
+  border-radius: var(--mfe-radius-md, 8px);
+  border: 1px solid var(--mfe-danger);
+  background-color: var(--mfe-bg-elevated);
+  color: var(--mfe-danger);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.host-workspace {
+  width: 100%;
+}
+
+.host-workspace-splitter {
+  min-height: 460px;
+}
+
+.host-remote-slot {
+  height: 100%;
+  padding: var(--mfe-space-xs, 4px);
+  box-sizing: border-box;
+}
+
+.host-remote-slot-body {
+  height: 100%;
+}
+
+.host-suspense-fallback {
+  min-height: 240px;
+  border: 1px dashed var(--mfe-border-subtle);
+}
+
+.host-suspense-label {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--mfe-text-secondary);
+}
+
+.host-inspector-section {
+  width: 100%;
+}
+
+.host-inspector-card {
+  border: 1px solid var(--mfe-border-subtle);
+  background-color: var(--mfe-bg-surface);
+}
+
+.host-inspector-mode-bar {
+  padding: var(--mfe-space-sm, 8px) var(--mfe-space-md, 16px);
+  border-radius: var(--mfe-radius-md, 8px);
+  background-color: var(--mfe-bg-elevated);
+  border: 1px solid var(--mfe-border-subtle);
+}
+
+.host-inspector-mode-desc {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mfe-text-secondary);
+}
+
+.host-event-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mfe-space-sm, 8px);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.host-event-log-item {
+  padding: var(--mfe-space-sm, 8px) var(--mfe-space-md, 16px);
+  border-radius: var(--mfe-radius-md, 8px);
+  border: 1px solid var(--mfe-border-subtle);
+  background-color: var(--mfe-bg-elevated);
+  font-size: 0.82rem;
+}
+
+.host-event-log-meta {
+  color: var(--mfe-text-muted);
+  font-size: 0.78rem;
+}
+
+.host-event-log-summary {
+  margin: 4px 0 0;
+  color: var(--mfe-text-primary);
+  font-weight: 500;
+}
+
+.host-empty-message {
+  margin: 0;
+  padding: var(--mfe-space-md, 16px);
+  border-radius: var(--mfe-radius-md, 8px);
+  border: 1px dashed var(--mfe-border-subtle);
+  color: var(--mfe-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.host-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--mfe-space-sm, 8px);
+}
+
+.host-remote-meta-card {
+  padding: var(--mfe-space-sm, 8px) var(--mfe-space-md, 16px);
+  border-radius: var(--mfe-radius-md, 8px);
+  border: 1px solid var(--mfe-border-subtle);
+  background-color: var(--mfe-bg-elevated);
+}
+
+.host-remote-meta-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--mfe-text-primary);
+}
+
+.host-remote-meta-line {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--mfe-text-secondary);
+  word-break: break-all;
+}
+
+.host-cache-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.host-cache-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.host-cache-table-head-cell,
+.host-cache-table-cell {
+  padding: var(--mfe-space-sm, 8px);
+  border-bottom: 1px solid var(--mfe-border-subtle);
+  text-align: left;
+}
+
+.host-cache-table-head-cell {
+  color: var(--mfe-text-secondary);
+  font-weight: 600;
+}
+
+.host-cache-key-code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--mfe-brand-primary);
+}

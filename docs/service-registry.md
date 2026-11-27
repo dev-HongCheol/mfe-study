@@ -16,7 +16,7 @@
 | **`shared`** | `@mfe-study/remote-shared` | `apps/remote-shared` | `3004` | `Vite 7`, `React 19`, `@ark-ui/react v5`, `clsx` | ✅ 구현 완료 (`Step 1.2` · UI 캡슐화 · React 서브패스 3종 · `sourceId` 자기 에코 차단) |
 | **`products`** | `@mfe-study/remote-products` | `apps/remote-products` | `3002` | `Vite 7`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.3` · 무-Shim 검증 완료) |
 | **`cart`** | `@mfe-study/remote-cart` | `apps/remote-cart` | `3003` | `Rsbuild (Rspack 1.7)`, `React 19`, `TanStack Query`, `ky` | ✅ 구현 완료 (`Step 1.4` · 최초 Rspack/무-Shim · `QueryClient` 동기화 채널·자기 에코 차단) |
-| **`host-vite`** | `@mfe-study/host-vite` | `apps/host-vite` | `3000` | `Vite`, `React 19`, `@module-federation/vite` | ⏳ 대기 (`Step 1.5`) |
+| **`host-vite`** | `@mfe-study/host-vite` | `apps/host-vite` | `3000` | `Vite 7`, `React 19`, `@module-federation/vite`, `react-error-boundary` | ✅ 구현 완료 (`Step 1.5` · `loaded-first` · 이종 3대 리모트 통합 · `MfeInspector`) |
 | **`host-rspack`** | `@mfe-study/host-rspack` | `apps/host-rspack` | `3001` | `Rspack (Rsbuild)`, `React 19`, `@module-federation/rsbuild-plugin` | ⏳ 대기 (`Step 1.5`) |
 
 ---
@@ -28,6 +28,7 @@
 | **대화형 개발 서버 기동** | `pnpm dev` (또는 `pnpm dev:menu`) | `scripts/dev-menu.mjs` 대화형 메뉴로 번호 선택 후 `turbo run dev --filter`를 TUI 모드로 기동 (탭 전환 지원) |
 | **상품 리모트 개발 세트 기동** | `pnpm dev:products` | `api-server(4000)` + `remote-shared(3004)` + `remote-products(3002)`를 즉시 TUI 모드로 동시 기동 |
 | **장바구니 리모트 개발 세트 기동** | `pnpm dev:cart` | `api-server(4000)` + `remote-shared(3004)` + `remote-cart(3003)`를 즉시 TUI 모드로 동시 기동 |
+| **Vite 호스트 통합 개발 세트 기동** | `pnpm dev:host-vite` | `api-server(4000)` + `remote-shared(3004)` + `remote-products(3002)` + `remote-cart(3003)` + `host-vite(3000)` 5개 서버를 즉시 TUI 모드로 동시 기동 |
 | **전체 개발 서버 일괄 기동** | `pnpm dev:all` | `turbo run dev`로 모든 마이크로 앱 및 백엔드 서버 동시 기동 |
 | **전체 TDD 테스트** | `pnpm test` | 루트 하네스 테스트(`scripts/__tests__`) 및 모든 앱 단위·통합 테스트 일괄 실행 |
 | **포맷팅·린트 검사** | `pnpm check` | `Biome` 포맷팅·린트·`LF` 줄바꿈 검사 (자동 수정: `pnpm check:write`) |
@@ -161,6 +162,26 @@
 
 ---
 
-## 7. 호스트(`host-vite`, `host-rspack`) 현황 *(Step 1.5 진행 시 누적 기록)*
+## 7. 공통 껍데기 호스트 정본 (`Scope: host-vite` | `Port 3000`, `Scope: host-rspack` | `Port 3001`)
 
-- **`host-vite` (`Port 3000`) & `host-rspack` (`Port 3001`)**: *Step 1.5에서 대시보드 및 `MfeInspector` 명령어 등록 예정*
+### 7.1 `host-vite` 전용 실행·테스트·빌드 명령어 (`Port 3000` | `name: 'host_vite'`)
+| 목적 | 실행 명령어 (루트에서 실행 기준) | 동작 설명 |
+| :--- | :--- | :--- |
+| **통합 개발 서버 세트 기동** | `pnpm dev:host-vite` (또는 `pnpm dev` → `5번`) | `api-server(4000)` + `remote-shared(3004)` + `remote-products(3002)` + `remote-cart(3003)` + `host-vite(3000)` 5개 서버를 TUI 모드로 일괄 기동 |
+| **호스트 단독 개발 서버 기동** | `pnpm --filter @mfe-study/host-vite dev` | `vite --port 3000 --strictPort`로 `http://localhost:3000` 기동 |
+| **단독 TDD 테스트** | `pnpm --filter @mfe-study/host-vite test` | `Vitest` (`jsdom` + `MSW` + 3대 리모트 로컬 스텁) 기반 단위·통합 테스트 `8`개 파일 / `25`건 실행 (`bootstrap-fallback`, `RemoteErrorBoundary`, `MfeInspector`, `TC-07` 정적 불변식 포함) |
+| **타입 검사 / 빌드** | `pnpm --filter @mfe-study/host-vite typecheck`<br>`pnpm --filter @mfe-study/host-vite build` | 3대 원격 `@mf-types` 기반 무-Shim `tsc --noEmit` 및 `Vite 7` 프로덕션 번들링 (`bootstrap-fallback` 별도 지연 청크 분리) |
+| **프로덕션 프리뷰** | `pnpm --filter @mfe-study/host-vite preview` | 빌드된 `dist/` 산출물을 `Port 3000`에서 서빙 |
+
+### 7.2 `host-vite` Module Federation 소비 구성 및 핵심 방어 규칙
+> 공통 화면 계층·5대 내부 모델·장애 격리 정본은 [`Study 14 (14-mfe-host-shell-and-inspector-architecture.md)`](./study/14-mfe-host-shell-and-inspector-architecture.md) 및 [`apps/host-vite` 설계서](../apps/host-vite/docs/features/20261126-dashboard/01-plan-and-design.md)를 참조합니다.
+
+| 구분 | 구성 / 대상 | 핵심 동작 및 방어 규칙 요약 |
+| :--- | :--- | :--- |
+| **소비 (`remotes`)** | `remote_shared` (`:3004`, `type: 'module'`)<br>`remote_products` (`:3002`, `type: 'module'`)<br>`remote_cart` (`:3003`, **`type: 'var'`**) | 동종 `Vite ESM` 2종 + 이종 `Rsbuild/Rspack Global` 1종 동시 소비, `dts.consumeTypes` 무-Shim `@mf-types` 자동 동기화, `dev.disableDynamicRemoteTypeHints: true` 적용 |
+| **공유 전략 및 6종 싱글톤** | `shareStrategy: 'loaded-first'` + 6종 `singleton: true` | `react`, `react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom`, `react-dom/client`, `@tanstack/react-query` 통일; `loaded-first` + `main.ts` `@tanstack/react-query` 선행 로드로 `remote_cart:3003` 오프라인 장애 전파 및 `QueryClient is not a constructor` 레이스 컨디션 원천 차단 |
+| **장애 격리 & 폴백 분리** | `bootstrap-fallback.{ts,css}` + `RemoteErrorBoundary` (`react-error-boundary` v6 + CSS Modules) | `remote_shared(:3004)` 오프라인 시 `index.html` `<template>` + 지연 로드 CSS/모듈로 순수 DOM 폴백 렌더링; 도메인 리모트(`ProductList`, `CartWidget`)는 `React.lazy` + 개별 `<RemoteWidgetSlot>`(`RemoteErrorBoundary` + `Suspense`)으로 격리 및 `[다시 시도]` 복구 |
+| **API 소비 & 스코프 스토리지** | `GET /api/users`, `POST /api/auth/login` + `createScopedStorage('host-vite')` | 초기 비로그인(`userId: null`) 유지, `mfe:host-vite:auth-session` · `mfe:host-vite:preferences` `Zod` 검증 복원, `createMfeEventSourceId('host-vite')` 발신자 식별 전파 |
+
+### 7.3 `host-rspack` (`Port 3001`) 현황
+- **`host-rspack` (`Port 3001`)**: *Step 1.5 다음 PR에서 `Rsbuild(Rspack)` 공통 껍데기 호스트 구축 및 명령어 등록 예정*
