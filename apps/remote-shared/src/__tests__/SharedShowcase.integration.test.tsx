@@ -2,15 +2,16 @@
  * @file SharedShowcase.integration.test.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed false
- * @description [TC-02, TC-03, TC-06, TC-08] 3계층 단방향 의존성(utils -> theme -> ui), React 서브패스 3종 공유, 컴포넌트 파일명 PascalCase 규칙, UI Props 경계 캡슐화(Study 09), .js 확장자 0건, 폐기 이벤트 심볼 0건 및 단독 쇼케이스 통합 테스트입니다.
+ * @description [TC-02, TC-03, TC-05, TC-06, TC-08] 3계층 단방향 의존성(utils -> theme -> ui), React 서브패스 3종 공유, 컴포넌트 파일명 PascalCase 규칙, UI Props 경계 캡슐화(Study 09), .js 확장자 0건, 폐기 이벤트 심볼 0건, 신규 유틸 @mf-types 노출 및 단독 쇼케이스 통합 테스트입니다.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { ThemeProvider } from '../exposed/theme';
+import { MFE_EVENTS, mfeEventBus } from '../exposed/utils';
 
 /**
  * 지정된 디렉터리 하위의 모든 파일 경로를 재귀적으로 수집합니다.
@@ -69,8 +70,10 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     }
   });
 
-  it('3) 단독 실행 쇼케이스(App.tsx)가 마운트되어 테마 전환 및 컴포넌트 카탈로그 조작이 정상 동작한다', async () => {
+  it('3) 단독 실행 쇼케이스(App.tsx)가 마운트되어 테마 전환 및 샘플 이벤트 sourceId 발행이 정상 동작한다', async () => {
     const user = userEvent.setup();
+    const cartSpy = vi.fn();
+    const unsubscribe = mfeEventBus.subscribe(MFE_EVENTS.CART_UPDATED, cartSpy);
 
     render(
       <ThemeProvider>
@@ -86,6 +89,16 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     const darkBtn = screen.getByRole('button', { name: /Dark 테마 전환/ });
     await user.click(darkBtn);
     expect(document.documentElement.getAttribute('data-mfe-theme')).toBe('dark');
+
+    // 이벤트 버스 탭 전환 후 샘플 장바구니 이벤트 발행 시 remote-shared-showcase sourceId 첨부 확인
+    await user.click(screen.getByRole('tab', { name: /이벤트 버스 & 유틸리티/ }));
+    await user.click(screen.getByRole('button', { name: /샘플 장바구니 이벤트 발행/ }));
+
+    expect(cartSpy).toHaveBeenCalledTimes(1);
+    const emittedSourceId = cartSpy.mock.calls[0]?.[1]?.sourceId as string | undefined;
+    expect(emittedSourceId).toMatch(/^remote-shared-showcase:.+/);
+
+    unsubscribe();
   });
 
   it('4) vite.config.ts에 @mf-types 생성(generateTypes: true)과 동적 힌트 비활성화(disableDynamicRemoteTypeHints: true)가 함께 설정되어 있어야 한다 (Study 04 #04)', () => {
@@ -174,6 +187,13 @@ describe('remote-shared 아키텍처 무결성 및 단독 쇼케이스 통합 �
     expect(mergedDtsContent).toContain('MfeEventEmitOptions');
     expect(mergedDtsContent).toContain('MfeEventSubscribeOptions');
     expect(mergedDtsContent).toContain('MfeEventMeta');
+    expect(mergedDtsContent).toContain('normalizeUserId');
+    expect(mergedDtsContent).toContain('isThemeMode');
+    expect(mergedDtsContent).toContain('isSyncMode');
+    expect(mergedDtsContent).toContain('extractSchemaIssues');
+    expect(mergedDtsContent).toContain('formatErrorReport');
+    expect(mergedDtsContent).toContain('SchemaIssueDetail');
+    expect(mergedDtsContent).toContain('ErrorReport');
   });
 
   it('8) TC-02: vite.config.ts의 federation.shared에 React 서브패스 3종(jsx-runtime, jsx-dev-runtime, react-dom/client)이 singleton 및 ^19.1.0으로 명시 공유되어야 한다', () => {

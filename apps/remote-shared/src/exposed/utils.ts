@@ -38,7 +38,14 @@ export {
   themeChangedEventSchema,
   themeModeSchema,
 } from '../features/utils/model/contracts';
-export { type NormalizedError, normalizeError } from '../features/utils/model/error';
+export {
+  type ErrorReport,
+  type NormalizedError,
+  type SchemaIssueDetail,
+  extractSchemaIssues,
+  formatErrorReport,
+  normalizeError,
+} from '../features/utils/model/error';
 export {
   type MfeEventBus,
   type MfeEventEmitOptions,
@@ -54,3 +61,4 @@ export {
   formatRelativeTime,
 } from '../features/utils/model/formatters';
 export { type ScopedStorage, createScopedStorage } from '../features/utils/model/storage';
+export { isSyncMode, isThemeMode, normalizeUserId } from '../features/utils/model/validators';

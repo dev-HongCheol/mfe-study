@@ -1,8 +1,8 @@
 {
-  "scope": "products",
-  "path": "apps/remote-products",
-  "branch": "products/feat/event-source-id",
-  "featureDir": "apps/remote-products/docs/features/20261127-event-source-id",
+  "scope": "shared",
+  "path": "apps/remote-shared",
+  "branch": "shared/feat/theme-source-id-and-validators",
+  "featureDir": "apps/remote-shared/docs/features/20261128-theme-source-id-and-validators",
   "currentStep": 5,
   "isDocsOnly": false
 }
