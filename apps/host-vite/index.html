@@ -7,6 +7,20 @@
   </head>
   <body style="margin: 0; background-color: var(--mfe-bg-app, #f8fafc); color: var(--mfe-text-primary, #0f172a); font-family: system-ui, -apple-system, sans-serif;">
     <div id="root"></div>
+    <template id="host-bootstrap-fallback-template">
+      <section class="host-bootstrap-fallback" role="alert">
+        <h1 class="host-bootstrap-fallback-title">
+          공통 디자인 시스템 서버(remote-shared :3004)에 연결할 수 없습니다
+        </h1>
+        <p class="host-bootstrap-fallback-desc">
+          호스트 껍데기 부팅에 필요한 remote-shared(Port 3004) 서버가 실행 중인지 확인한 뒤 다시 시도해 주세요.
+        </p>
+        <pre class="host-bootstrap-fallback-detail" data-fallback-error></pre>
+        <button type="button" class="host-bootstrap-fallback-reload" data-fallback-reload>
+          페이지 새로고침
+        </button>
+      </section>
+    </template>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -85,7 +85,7 @@ flowchart LR
 
 ### § 4.1 왜 도메인 리모트(`ProductList`, `CartWidget`)는 `main.ts`에서 프리로드하면 안 되는가?
 
-- `remote_shared/{utils,theme,ui}`는 호스트 껍데기 자체(헤더, 레이아웃, 테마)를 그리는 기반 모듈이므로 `main.ts`에서 `Promise.all`로 선행 프리로드한 뒤 `bootstrap.tsx`를 실행합니다. *(만약 `remote_shared:3004` 자체마저 다운된 극단 상황이라면 `.catch()`에서 순수 DOM 안내 문구와 `[새로고침]` 버튼을 그려 백지 화면을 방지합니다.)*
+- `remote_shared/{utils,theme,ui}`는 호스트 껍데기 자체(헤더, 레이아웃, 테마)를 그리는 기반 모듈이므로 `main.ts`에서 `Promise.all`로 선행 프리로드한 뒤 `bootstrap.tsx`를 실행합니다. *(만약 `remote_shared:3004` 자체마저 다운된 극단 상황이라면, `main.ts` 안에 DOM·스타일을 직접 적지 않고 `.catch()`에서 `bootstrap-fallback.ts` + `bootstrap-fallback.css`를 지연 로드해 `index.html`의 `<template>` 마크업을 복제하고 `textContent`로 안전하게 렌더링해 백지 화면을 방지합니다.)*
 - 반면 **`remote_products/ProductList`와 `remote_cart/CartWidget`은 절대 `main.ts`에서 선행 로드하지 않습니다.**
   - 만약 `main.ts`에 도메인 리모트를 넣으면 장바구니 서버(`3003`)가 꺼졌을 때 `Promise.all` 전체가 실패하여 **호스트와 상품 목록까지 통째로 먹통이 되어 장애 격리 원칙이 무너집니다.**
   - 따라서 도메인 리모트는 반드시 컴포넌트 레벨에서 `React.lazy(() => import('remote_cart/CartWidget'))`로 지연 로딩하고, 각각의 `<RemoteWidgetSlot>`(`<RemoteErrorBoundary>` + `<Suspense fallback={<Skeleton />}>`) 안에 독립 배치합니다.
@@ -94,7 +94,7 @@ flowchart LR
 
 - [Study 02 § 4](./02-polyrepo-and-architecture-decisions.md)와 [Study 04 #14](./04-mfe-real-world-pitfalls-and-solutions.md)의 핵심 원칙입니다.
 - `RemoteErrorBoundary`의 폴백 UI마저 `remote_shared/ui`의 `<Button>`이나 `clsx`에 의존하면, 공통 UI 장애나 원격 청크 오류 상황에서 **에러 화면 자체를 그리다 2차 크래시**가 발생할 수 있습니다.
-- 따라서 `RemoteErrorBoundary.tsx`는 **오직 순수 React(`Component`)와 자체 내장 스타일(CSS 변수 + 안전한 기본 폴백값)**만으로 구현하며, `[다시 시도]` 버튼 클릭 시 에러 상태를 초기화하고 `onRetry`로 슬롯의 리마운트 키(`retryKey + 1`)를 증가시켜 전체 새로고침 없이 해당 리모트만 재연결합니다.
+- 따라서 `RemoteErrorBoundary.tsx`는 **`react-error-boundary` 기반 함수형 래퍼(`fallbackRender`, `onError`, `onReset`)와 CSS Modules(`RemoteErrorBoundary.module.css`, 시맨틱 CSS 변수 + 안전한 기본 폴백값)**만으로 구현하며, `[다시 시도]` 버튼 클릭 시 `resetErrorBoundary()`로 에러 상태를 초기화하고 `onReset` → `onRetry`로 슬롯의 리마운트 키(`retryKey + 1`)를 증가시켜 전체 새로고침 없이 해당 리모트만 재연결합니다.
 
 ---
 

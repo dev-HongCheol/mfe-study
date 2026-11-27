@@ -17,6 +17,7 @@
     "ky": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-error-boundary": "^6.1.6",
     "zod": "catalog:"
   },
   "devDependencies": {

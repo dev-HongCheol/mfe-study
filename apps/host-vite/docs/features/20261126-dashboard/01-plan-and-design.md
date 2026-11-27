@@ -66,9 +66,12 @@
 | `NEW` | `tsconfig.json` | `@mf-types/*` 자동 소비 경로 매핑 및 `strict` TypeScript 설정 |
 | `NEW` | `vite.config.ts` | `Port 3000` 고정, `remote_shared`/`remote_products`(`module`) + `remote_cart`(`var`) 소비, React 서브패스 포함 6종 싱글톤 공유, `dts.consumeTypes` 설정 |
 | `NEW` | `vitest.config.ts` | `jsdom` + 로컬 `remote_shared/*`·`remote_products/*`·`remote_cart/*` 스텁 alias 매핑 |
-| `NEW` | `index.html` | 호스트 진입 HTML (`Port 3000 | Vite Host`) |
+| `NEW` | `index.html` | 호스트 진입 HTML (`Port 3000 | Vite Host`) 및 부트스트랩 오프라인 폴백 `<template>` 선언 |
 | `NEW` | `src/vite-env.d.ts` | Vite 클라이언트 타입 참조 전용 (임시 `@ark-ui/react` Shim `0줄`) |
-| `NEW` | `src/main.ts` | `remote_shared` 3대 서브패스 선행 프리로드 + `remote_shared` 장애 시 순수 DOM 폴백 렌더링 후 `bootstrap.tsx` 동적 로드 |
+| `NEW` | `src/main.ts` | `remote_shared` 3대 서브패스 선행 프리로드 및 실패 시 `bootstrap-fallback` 지연 로드 진입점 |
+| `NEW` | `src/bootstrap-fallback.ts` | `remote_shared` 오프라인 시 `<template>` 복제·`textContent` 안전 바인딩으로 폴백 UI를 렌더링하는 분리 모듈 |
+| `NEW` | `src/bootstrap-fallback.css` | 부트스트랩 폴백 전용 `.host-bootstrap-fallback*` 클래스 스타일 시트 (실패 시에만 지연 로드) |
+| `NEW` | `src/bootstrap-fallback.test.ts` | `<template>` 복제·XSS 차단·새로고침 콜백·템플릿 누락 방어 단위 테스트 |
 | `NEW` | `src/bootstrap.tsx` | `React.StrictMode` + `ThemeProvider` + `App` 마운트 진입점 |
 | `NEW` | `src/App.tsx` | 호스트 상태(인증·동기화 모드·지연 시뮬레이션·테마 연동) 오케스트레이션 및 `HostHeader`·`DashboardWorkspace`·`MfeInspector` 조합 |
 | `NEW` | `src/features/auth/api/auth-api.ts` | `GET /api/users`, `POST /api/auth/login` `ky` + `Zod` 검증 API 클라이언트 |
@@ -77,7 +80,8 @@
 | `NEW` | `src/features/auth/model/use-host-auth.ts` | 시드 사용자 조회, `createScopedStorage('host-vite')` 세션 복원·보존, 로그인/비로그인 전환 및 `AUTH_CHANGED` 이벤트 발행 훅 |
 | `NEW` | `src/features/dashboard/model/host-preferences.ts` | 호스트 스코프 스토리지(`syncMode`, `simulateDelay` 저장·복원) 및 `host-vite` 발신자 `sourceId` 생성 유틸 |
 | `NEW` | `src/features/dashboard/model/host-preferences.test.ts` | 호스트 환경설정 스토리지 `Zod` 파싱·오염 폴백 단위 테스트 |
-| `NEW` | `src/features/dashboard/ui/RemoteErrorBoundary.tsx` | 원격 리모트 장애 포착 전용 순수 React `ErrorBoundary` (`remote_shared/ui` 비의존 내장 스타일 + `[다시 시도]` 복구) |
+| `NEW` | `src/features/dashboard/ui/RemoteErrorBoundary.tsx` | `react-error-boundary` 기반 원격 리모트 장애 포착 전용 함수형 `ErrorBoundary` (`remote_shared/ui` 비의존 + `[다시 시도]` 복구) |
+| `NEW` | `src/features/dashboard/ui/RemoteErrorBoundary.module.css` | `RemoteErrorBoundary` 폴백 UI 전용 CSS Modules 스타일 시트 (시맨틱 CSS 변수 + 안전 폴백값) |
 | `NEW` | `src/features/dashboard/ui/RemoteErrorBoundary.test.tsx` | 장애 포착·폴백 UI·`[다시 시도]` 정상 복구 단위 테스트 |
 | `NEW` | `src/features/dashboard/ui/RemoteWidgetSlot.tsx` | 개별 리모트용 `RemoteErrorBoundary` + `Suspense` + `Skeleton` + 리마운트 키 관리 슬롯 컴포넌트 |
 | `NEW` | `src/features/dashboard/ui/HostHeader.tsx` | 호스트 식별 배지, 사용자 로그인/전환(비로그인 포함), 4종 테마 전환, 1.5초 지연 토글 글로벌 헤더 |

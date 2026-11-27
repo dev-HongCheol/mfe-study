@@ -12,7 +12,7 @@
 | 파일 경로 (서비스 루트 기준 — 루트 파일은 `[루트]` 표기) | 설계서(`01-plan`) 계획 | 실제 구현 상태 (`git status`) | 변경 규모 | 일치 여부 및 변경 사유 |
 | :--- | :--- | :---: | :---: | :--- |
 | `package.json`, `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`, `index.html`, `src/vite-env.d.ts` | `Port 3000` 고정, `remote_shared`/`remote_products`(`module`) + `remote_cart`(`var`) 소비, React 서브패스 3종 포함 6종 싱글톤, 무-Shim `@mf-types` 소비 | `NEW` | 신규 6개 파일 | `일치` (`vite-env.d.ts` 주석 문구만 `TC-07` 문자열 검사와 충돌 없도록 다듬음) |
-| `src/main.ts`, `src/bootstrap.tsx`, `src/App.tsx` | `remote_shared` 3대 서브패스 선행 프리로드 + 오프라인 순수 DOM 폴백, `StrictMode` + `ThemeProvider`, 호스트 상태 오케스트레이션 | `NEW` | 신규 3개 파일 | `일치` |
+| `src/main.ts`, `src/bootstrap.tsx`, `src/bootstrap-fallback.{ts,css,test.ts}`, `src/App.tsx` | `remote_shared` 3대 서브패스 선행 프리로드 + 실패 시 `<template>`·전용 CSS 기반 폴백 모듈 지연 로드, `StrictMode` + `ThemeProvider`, 호스트 상태 오케스트레이션 | `NEW` | 신규 6개 파일 | `일치 (PR 리뷰 피드백 반영해 폴백 UI·CSS·테스트를 별도 모듈로 분리)` |
 | `src/features/auth/{model,api}/*` (`auth-schema.ts`, `auth-api.ts`, `auth-api.test.ts`, `use-host-auth.ts`) | `GET /api/users`, `POST /api/auth/login` `Zod` 검증, `createScopedStorage('host-vite')` 세션 영속화 및 `AUTH_CHANGED` 발행 | `NEW` | 신규 4개 파일 | `일치` |
 | `src/features/dashboard/{model,ui}/*` (`host-preferences.ts`, `host-remotes.ts`, `RemoteErrorBoundary.tsx`, `RemoteWidgetSlot.tsx`, `HostHeader.tsx`, `DashboardWorkspace.tsx`, `host-dashboard.css` + 단위 테스트 3종) | 글로벌 헤더, `Splitter` 좌/우 리모트 지연 로딩, 순수 React `RemoteErrorBoundary`(`remote_shared/ui` 미의존), `.host-*` 스타일 격리 | `NEW` | 신규 10개 파일 | `일치` (`host-remotes.ts`로 3대 리모트 메타 및 6종 싱글톤 정본 분리) |
 | `src/features/inspector/{model,ui}/*` (`use-mfe-event-log.ts`, `use-shared-query-cache.ts`, `EventLogTab.tsx`, `RuntimeStatusTab.tsx`, `MfeInspector.tsx` + 단위 테스트 2종) | `Mode A ↔ Mode B` 전환 스위치, 4대 이벤트 실시간 스트림, `sharedQueryClient.getQueryCache()` 스냅샷 관찰 | `NEW` | 신규 7개 파일 | `일치` |
@@ -37,8 +37,8 @@
   - 앱 단독: `pnpm --filter @mfe-study/host-vite test`
   - 루트 전체: `pnpm test`
 - **통과 현황**:
-  - `host-vite` 단독: 총 `7`개 파일 / `21`건 중 **`21`건 통과** (`0`건 실패)
-  - 루트 전체: 총 `50`개 파일 / `170`건 중 **`170`건 통과** (`0`건 실패, 소요 시간: `16.52s`)
+  - `host-vite` 단독: 총 `8`개 파일 / `25`건 중 **`25`건 통과** (`0`건 실패)
+  - 루트 전체: 총 `51`개 파일 / `174`건 중 **`174`건 통과** (`0`건 실패)
 - **주요 검증 시나리오 요약**:
   - `[TC-01 ~ TC-06]` 초기 비로그인 부팅 및 2대 리모트 결합, 로그인·전환·게스트 복귀(`POST /api/auth/login` + 스토리지 + `AUTH_CHANGED`), 4종 테마 및 `1.5초 지연` 토글, `MfeInspector` `Mode A ↔ Mode B` 전환·4대 이벤트 스트림·`sharedQueryClient` 캐시 스냅샷 관찰, `CartWidget` 장애 격리 및 `[다시 시도]` 복구 전원 통과
   - `[TC-07]` `@ark-ui/react`/`clsx` 직접 설치 0건, 임시 Shim 0줄, `remote_cart` `type: 'var'` 및 React 서브패스 3종 공유, 전역 CSS 태그 선택자·`#hex` 0건 정적 회귀 통과
@@ -94,6 +94,8 @@
 1. **두 호스트(`host-vite`, `host-rspack`) 공통 App Shell 아키텍처의 정본 문서 부재** -> 사용자 피드백을 반영해 [Study 14 (`14-mfe-host-shell-and-inspector-architecture.md`)](../../../../docs/study/14-mfe-host-shell-and-inspector-architecture.md)와 [host-shell-wireframe.svg](../../../../docs/study/assets/host-shell-wireframe.svg)를 신설하고 `01-plan-and-design.md` · `README.md`에 참조 링크 연결 완료
 2. **`TC-07` 정적 검사에서 `src/vite-env.d.ts` 주석 문구 매칭** -> 파일 헤더 설명 문구에서 `@ark-ui/react` 문자열을 `"서드파티 타입"`으로 다듬어 임시 Shim 부재 검증의 가독성과 정확도 확보
 3. **일회성 `@mf-types` 검증 스크립트의 동기 `execSync` 이벤트 루프 블로킹 발견** -> 비동기 `spawn`으로 수정하여 `3004`/`3002`/`3003` 3대 리모트의 `mf-manifest.json` · `@mf-types.zip` 실제 HTTP `200` 다운로드 및 무-Shim `tsc --noEmit` 오류 `0건` 실증 완료
+4. **`main.ts` 내 DOM 조립·인라인 `style.cssText` 책임 혼재 해소 (PR 리뷰 반영)** -> 정적 폴백 마크업을 `index.html`의 `<template id="host-bootstrap-fallback-template">`으로 옮기고, `bootstrap-fallback.ts` + `bootstrap-fallback.css` + `bootstrap-fallback.test.ts`(4건)로 분리해 프리로드 실패 시에만 지연 로드되도록 리팩터링 완료 (`vite build` 지연 청크 `1.21 kB JS` + `0.93 kB CSS` 확인)
+5. **`RemoteErrorBoundary` 클래스형 보일러플레이트 및 인라인 스타일 제거 (PR 리뷰 반영)** -> `react-error-boundary` v6(`ErrorBoundary` `fallbackRender` + `onError` + `onReset`) 기반 함수형 컴포넌트로 전환하고 인라인 스타일을 `RemoteErrorBoundary.module.css`(CSS Modules)로 분리했으며, 공통 정본 [Study 14](../../../../docs/study/14-mfe-host-shell-and-inspector-architecture.md) `§ 4.1`·`§ 4.2`까지 동기화 완료 (`remote_shared/ui` 미의존 `EC-04` 및 `[다시 시도]` 복구 `TC-06` 100% 유지)
 
 ### 5.2 승인자(사용자) 중점 확인 요청 포인트 (`Questions / Highlights for Approver`)
 1. **이종 번들러(`Vite` 호스트 ↔ `Rspack` 리모트) 소비 설정 (`vite.config.ts`)**: `remote_shared(:3004)`와 `remote_products(:3002)`는 `type: 'module'`로, `remote_cart(:3003)`는 `mf-manifest.json`의 `remoteEntry.type: 'global'`에 맞춰 **`type: 'var'`**로 명시하고 React 서브패스 3종 포함 6종 싱글톤을 통일했습니다.
