@@ -96,4 +96,4 @@
 - [x] 모든 단위 및 통합 테스트(`Vitest`)와 전체 워크스페이스 테스트(`pnpm test`)가 통과(`Green`)했는가?
 - [x] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
 - [x] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
-- [ ] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-products/docs/todo.md`, `docs/service-registry.md`를 최신 상태로 업데이트했는가?
+- [x] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/remote-products/docs/todo.md`, `docs/service-registry.md`를 최신 상태로 업데이트했는가?
