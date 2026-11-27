@@ -2,7 +2,7 @@
  * @file ThemeProvider.tsx
  * @app remote-shared (Scope: shared | Port: 3004)
  * @exposed true (via ./theme)
- * @description 침묵의 React Context 단절을 막는 단일 원격 ThemeContext, ThemeProvider 및 useTheme 훅입니다 ([Study 04 #07, Study 05 #14]).
+ * @description 침묵의 React Context 단절을 막는 단일 원격 ThemeContext, ThemeProvider 및 useTheme 훅입니다. 발신자 식별(sourceId)과 자기 에코(Self-Echo) 자동 차단을 내장합니다 ([Study 04 #07, #09, Study 05 #14]).
  */
 import {
   type ReactNode,
@@ -11,11 +11,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { MFE_EVENTS, type ThemeMode, themeModeSchema } from '../../utils/model/contracts';
-import { mfeEventBus, useMfeEvent } from '../../utils/model/event-bus';
+import { createMfeEventSourceId, mfeEventBus, useMfeEvent } from '../../utils/model/event-bus';
 import { createScopedStorage } from '../../utils/model/storage';
+import { isThemeMode } from '../../utils/model/validators';
 import {
   AVAILABLE_THEMES,
   type ThemeOptionMeta,
@@ -51,18 +53,49 @@ export interface ThemeProviderProps {
 /** shared 스코프 전용 localStorage 래퍼 인스턴스 (키: mfe:shared:theme) */
 const sharedThemeStorage = createScopedStorage('shared');
 
+/** ThemeProvider 인스턴스별 mfe:theme-changed 발신자 ID 접두사 상수 */
+const THEME_EVENT_SOURCE_PREFIX = 'remote-shared-theme';
+
+/** ThemeProvider 외부(기본 ThemeContext)에서 setTheme이 호출될 때 사용하는 폴백 발신자 ID 접두사 상수 */
+const FALLBACK_THEME_EVENT_SOURCE_PREFIX = 'remote-shared-theme-fallback';
+
+/** Provider 외부 기본 컨텍스트 호출용 폴백 발신자 ID 지연 캐시 */
+let cachedFallbackThemeSourceId: string | null = null;
+
+/**
+ * ThemeProvider 외부에서 기본 ThemeContext.setTheme이 호출될 때 사용할 고유 폴백 sourceId를 1회 지연 생성합니다.
+ *
+ * @returns 'remote-shared-theme-fallback:<uuid>' 형식의 고유 발신자 ID
+ */
+function getFallbackThemeSourceId(): string {
+  // [분기 설명] 모듈 로드 시점 즉시 생성하지 않고 실제 폴백 호출 시에만 1회 발급해 불필요한 부작용을 줄입니다.
+  if (cachedFallbackThemeSourceId === null) {
+    cachedFallbackThemeSourceId = createMfeEventSourceId(FALLBACK_THEME_EVENT_SOURCE_PREFIX);
+  }
+  return cachedFallbackThemeSourceId;
+}
+
 /**
  * 모든 마이크로 앱이 단일 원격 출처(remote_shared/theme)에서 공유하는 ThemeContext 인스턴스 ([Study 04 #07])
  */
 export const ThemeContext = createContext<ThemeContextValue>({
   theme: 'indigo',
   setTheme: (nextTheme: ThemeMode) => {
+    // [분기 설명] Provider 외부 기본 컨텍스트 호출에서도 무효 테마 문자열로 인한 DOM 토큰 주입 크래시 및 오염 이벤트 발행을 차단합니다.
+    if (!isThemeMode(nextTheme)) {
+      return;
+    }
+
     sharedThemeStorage.setItem('theme', nextTheme);
     applyThemeTokensToDocument(nextTheme);
-    mfeEventBus.emit(MFE_EVENTS.THEME_CHANGED, {
-      theme: nextTheme,
-      timestamp: new Date().toISOString(),
-    });
+    mfeEventBus.emit(
+      MFE_EVENTS.THEME_CHANGED,
+      {
+        theme: nextTheme,
+        timestamp: new Date().toISOString(),
+      },
+      { sourceId: getFallbackThemeSourceId() },
+    );
   },
   availableThemes: AVAILABLE_THEMES,
 });
@@ -74,6 +107,14 @@ export const ThemeContext = createContext<ThemeContextValue>({
  * @returns ThemeContext.Provider 래퍼 엘리먼트
  */
 export function ThemeProvider({ defaultTheme = 'indigo', children }: ThemeProviderProps) {
+  /** 이 ThemeProvider 마운트 인스턴스 생명주기 동안 유지되는 고유 mfe:theme-changed 발신자 ID Ref */
+  const themeSourceIdRef = useRef<string | null>(null);
+  // [분기 설명] 최초 렌더 시 1회만 sourceId를 지연 생성해 리렌더 간 동일 발신자 ID를 유지하고 자기 에코를 정확히 식별합니다.
+  if (themeSourceIdRef.current === null) {
+    themeSourceIdRef.current = createMfeEventSourceId(THEME_EVENT_SOURCE_PREFIX);
+  }
+  const themeSourceId = themeSourceIdRef.current;
+
   /** 현재 활성화된 테마 모드 상태 (초기값은 스코프 스토리지에서 Zod 검증 후 로드) */
   const [theme, setThemeState] = useState<ThemeMode>(() =>
     sharedThemeStorage.getItem('theme', themeModeSchema, defaultTheme),
@@ -85,36 +126,46 @@ export function ThemeProvider({ defaultTheme = 'indigo', children }: ThemeProvid
   }, [theme]);
 
   /**
-   * 사용자가 테마를 변경할 때 상태 업데이트, localStorage 저장, 커스텀 이벤트 발행을 일괄 수행합니다.
+   * 사용자가 테마를 변경할 때 상태 업데이트, localStorage 저장, sourceId가 첨부된 커스텀 이벤트 발행을 일괄 수행합니다.
    */
-  const setTheme = useCallback((nextTheme: ThemeMode): void => {
-    const parsed = themeModeSchema.safeParse(nextTheme);
-    // [분기 설명] 잘못된 테마 문자열이 전달되었을 때 스타일이 깨지지 않도록 무시합니다.
-    if (!parsed.success) {
-      return;
-    }
-
-    setThemeState(parsed.data);
-    sharedThemeStorage.setItem('theme', parsed.data);
-    applyThemeTokensToDocument(parsed.data);
-    mfeEventBus.emit(MFE_EVENTS.THEME_CHANGED, {
-      theme: parsed.data,
-      timestamp: new Date().toISOString(),
-    });
-  }, []);
-
-  // 다른 마이크로 앱이나 외부 패널에서 발행한 mfe:theme-changed 이벤트를 수신해 상태를 자동 동기화합니다.
-  useMfeEvent(MFE_EVENTS.THEME_CHANGED, (payload) => {
-    setThemeState((prev) => {
-      // [분기 설명] 이미 동일한 테마가 적용되어 있으면 불필요한 리렌더링을 건너뜁니다.
-      if (prev === payload.theme) {
-        return prev;
+  const setTheme = useCallback(
+    (nextTheme: ThemeMode): void => {
+      // [분기 설명] 잘못된 테마 문자열이 전달되었을 때 스타일이 깨지지 않도록 무시합니다.
+      if (!isThemeMode(nextTheme)) {
+        return;
       }
-      sharedThemeStorage.setItem('theme', payload.theme);
-      applyThemeTokensToDocument(payload.theme);
-      return payload.theme;
-    });
-  });
+
+      setThemeState(nextTheme);
+      sharedThemeStorage.setItem('theme', nextTheme);
+      applyThemeTokensToDocument(nextTheme);
+      mfeEventBus.emit(
+        MFE_EVENTS.THEME_CHANGED,
+        {
+          theme: nextTheme,
+          timestamp: new Date().toISOString(),
+        },
+        { sourceId: themeSourceId },
+      );
+    },
+    [themeSourceId],
+  );
+
+  // 다른 마이크로 앱이나 외부 패널에서 발행한 mfe:theme-changed 이벤트만 수신하고, 자기 자신이 발행한 이벤트(Self-Echo)는 경계에서 차단합니다.
+  useMfeEvent(
+    MFE_EVENTS.THEME_CHANGED,
+    (payload) => {
+      setThemeState((prev) => {
+        // [분기 설명] 이미 동일한 테마가 적용되어 있으면 불필요한 리렌더링을 건너뜁니다.
+        if (prev === payload.theme) {
+          return prev;
+        }
+        sharedThemeStorage.setItem('theme', payload.theme);
+        applyThemeTokensToDocument(payload.theme);
+        return payload.theme;
+      });
+    },
+    { ignoreSourceId: themeSourceId },
+  );
 
   const contextValue = useMemo<ThemeContextValue>(
     () => ({

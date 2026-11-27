@@ -24,7 +24,11 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- *(현재 진행 중인 작업 없음 — 다음 백로그 작업 착수 시 여기에 등록)*
+- [-] **[`20261128-theme-source-id-and-validators`](./features/20261128-theme-source-id-and-validators/01-plan-and-design.md)**: `ThemeProvider` `mfe:theme-changed` 발신자 식별(`sourceId`) 및 자기 에코 차단(`MfeInspector` 4대 이벤트 `anonymous` 0건 완성) + 공통 유효성·에러 리포트 유틸리티 5종(`normalizeUserId`, `isThemeMode`, `isSyncMode`, `extractSchemaIssues`, `formatErrorReport`) 노출 (`Port 3004`)
+  - **작업 브랜치**: `shared/feat/theme-source-id-and-validators` (`Scope: shared`)
+  - **설계 문서**: [01-plan-and-design.md](./features/20261128-theme-source-id-and-validators/01-plan-and-design.md)
+  - **TDD 명세**: [02-tdd-spec.md](./features/20261128-theme-source-id-and-validators/02-tdd-spec.md)
+  - **진행 상태**: `5단계-A 완료 (코드 리뷰 완료 · PR 생성 승인 대기 중)`
 
 ---
 
