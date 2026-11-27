@@ -110,4 +110,5 @@ flowchart LR
 | **`remote_products (3002, Vite ESM)` 소비** | `type: 'module'`, `entry: 'http://localhost:3002/mf-manifest.json'` | `'remote_products@http://localhost:3002/mf-manifest.json'` |
 | **`remote_cart (3003, Rspack Global)` 소비** | **`type: 'var'`** 명시 (`mf-manifest.json`의 `remoteEntry.type: 'global'` 대응 — `module`로 두거나 생략 시 경고/로딩 실패) | `'remote_cart@http://localhost:3003/mf-manifest.json'` (동종 Rspack 소비) |
 | **`shared` 싱글톤 6종 통일** | `react`, `react/jsx-runtime`, `react/jsx-dev-runtime`, `react-dom`, `react-dom/client`, `@tanstack/react-query` | 동일 6종 `singleton: true` 통일 |
+| **공유 전략 및 레이스 방어** | **`shareStrategy: 'loaded-first'`** + `main.ts`에서 `@tanstack/react-query` 선행 `import` (`materialize: true` 확정 — `version-first` 시 `remote_cart:3003` Rsbuild와 `remote_shared:3004` 간 `QueryClient is not a constructor` 레이스 및 오프라인 부팅 차단 방어) | **`shareStrategy: 'loaded-first'`** 명시 (오프라인 리모트 장애 격리 및 불필요한 초기 워터폴 차단) |
 | **파일 워처 / 타입 힌트 방어** | `dev.disableDynamicRemoteTypeHints: true`, `dts.consumeTypes` | `dev.disableDynamicRemoteTypeHints: true`, `watchOptions.ignored`에 `@mf-types`·`.mf` 제외 |

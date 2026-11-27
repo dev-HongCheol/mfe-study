@@ -244,6 +244,7 @@ describe('host-vite 대시보드 통합 테스트 (TC-01~TC-07, EC-01~EC-03)', (
       devDependencies?: Record<string, string>;
     };
     const viteConfig = readFileSync(resolve(appRoot, 'vite.config.ts'), 'utf-8');
+    const mainEntry = readFileSync(resolve(appRoot, 'src/main.ts'), 'utf-8');
     const viteEnv = readFileSync(resolve(appRoot, 'src/vite-env.d.ts'), 'utf-8');
     const dashboardCss = readFileSync(
       resolve(appRoot, 'src/features/dashboard/ui/host-dashboard.css'),
@@ -260,13 +261,15 @@ describe('host-vite 대시보드 통합 테스트 (TC-01~TC-07, EC-01~EC-03)', (
     expect(viteEnv).not.toMatch(/declare\s+module/);
     expect(viteEnv).not.toContain('@ark-ui/react');
 
-    // 3. vite.config.ts 이종 번들러(remote_cart type: 'var'), React 서브패스 3종, disableDynamicRemoteTypeHints 검증
+    // 3. vite.config.ts 이종 번들러(remote_cart type: 'var'), shareStrategy: 'loaded-first', React 서브패스 3종, disableDynamicRemoteTypeHints 및 main.ts @tanstack/react-query 선행 로드 검증
+    expect(viteConfig).toContain("shareStrategy: 'loaded-first'");
     expect(viteConfig).toContain("type: 'module'");
     expect(viteConfig).toContain("type: 'var'");
     expect(viteConfig).toContain("'react/jsx-runtime'");
     expect(viteConfig).toContain("'react/jsx-dev-runtime'");
     expect(viteConfig).toContain("'react-dom/client'");
     expect(viteConfig).toContain('disableDynamicRemoteTypeHints: true');
+    expect(mainEntry).toContain("import('@tanstack/react-query')");
 
     // 4. host-dashboard.css 전역 태그 선택자 및 #hex 하드코딩 0건
     expect(dashboardCss).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);

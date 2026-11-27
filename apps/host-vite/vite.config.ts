@@ -30,6 +30,10 @@ export default defineConfig({
       name: 'host_vite',
       filename: 'remoteEntry.js',
       manifest: false,
+      // [이종 번들러·장애 격리 방어] 기본값 version-first는 부팅 시 모든 remoteEntry를 선행 초기화하여
+      // remote_cart(:3003, Rsbuild) 오프라인 시 부팅을 막고 remote_shared와 @tanstack/react-query 초기화 레이스를 유발합니다.
+      // loaded-first로 호스트 싱글톤을 먼저 확정하고 도메인 리모트는 React.lazy 시점에 on-demand 로드합니다 ([Study 14 § 5]).
+      shareStrategy: 'loaded-first',
       dev: {
         // [Study 04 #04 ④] 정적 remotes 구조에서 불필요한 16322 WebSocket 동적 타입 힌트 클라이언트 주입 차단
         disableDynamicRemoteTypeHints: true,

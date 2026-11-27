@@ -124,10 +124,10 @@
 ## 5. [조건부 A] 프론트엔드 및 MFE 통합 검증 (`host-vite` 전용)
 
 - **적용 여부**: `적용`
-- [ ] **호스트 부트스트랩 및 3대 리모트 결합 검증**: `main.ts` 선행 프리로드와 `ProductList(:3002)` + `CartWidget(:3003)` 동시 결합이 정상 동작하는가?
-- [ ] **리모트 장애 격리 검증**: 한쪽 리모트 오류 시 `RemoteErrorBoundary`가 해당 영역만 격리하고 `[다시 시도]`로 복구되며 다른 리모트는 정상 유지되는가?
-- [ ] **이벤트 버스 및 쿼리 캐시 연동**: `MfeInspector`의 `Mode A ↔ Mode B` 전환, 4대 이벤트 스트림, `sharedQueryClient` 캐시 스냅샷이 정상 동작하는가?
-- [ ] **무-Shim 원격 타입 및 이종 번들러 빌드 검증**: `remote-shared`, `remote-products`, `remote-cart` `@mf-types` 소비 상태에서 `tsc --noEmit` 및 `vite build`가 임시 Shim 없이 통과하는가?
+- [x] **호스트 부트스트랩 및 3대 리모트 결합 검증**: `main.ts` 선행 프리로드와 `ProductList(:3002)` + `CartWidget(:3003)` 동시 결합이 정상 동작하는가?
+- [x] **리모트 장애 격리 검증**: 한쪽 리모트 오류 시 `RemoteErrorBoundary`가 해당 영역만 격리하고 `[다시 시도]`로 복구되며 다른 리모트는 정상 유지되는가?
+- [x] **이벤트 버스 및 쿼리 캐시 연동**: `MfeInspector`의 `Mode A ↔ Mode B` 전환, 4대 이벤트 스트림, `sharedQueryClient` 캐시 스냅샷이 정상 동작하는가?
+- [x] **무-Shim 원격 타입 및 이종 번들러 빌드 검증**: `remote-shared`, `remote-products`, `remote-cart` `@mf-types` 소비 상태에서 `tsc --noEmit` 및 `vite build`가 임시 Shim 없이 통과하는가?
 
 ---
 
@@ -138,7 +138,7 @@
 ---
 
 ## 7. 최종 완료 및 머지 전 체크리스트 — `[공통 필수]`
-- [ ] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가?
-- [ ] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
-- [ ] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
-- [ ] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/host-vite/docs/todo.md`, `docs/service-registry.md`를 최신 상태로 업데이트했는가?
+- [x] 모든 단위 및 통합 테스트(`Vitest`)가 통과(`Green`)했는가?
+- [x] 6대 주석 원칙(인터페이스 내부 속성 `/** */` 인텔리센스 주석, 함수 헤더, 분기문 의도 주석 등)을 준수했는가?
+- [x] `Biome` 포맷팅 및 린트 검사(`LF` 줄바꿈 포함)를 통과했는가?
+- [x] **(머지 승인 시)** 실제 머지 직전에 루트 `todo.md`, `apps/host-vite/docs/todo.md`, `docs/service-registry.md`를 최신 상태로 업데이트했는가?

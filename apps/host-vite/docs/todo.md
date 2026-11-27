@@ -10,8 +10,8 @@
 ## 📌 1. 서비스 메타데이터 및 역할
 - **스코프 ID (`Scope ID`)**: `host-vite`
 - **대상 경로**: `apps/host-vite` (루트 작업은 루트 [`todo.md`](../../../todo.md)에서 통합 관리)
-- **기술 스택**: `Vite 7 + React 19 + TypeScript 5.7 + @module-federation/vite + TanStack Query v5 + Zod + ky + MSW + Vitest`
-- **최종 업데이트**: `2026-11-26`
+- **기술 스택**: `Vite 7 + React 19 + TypeScript 5.7 + @module-federation/vite + react-error-boundary + TanStack Query v5 + Zod + ky + MSW + Vitest`
+- **최종 업데이트**: `2026-11-27`
 - **핵심 역할**: `Vite 7` 기반 공통 껍데기 호스트(App Shell) 애플리케이션입니다 (`Port 3000`). 동종 `Vite` 리모트(`remote-shared:3004`, `remote-products:3002`)와 이종 `Rsbuild(Rspack)` 리모트(`remote-cart:3003`)를 런타임 Module Federation 2.0으로 단일 대시보드에 통합하고, 글로벌 인증·테마·로딩 지연 제어, 개별 `RemoteErrorBoundary` + `Suspense` 장애 격리, 실시간 `MfeInspector`(`Mode A` ↔ `Mode B` 비교 전환·이벤트 스트림·`sharedQueryClient` 캐시 관찰)를 제공합니다.
 - **노출 모듈 (`exposes`)**: `N/A` (최상위 호스트 소비자 전용 앱)
 - **소비 모듈 (`remotes`) / 외부 의존성**:
@@ -25,10 +25,7 @@
 ## 🚀 2. 현재 진행 중인 작업
 > 현재 활성화된 브랜치에서 진행 중인 작업입니다. (동시에 1개의 작업만 진행 권장)
 
-- [ ] **[`20261126-dashboard`](./features/20261126-dashboard/01-plan-and-design.md)**: [Phase 1 - Step 1.5] `Vite 7` 공통 껍데기 호스트(`apps/host-vite:3000`) 통합 대시보드, 장애 격리 및 실시간 `MfeInspector` 구축
-  - **작업 브랜치**: `host-vite/feat/dashboard`
-  - **설계 문서**: [01-plan-and-design.md](./features/20261126-dashboard/01-plan-and-design.md)
-  - **TDD 명세**: [02-tdd-spec.md](./features/20261126-dashboard/02-tdd-spec.md)
+- *현재 진행 중인 작업이 없습니다.*
 
 ---
 
@@ -44,4 +41,8 @@
 ## ✅ 4. 완료된 작업 이력
 > 사용자가 PR 머지를 승인한 직후, 실제 머지 실행 전에 완료 체크(`[x]`) 및 완료일을 기록합니다.
 
-- *완료된 작업이 아직 없습니다.*
+- [x] **[`20261126-dashboard`](./features/20261126-dashboard/01-plan-and-design.md)**: [Phase 1 - Step 1.5] `Vite 7` 공통 껍데기 호스트(`apps/host-vite:3000`) 통합 대시보드, 3대 원격(`Vite` 2종 + `Rspack` 1종) 무-Shim 이종 소비, `shareStrategy: 'loaded-first'` + `@tanstack/react-query` 선행 로드 레이스 방어, `bootstrap-fallback` 지연 로드, `react-error-boundary` + CSS Modules 장애 격리 및 실시간 `MfeInspector` 구축 완료 (`2026-11-27`, PR #18, `Vitest 8개 파일 / 25건` 통과)
+  - **작업 브랜치**: `host-vite/feat/dashboard`
+  - **설계 문서**: [01-plan-and-design.md](./features/20261126-dashboard/01-plan-and-design.md)
+  - **TDD 명세**: [02-tdd-spec.md](./features/20261126-dashboard/02-tdd-spec.md)
+  - **코드 리뷰**: [03-code-review.md](./features/20261126-dashboard/03-code-review.md)
